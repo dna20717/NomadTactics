@@ -12,7 +12,12 @@ import fs from 'node:fs';
 import { startServer } from './server.js';
 import { Connection } from '../../engine/net/connection.js';
 import { Lockstep } from '../../engine/net/lockstep.js';
-import { newProbe, probeRun } from '../../engine/tactics/probe.js';
+import { probeRun } from '../../engine/tactics/probe.js';
+import { Battle } from '../../engine/tactics/battle.js';
+import { loadSkirmish, battleRun } from '../../engine/tactics/skirmish.js';
+
+const setup = await loadSkirmish(async (p) => JSON.parse(fs.readFileSync(new URL('../../projects/nomadtactics/' + p, import.meta.url), 'utf8')));
+const newSim = (seed, seats) => new Battle(seed, seats, setup);
 import { REASON } from '../../engine/net/protocol.js';
 
 const images = process.argv.includes('--images');
@@ -33,7 +38,7 @@ const basis = `http://127.0.0.1:${PORT}`;
 // Node client (like a third device), with delay
 function nodeClient(name, test = {}) {
   const c = { name };
-  c.ls = new Lockstep(newProbe, { reportSync: (round, sum) => c.l.send({ t: 'sync', round, sum }) });
+  c.ls = new Lockstep(newSim, { reportSync: (round, sum) => c.l.send({ t: 'sync', round, sum }) });
   c.l = new Connection({ url: `ws://127.0.0.1:${PORT}/net`, name, test, store: { lies: () => c.token, write: (t) => { c.token = t; } } });
   c.l.on('match', (m) => c.ls.match(m)).on('round', (m) => c.ls.round(m)).on('state', (m) => { c.state = m; });
   c.l.start();
@@ -57,6 +62,8 @@ try {
   await pageA.click('#pt-check');
   const sumBrowser = await pageA.evaluate(() => window.party.check.sum);
   validate(sumBrowser === probeRun(), `Geräte-Check Chromium = Node (${sumBrowser})`);
+  const battleBrowser = await pageA.evaluate(() => window.party.check.battle);
+  validate(battleBrowser === battleRun(setup), `Gefechts-Check Chromium = Node (${battleBrowser})`);
 
   // 2) Join: Daniel (PC), iPad (with 120 ms delay + jitter), Node client with 60 ms
   await pageA.fill('#pt-name', 'Daniel');
@@ -81,7 +88,7 @@ try {
   validate(room.phase === 'running' && room.match.rounds.length > 20, `Partie läuft (${room.match?.rounds.length} Runden)`);
   await pageA.evaluate(() => { const p = window.party; p.command(30000, 14000, p.ownItems().map((e) => e.id)); });
   await pageB.evaluate(() => { const p = window.party; p.command(12000, 6000, p.ownItems().slice(0, 3).map((e) => e.id)); });
-  c.l.send({ t: 'command', b: { kind: 'target', ids: c.ls.sim.units.filter((e) => e.seat === c.l.seat).map((e) => e.id), x: 24000, y: 13000 } });
+  c.l.send({ t: 'command', b: { kind: 'drive', ids: c.ls.sim.units.filter((e) => e.seat === c.l.seat).map((e) => e.id), x: 128000, y: 100000 } });
   await pause(4000);
   if (images) await pageA.screenshot({ path: 'output/party_game.png' });
 
@@ -101,8 +108,8 @@ try {
   }
   await tie('Nach Befehlen');
   validate(room.pause?.reason !== REASON.desync, 'kein Desync gemeldet');
-  const unit0 = await pageA.evaluate(() => window.party.ls.sim.units[0].x);
-  validate(unit0 > 9000, `Befehl kam an (Einheit 0 bei x=${unit0})`);
+  const moved = await pageA.evaluate(() => window.party.ownItems().filter((u) => u.order === 1 || Math.abs(u.x - u.ax) > 2000 || Math.abs(u.y - u.ay) > 2000).length);
+  validate(moved > 0, `Befehl kam an (${moved} Einheiten unterwegs)`);
 
   // 3b) Host page: see players, trigger a gust of wind, everyone stays identical
   const pageG = await context.newPage();
@@ -111,11 +118,11 @@ try {
   await pageG.waitForSelector('.gg-table tbody tr');
   validate(await pageG.locator('.gg-table tbody tr').count() === 3, 'Gastgeber-Seite zeigt drei Spieler');
   validate(await pageG.locator('.gg-qr > svg').count() === 1, 'Gastgeber-Seite zeigt den QR-Code');
-  const xBefore = await pageA.evaluate(() => window.party.ls.sim.units.reduce((s, e) => s + e.x, 0));
   await pageG.click('.gg-wind button[data-direction="0"]');
+  await until(async () => (await pageA.evaluate(() => window.party.ls.sim.wind.rest)) > 0, 3000, 'Windstoß');
+  const wind = await pageA.evaluate(() => window.party.ls.sim.wind.x);
+  validate(wind > 0, 'Windstoß vom Spielleiter kommt in der Simulation an');
   await pause(3500);
-  const xAfterwards = await pageA.evaluate(() => window.party.ls.sim.units.reduce((s, e) => s + e.x, 0));
-  validate(xAfterwards > xBefore, 'Windstoß vom Spielleiter schiebt die Würfel');
   if (images) await pageG.screenshot({ path: 'output/party_host.png', fullPage: true });
   await tie('Nach Windstoß');
 

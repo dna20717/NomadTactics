@@ -4,7 +4,10 @@
 import { Connection } from '../../engine/net/connection.js';
 import { Lockstep } from '../../engine/net/lockstep.js';
 import { ROUND_MS, REASON, SYNC_EACH, COLORS, COLOR_NAMES, isBlue } from '../../engine/net/protocol.js';
-import { newProbe, probeRun, WIDTH, HEIGHT, FIELD } from '../../engine/tactics/probe.js';
+import { probeRun } from '../../engine/tactics/probe.js';
+import { Battle, TICKS_PER_SECOND } from '../../engine/tactics/battle.js';
+import { loadSkirmish, battleRun } from '../../engine/tactics/skirmish.js';
+import { battleView } from './battle_view.js';
 import { icon } from '../icons.js';
 
 const q = new URLSearchParams(location.search);
@@ -21,6 +24,13 @@ const app = {
   before: null, beforeTime: 0, message: '', check: null,
 };
 window.party = app; // for tests and the console
+
+// Game data comes from the party server (same files for everyone = same simulation)
+const DATA = 'projects/nomadtactics/';
+app.setupReady = loadSkirmish(async (p) => { const r = await fetch(DATA + p, { cache: 'no-cache' }); if (!r.ok) throw new Error(p + ': HTTP ' + r.status); return r.json(); })
+  .then((s) => { app.setup = s; return s; })
+  .catch((e) => { app.message = 'Spieldaten fehlen: ' + e.message; drawUi(); });
+const newSim = (seed, seats) => new Battle(seed, seats, app.setup);
 
 const store = (() => {
   try { sessionStorage.setItem('_t', '1'); sessionStorage.removeItem('_t'); } catch { return null; }
@@ -45,6 +55,7 @@ const button = (text, onclick, class_ = '', ic = null, extra = {}) => el('button
 
 // ---------- Verbinden ----------
 function join(name) {
+  if (!app.setup) { app.view = 'connect'; drawUi(); app.setupReady.then(() => app.setup && join(name)); return; }
   name = (name || '').trim() || 'Spieler';
   remember(NAME_KEY, name);
   app.connection?.stop();
@@ -65,17 +76,21 @@ function join(name) {
   });
   l.on('state', (m) => {
     app.state = m; app.timeOffset = m.now - Date.now();
-    if (m.phase === 'lobby' && app.view !== 'start' && app.view !== 'rejected') { app.view = 'lobby'; app.ls = null; }
+    if (m.phase === 'lobby' && app.view !== 'start' && app.view !== 'rejected') { app.view = 'lobby'; app.ls = null; app.overSeen = false; }
     drawUi();
   });
-  l.on('match', (m) => {
-    if (!app.ls) app.ls = new Lockstep(newProbe, { reportSync: reportSync });
+  l.on('match', async (m) => {
+    if (!app.setup) await app.setupReady;
+    const fresh = !app.ls || app.ls.seed !== m.seed;
+    if (!app.ls) app.ls = new Lockstep(newSim, { reportSync: reportSync });
     app.ls.match(m);
-    app.view = 'game'; app.selection.clear(); app.before = null;
+    if (fresh) { app.selection.clear(); view.reset(); app.overSeen = false; }
+    app.view = 'game'; app.before = null;
     drawUi();
+    if (fresh) setTimeout(() => view.home(), 0);
   });
   l.on('round', (m) => { if (!app.ls) return; app.ls.round(m); if (app.ls.gap) { app.ls.gap = false; l.cut(); } });
-  l.on('lobby', () => { app.ls = null; app.view = 'lobby'; drawUi(); });
+  l.on('lobby', () => { app.ls = null; app.view = 'lobby'; app.overSeen = false; drawUi(); });
   l.on('error', (m) => { app.message = m.text; drawUi(); setTimeout(() => { app.message = ''; drawUi(); }, 3000); });
   l.start();
   drawUi();
@@ -109,7 +124,7 @@ function drawUi() {
   else if (a === 'game') {
     ui.append(bar()); const b = banner(); if (b) ui.append(b);
     ui.append(el('div', { class: 'pt-tap' }, app.spectator ? 'Du schaust zu. In der Lobby rückst du auf einen freien Platz.'
-      : ['Antippen wählt eigene Würfel · Ziehen wählt mehrere · Tippen ins Feld schickt sie los', el('span', { class: 'keys' }, ' · A alle · P Pause')]));
+      : [selectionText() || 'Antippen wählt · Ziehen wählt mehrere · Tippen ins Feld fährt hin, auf Feinde greift an', el('span', { class: 'keys' }, ' · Strg+A alle · H Halt · Leertaste Landeplatz · Rad/Rechts-Ziehen Kamera')]));
   }
 }
 
@@ -118,14 +133,14 @@ function startMap() {
   field.addEventListener('keydown', (e) => { if (e.key === 'Enter') join(field.value); });
   setTimeout(() => field.focus(), 0);
   const check = app.check
-    ? el('div', { class: 'pt-small' }, `Geräte-Check: `, el('b', {}, app.check.sum), ` (${app.check.ms} ms). Diese Zahl muss auf jedem Gerät gleich sein.`)
+    ? el('div', { class: 'pt-small' }, `Geräte-Check: `, el('b', {}, app.check.sum), ' · ', el('b', { id: 'pt-battle-check' }, app.check.battle || '–'), ` (${app.check.ms} ms). Diese Zahlen müssen auf jedem Gerät gleich sein.`)
     : el('div', { class: 'pt-small' }, 'Rechnet dieses Gerät genau wie die anderen?');
   return el('div', { class: 'pt-map' },
     el('div', { class: 'pt-kind' }, 'NomadTactics · Party'),
     el('div', { class: 'pt-title' }, 'Mitspielen'),
     el('div', { class: 'pt-row' }, field, button('Beitreten', () => join(field.value), 'main', 'play', { id: 'pt-join' })),
     el('div', { class: 'pt-bottom' }, check, button('Prüfen', () => {
-      const t = performance.now(); const sum = probeRun(); app.check = { sum, ms: Math.round(performance.now() - t) }; drawUi();
+      const t = performance.now(); const sum = probeRun(); const battle = app.setup ? battleRun(app.setup) : null; app.check = { sum, battle, ms: Math.round(performance.now() - t) }; drawUi();
     }, 'small', 'verify', { id: 'pt-check' })));
 }
 
@@ -198,7 +213,8 @@ function bar() {
 function messText() {
   const ls = app.ls;
   if (!ls?.sim) return '';
-  return `Runde ${ls.done + 1} · #${ls.sim.sum()} · Ping ${app.connection?.ping ?? '–'} ms`;
+  const wave = ls.sim.over ? '' : `Welle in ${Math.ceil(ls.sim.nextWave / TICKS_PER_SECOND)} s · `;
+  return `${wave}Runde ${ls.done + 1} · #${ls.sim.sum()} · Ping ${app.connection?.ping ?? '–'} ms`;
 }
 
 function banner() {
@@ -207,6 +223,13 @@ function banner() {
     el('div', { class: 'pt-title' }, icon(ic, 20), title), text ? el('p', { class: 'pt-text' }, text) : null, buttons.length && !app.spectator ? el('div', { class: 'pt-bottom' }, buttons) : null);
   if (l?.status !== 'da') return b('Verbindung weg', 'Verbinde neu … Die Partie wartet so lange.', [], '', 'warning');
   if (!z) return null;
+  const over = app.ls?.sim?.over;
+  if (over) {
+    const win = playerList().find((x) => x.seat === over.winner);
+    const mine = over.winner === meSeat() && !app.spectator;
+    return b(mine ? 'Sieg!' : win ? `${win.name} gewinnt` : 'Unentschieden', mine ? 'Der letzte Landeplatz ist gefallen. Gut gemacht.' : 'Die Partie ist vorbei.',
+      [button('Zur Lobby', () => send({ t: 'new' }), 'main', 'restart')], '', mine ? 'star_full' : 'flag');
+  }
   const p = z.pause;
   if (p?.reason === REASON.desync) {
     const sums = Object.entries(p.sums || {}).map(([pl, s]) => `${playerList().find((x) => x.seat === Number(pl))?.name ?? pl}: ${s}`).join(' · ');
@@ -228,6 +251,13 @@ function banner() {
   return null;
 }
 
+function selectionText() {
+  const sim = app.ls?.sim; if (!sim || !app.selection.size) return '';
+  const count = {};
+  for (const id of app.selection) { const u = sim.byId.get(id); if (u) count[u.type] = (count[u.type] || 0) + 1; }
+  return Object.entries(count).map(([t, n]) => `${n}× ${sim.types[t].name}`).join(' · ');
+}
+
 // Continuously refresh small parts of the UI without rebuilding everything
 let uiKey = '';
 setInterval(() => {
@@ -235,25 +265,12 @@ setInterval(() => {
   const m = document.getElementById('pt-measurement'); if (m) m.textContent = messText();
   const z = app.state;
   const invKey = [app.connection?.status, z?.pause?.reason, z?.waits?.join(), Math.ceil(((z?.nextUm ?? 0) - serverNow()) / 1000) > 0 ? Math.ceil((z.nextUm - serverNow()) / 1000) : 0, (app.ls?.isOpen ?? 0) > 20 ? app.ls.isOpen : 0,
-    playerList().map((s) => s.ping + s.online).join(), z?.spectator?.length].join('|');
+    playerList().map((s) => s.ping + s.online).join(), z?.spectator?.length, selectionText(), !!app.ls?.sim?.over].join('|');
   if (invKey !== uiKey) { uiKey = invKey; drawUi(); }
 }, 200);
 
 // ---------- Feld ----------
-const color = (n, fallback) => getComputedStyle(document.documentElement).getPropertyValue(n).trim() || fallback;
-function mass() {
-  const w = cv.clientWidth, h = cv.clientHeight, top = 64, border = 16;
-  const s = Math.min((w - 2 * border) / WIDTH, (h - top - border - 30) / HEIGHT);
-  return { s, ox: (w - WIDTH * s) / 2, oy: top + (h - top - 30 - HEIGHT * s) / 2 };
-}
-const toWorld = (px, py) => { const { s, ox, oy } = mass(); return [Math.round((px - ox) / s), Math.round((py - oy) / s)]; };
-
-function size() {
-  const d = window.devicePixelRatio || 1;
-  const w = Math.round(cv.clientWidth * d), h = Math.round(cv.clientHeight * d);
-  if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
-  g.setTransform(d, 0, 0, d, 0, 0);
-}
+const view = battleView({ cv, app, send, meSeat, playerList });
 
 function compute() {
   const ls = app.ls;
@@ -262,119 +279,14 @@ function compute() {
   if (isOpen <= 0) return;
   const pos = new Map(ls.sim.units.map((e) => [e.id, [e.x, e.y]]));
   const n = ls.progress(isOpen > 3 ? 400 : 1);   // normal: round by round, fast when catching up
+  view.drain(ls.sim, n > 1);
   app.before = n === 1 ? pos : null;
   app.beforeTime = performance.now();
+  if (ls.sim.over && !app.overSeen) { app.overSeen = true; drawUi(); }
 }
 
-function draw() {
-  size();
-  const w = cv.clientWidth, h = cv.clientHeight;
-  g.fillStyle = color('--ui-canvas', '#0e0e10'); g.fillRect(0, 0, w, h);
-  const ls = app.ls;
-  if (app.view !== 'game' || !ls?.sim) return;
-  const { s, ox, oy } = mass();
-  // Platte
-  g.fillStyle = color('--ui-panel', '#1e1e21'); g.fillRect(ox, oy, WIDTH * s, HEIGHT * s);
-  g.strokeStyle = color('--ui-point', 'rgba(255,255,255,.07)'); g.lineWidth = 1; g.beginPath();
-  for (let x = 0; x <= WIDTH; x += 2 * FIELD) { g.moveTo(ox + x * s + .5, oy); g.lineTo(ox + x * s + .5, oy + HEIGHT * s); }
-  for (let y = 0; y <= HEIGHT; y += 2 * FIELD) { g.moveTo(ox, oy + y * s + .5); g.lineTo(ox + WIDTH * s, oy + y * s + .5); }
-  g.stroke();
-  g.strokeStyle = color('--ui-border', '#313136'); g.strokeRect(ox + .5, oy + .5, WIDTH * s - 1, HEIGHT * s - 1);
-
-  const t = Math.min(1, (performance.now() - app.beforeTime) / (ROUND_MS));
-  const colors = Object.fromEntries(playerList().map((x) => [x.seat, x.color]));
-  const me = meSeat();
-  const k = 700 * s;
-  // Targets of the own selection
-  g.strokeStyle = 'rgba(255,255,255,.35)'; g.setLineDash([4, 4]); g.beginPath();
-  for (const e of ls.sim.units) if (e.target && app.selection.has(e.id)) {
-    const [x0, y0] = situation(e, t);
-    g.moveTo(ox + x0 * s, oy + y0 * s); g.lineTo(ox + e.zx * s, oy + e.zy * s);
-  }
-  g.stroke(); g.setLineDash([]);
-  for (const e of ls.sim.units) {
-    const [x, y] = situation(e, t);
-    const px = ox + x * s, py = oy + y * s;
-    g.fillStyle = colors[e.seat] || '#888';
-    g.globalAlpha = e.seat === me ? 1 : .9;
-    rounded(px - k / 2, py - k / 2, k, k, Math.max(2, k * .18)); g.fill();
-    g.globalAlpha = 1;
-    g.fillStyle = 'rgba(0,0,0,.25)'; rounded(px - k / 2, py + k * .12, k, k * .38, Math.max(2, k * .18)); g.fill();
-    if (app.selection.has(e.id)) { g.strokeStyle = '#fff'; g.lineWidth = 2; rounded(px - k / 2 - 3, py - k / 2 - 3, k + 6, k + 6, Math.max(3, k * .22)); g.stroke(); }
-  }
-  // Klick-Marker
-  if (app.marker && performance.now() - app.marker.time < 600) {
-    const a = 1 - (performance.now() - app.marker.time) / 600;
-    g.strokeStyle = `rgba(242,193,78,${a})`; g.lineWidth = 2; g.beginPath();
-    g.arc(ox + app.marker.x * s, oy + app.marker.y * s, 6 + (1 - a) * 14, 0, Math.PI * 2); g.stroke();
-  }
-  // Auswahlrahmen
-  const z = app.drag;
-  if (z?.frame) { g.strokeStyle = color('--ui-acc-line', '#f2c14e'); g.fillStyle = 'rgba(242,193,78,.08)'; g.lineWidth = 1;
-    g.fillRect(z.x0, z.y0, z.x - z.x0, z.y - z.y0); g.strokeRect(z.x0 + .5, z.y0 + .5, z.x - z.x0, z.y - z.y0); }
-}
-
-function situation(e, t) {
-  const v = app.before?.get(e.id);
-  if (!v) return [e.x, e.y];
-  return [v[0] + (e.x - v[0]) * t, v[1] + (e.y - v[1]) * t];
-}
-function rounded(x, y, w, h, r) { g.beginPath(); g.roundRect ? g.roundRect(x, y, w, h, r) : g.rect(x, y, w, h); }
-
-function loop() { compute(); draw(); requestAnimationFrame(loop); }
+function loop() { compute(); view.draw(app.before, app.beforeTime); requestAnimationFrame(loop); }
 requestAnimationFrame(loop);
-
-// ---------- Eingabe ----------
-function ownItems() { const me = meSeat(); return app.ls?.sim ? app.ls.sim.units.filter((e) => e.seat === me) : []; }
-
-function command(x, y, ids) {
-  if (!ids.length) return;
-  app.marker = { x, y, time: performance.now() };
-  send({ t: 'command', b: { kind: 'target', ids, x, y } });
-}
-app.command = command;
-app.ownItems = ownItems;
-
-cv.addEventListener('contextmenu', (e) => e.preventDefault());
-cv.addEventListener('pointerdown', (e) => {
-  if (app.view !== 'game') return;
-  cv.setPointerCapture(e.pointerId);
-  app.drag = { x0: e.offsetX, y0: e.offsetY, x: e.offsetX, y: e.offsetY, frame: false, right: e.button === 2, shift: e.shiftKey };
-});
-cv.addEventListener('pointermove', (e) => {
-  const z = app.drag; if (!z) return;
-  z.x = e.offsetX; z.y = e.offsetY;
-  if (!z.right && Math.hypot(z.x - z.x0, z.y - z.y0) > 8) z.frame = true;
-});
-cv.addEventListener('pointerup', (e) => {
-  const z = app.drag; app.drag = null; if (!z || !app.ls?.sim) return;
-  const { s } = mass();
-  if (z.frame) {
-    const [ax, ay] = toWorld(Math.min(z.x0, z.x), Math.min(z.y0, z.y));
-    const [bx, by] = toWorld(Math.max(z.x0, z.x), Math.max(z.y0, z.y));
-    if (!z.shift) app.selection.clear();
-    for (const u of ownItems()) if (u.x >= ax && u.x <= bx && u.y >= ay && u.y <= by) app.selection.add(u.id);
-    return;
-  }
-  const [wx, wy] = toWorld(z.x, z.y);
-  if (!z.right) {
-    const hit = ownItems().find((u) => Math.abs(u.x - wx) < 600 && Math.abs(u.y - wy) < 600 + 6 / s);
-    if (hit) {
-      if (z.shift) { app.selection.has(hit.id) ? app.selection.delete(hit.id) : app.selection.add(hit.id); }
-      else { app.selection.clear(); app.selection.add(hit.id); }
-      return;
-    }
-  }
-  const ids = app.selection.size ? [...app.selection] : ownItems().map((u) => u.id);
-  command(Math.max(0, Math.min(WIDTH, wx)), Math.max(0, Math.min(HEIGHT, wy)), ids);
-});
-
-window.addEventListener('keydown', (e) => {
-  if (app.view !== 'game' || e.target instanceof HTMLInputElement) return;
-  if (e.key === 'a' || e.key === 'A') { app.selection = new Set(ownItems().map((u) => u.id)); }
-  else if (e.key === 'Escape') app.selection.clear();
-  else if (e.key === 'p' || e.key === 'P') send({ t: app.state?.pause?.reason === REASON.manual ? 'next' : 'pause' });
-});
 
 // iPad: after waking up check immediately whether the connection is still alive
 document.addEventListener('visibilitychange', () => {

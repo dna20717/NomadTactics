@@ -14,7 +14,7 @@ import { Room } from '../../engine/net/room.js';
 import { PROTOCOL } from '../../engine/net/protocol.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const RELEASED = ['party.html', 'host.html', 'game/', 'engine/'];
+const RELEASED = ['party.html', 'host.html', 'game/', 'engine/', 'projects/nomadtactics/'];
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
   '.json': 'application/json; charset=utf-8', '.woff2': 'font/woff2', '.png': 'image/png', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.txt': 'text/plain; charset=utf-8' };
 

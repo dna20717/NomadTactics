@@ -73,7 +73,7 @@ test('Probe-Spiel ist deterministisch und reagiert auf Befehle', () => {
 });
 
 test('Simulation benutzt keine engine-abhängige Mathematik', () => {
-  for (const file of ['engine/tactics/probe.js', 'engine/net/lockstep.js', 'engine/tactics/world.js']) {
+  for (const file of ['engine/tactics/probe.js', 'engine/net/lockstep.js', 'engine/tactics/world.js', 'engine/tactics/fixed.js', 'engine/tactics/map.js', 'engine/tactics/flowfield.js', 'engine/tactics/battle.js']) {
     const code = fs.readFileSync(new URL('../' + file, import.meta.url), 'utf8').replace(/\/\/.*$/gm, '');
     const forbidden = code.match(/Math\.(?!imul\b|floor\b|trunc\b|abs\b|min\b|max\b|sign\b)\w+|Date\.|performance\.|new Date/g);
     assert.equal(forbidden, null, `${file}: ${forbidden}`);

@@ -1,0 +1,16 @@
+{
+ "skirmish": {
+  "name": "Gefecht · Nachschub-Wellen",
+  "description": "Keine Basis. Jede Seite hat einen Landeplatz, der alle paar Sekunden Verstärkung bringt. Fällt der Landeplatz, kommt nichts mehr. Wer zuletzt noch Einheiten hat, gewinnt.",
+  "pad": "landeplatz",
+  "waveEvery": 60,
+  "maxUnits": 60,
+  "waves": [
+   {"units": {"kampfpanzer": 2, "spaeher": 1, "soldat": 5}},
+   {"units": {"kampfpanzer": 1, "spaeher": 1, "soldat": 3}}
+  ],
+  "extra": [
+   {"each": 3, "units": {"lenkwerfer": 1}}
+  ]
+ }
+}

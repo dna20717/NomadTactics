@@ -139,6 +139,18 @@
    "requires": ["forschungszentrum", "satellitennetz"],
    "pos": [0, 6],
    "description": "Einmal alle 5 Minuten: Ein Strahl aus dem Orbit."
+  },
+  "landeplatz": {
+   "name": "Landeplatz",
+   "function": "misc",
+   "description": "Hier landet der Nachschub. Fällt er, kommt keine Verstärkung mehr.",
+   "cost": {},
+   "buildTime": 0,
+   "health": 3000,
+   "armor": "building",
+   "size": [12, 12],
+   "power": 0,
+   "pos": [0, 6]
   }
  },
  "units": {
