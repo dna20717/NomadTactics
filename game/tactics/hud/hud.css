@@ -188,3 +188,11 @@
 
 @media (prefers-reduced-motion: reduce) { .nt-hud * { animation: none !important; transition: none !important; } }
 .f-res [hidden], .nt-hud [hidden] { display: none !important; }
+
+/* Touch bar: only after the first finger touched the field (iPad without mouse) */
+.hud-touchbar { position: fixed; left: calc(env(safe-area-inset-left, 0px) + 0.6em); top: 50%; transform: translateY(-50%); display: none; flex-direction: column; gap: 0.4em; padding: 0.35em; pointer-events: auto;
+  background: var(--hud-bg); border: 1px solid var(--hud-border); border-radius: calc(var(--hud-radius) + 0.35em); box-shadow: var(--hud-shadow); backdrop-filter: var(--hud-blur); -webkit-backdrop-filter: var(--hud-blur); z-index: 3; }
+.nt-hud.touch .hud-touchbar { display: flex; }
+@media (hover: hover) { .hud-touchbar .tb:hover { background: var(--hud-acc-soft); } }
+.hud-touchbar .tb { width: 3.4em; height: 3.4em; display: grid; place-items: center; border-radius: var(--hud-radius); touch-action: manipulation; }
+.hud-touchbar .tb.on { background: var(--hud-acc-soft); color: var(--hud-acc); box-shadow: 0 0 0 2px var(--hud-acc) inset; }

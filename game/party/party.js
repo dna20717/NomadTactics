@@ -339,6 +339,7 @@ app.toggleView = () => {
 };
 app.setupReady.then((s) => { if (s && views['3d']) views['3d'].setModels(s.models); });
 const input = battleInput({ el: cv, app, send, meSeat, view: () => active });
+app.input = input;
 
 function compute() {
   const ls = app.ls;

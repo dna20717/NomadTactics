@@ -3,7 +3,7 @@
 // behave the same in both. Sends only commands; the simulation is never touched.
 // With the HUD (app.hud) the HUD owns selection, orders and its keys; this module then only moves the camera:
 // right/middle drag pans (left drag too when the HUD setting „Linksziehen: Kamera“ is on), wheel zooms,
-// arrows pan, Shift+arrows turn, two fingers pan/zoom/turn, Space = own landing pad, Tab = 2D/3D, P = pause.
+// arrows pan, Shift+arrows turn, one finger pans (unless the touch bar wants a frame), two fingers pan/zoom/turn, Space = own landing pad, Tab = 2D/3D, P = pause.
 
 export function battleInput({ el, app, send, meSeat, view }) {
   const keys = new Set();
@@ -41,11 +41,12 @@ export function battleInput({ el, app, send, meSeat, view }) {
   el.addEventListener('contextmenu', (e) => e.preventDefault());
   el.addEventListener('pointerdown', (e) => {
     if (app.view !== 'game') return;
-    el.setPointerCapture(e.pointerId);
+    try { el.setPointerCapture(e.pointerId); } catch {}   // synthetic pointers (tests) cannot be captured
     if (e.pointerType === 'touch') {
       touches.set(e.pointerId, [e.offsetX, e.offsetY]);
       if (touches.size === 2) { app.drag = null; gesture = startGesture(); return; }
       if (touches.size > 2) return;
+      if (app.hud?.touchFrame && touches.size === 1) return;   // touch bar „Rahmen“: the HUD draws the frame
     }
     const leftPans = app.hud && e.button === 0 && app.leftDragCamera;
     if (app.hud && e.button === 0 && !leftPans && e.pointerType !== 'touch') return; // the HUD selects

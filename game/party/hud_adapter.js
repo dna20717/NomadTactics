@@ -89,14 +89,14 @@ export function hudForBattle({ app, views, send, meSeat, playerList, canvas }) {
     return playerList().find((p) => p.seat === seat)?.color || '#999999';
   }
 
-  function hit(cx, cy) {
+  function hit(cx, cy, minRadius = 12) {   // fingers get a bigger catch radius
     const s = sim(); if (!s) return null;
     const v = active();
     let best = null, bd = Infinity;
     for (const p of units.values()) {
       if (!p.alive) continue;
       const q = v.projectWorld(p.x, p.y + 1, p.z); if (!q) continue;
-      const r = Math.max(12, v.pixelsPerMm(p.x / M, p.z / M) * (data(p.kind).radius / M + 600));
+      const r = Math.max(minRadius, v.pixelsPerMm(p.x / M, p.z / M) * (data(p.kind).radius / M + 600));
       const d = Math.hypot(q.x - cx, q.y - cy);
       if (d < r && d < bd) { best = p; bd = d; }
     }
@@ -192,6 +192,7 @@ export function hudForBattle({ app, views, send, meSeat, playerList, canvas }) {
       jumpTo: (x, z) => active().centreOn(x / M, z / M, true),
       target: () => (v3 && active() === v3 ? v3.target() : null),
       leftDrag: (on) => { app.leftDragCamera = on; },
+      touchFrame: (on) => { app.touchFrame = on; },   // one finger draws a frame instead of moving the camera
       fieldOfView: () => {
         const v = active(), w = canvas.clientWidth, h = canvas.clientHeight;
         return [[0, 0], [w, 0], [w, h], [0, h]].map(([px, py]) => { const [x, y] = v.unproject(px, py); return { x: x * M, z: y * M }; });

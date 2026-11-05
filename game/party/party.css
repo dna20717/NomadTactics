@@ -2,7 +2,7 @@
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body { margin: 0; height: 100%; overflow: hidden; background: var(--ui-canvas); color: var(--ui-text);
   font-family: var(--ui-font); font-size: 13px; touch-action: none; user-select: none; -webkit-user-select: none; }
-#field { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+#field { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; -webkit-touch-callout: none; }
 #scene { position: fixed; inset: 0; width: 100%; height: 100%; display: none; }
 #toasts { position: fixed; top: 76px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none; z-index: 5; }
 #toasts > div { background: rgba(14,14,16,.82); color: #f2f2f2; font: 600 14px Inter, system-ui, sans-serif; padding: 6px 12px; border-radius: 8px; transition: opacity .5s; }

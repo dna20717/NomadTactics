@@ -378,35 +378,76 @@ class Hud {
   // ---------- Eingaben ----------
   inputs() {
     const cv = this.A.canvas; let down = null;
+    this.fingers = new Set();
     cv.addEventListener('pointerdown', e => {
       this.circleTo(); this.tooltip.classList.remove('on');
-      down = { x: e.clientX, y: e.clientY, t: e.timeStamp, b: e.button, far: 0 };
       clearTimeout(this.holdT);
-      if (e.button === 2) {   // hold right button = radial menu
+      const touch = e.pointerType === 'touch';
+      if (touch) {
+        this.touchOn();
+        this.fingers.add(e.pointerId);
+        if (this.fingers.size > 1) { down = null; this.frame = null; return; }   // two fingers belong to the camera
+      }
+      down = { x: e.clientX, y: e.clientY, t: e.timeStamp, b: e.button, far: 0, touch };
+      if (e.button === 2 || (touch && !this.touchFrame)) {   // hold right button (or a finger) = radial menu
         const r = down;
-        this.holdT = setTimeout(() => { if (down === r && r.far < 6 && !this.targetMode) { r.circle = true; this.circleFor(r.x, r.y); } }, 380);
+        this.holdT = setTimeout(() => { if (down === r && r.far < (touch ? 10 : 6) && !this.targetMode) { r.circle = true; this.circleFor(r.x, r.y); navigator.vibrate?.(12); } }, touch ? 450 : 380);
       }
     });
     cv.addEventListener('pointermove', e => {
       this.mouse = { x: e.clientX, y: e.clientY };
-      if (!down) return;
+      if (!down || (down.touch && e.pointerType !== 'touch')) return;
       down.far = Math.max(down.far, Math.hypot(e.clientX - down.x, e.clientY - down.y));
-      if (down.b === 0 && this.e.drag === 'frame' && down.far > 6 && !this.targetMode) this.frame = { a: { x: down.x, y: down.y }, b: { x: e.clientX, y: e.clientY } };
+      const framing = down.touch ? this.touchFrame : this.e.drag === 'frame';
+      if (down.b === 0 && framing && down.far > 6 && !this.targetMode) this.frame = { a: { x: down.x, y: down.y }, b: { x: e.clientX, y: e.clientY } };
     });
-    addEventListener('pointerup', e => {
+    const end = e => {
+      if (e.pointerType === 'touch') this.fingers.delete(e.pointerId);
       if (!down) return;
       const r = down; down = null; clearTimeout(this.holdT);
       if (r.circle) return;
-      if (this.frame) { this.frameChoice(this.frame, e.shiftKey); this.frame = null; return; }
-      if (e.target !== cv || r.far > 6 || e.timeStamp - r.t > 600) return;
-      if (r.b === 0) this.leftClick(e); else if (r.b === 2) this.rightClick(e);
-    });
+      if (this.frame) { this.frameChoice(this.frame, e.shiftKey || (r.touch && this.touchAdd)); this.frame = null; if (r.touch) this.touchFrameSet(false); return; }
+      if (e.type === 'pointercancel' || e.target !== cv || r.far > (r.touch ? 10 : 6) || e.timeStamp - r.t > 600) return;
+      if (r.touch) this.fingerTap(e);
+      else if (r.b === 0) this.leftClick(e); else if (r.b === 2) this.rightClick(e);
+    };
+    addEventListener('pointerup', end);
+    addEventListener('pointercancel', end);
     addEventListener('keydown', e => this.taste(e, true));
     addEventListener('keyup', e => { if (e.key === 'Alt') this.oldPressed = false; });
     addEventListener('blur', () => this.oldPressed = false);
   }
-  leftClick(e) {
-    const A = this.A, t = A.hit(e.clientX, e.clientY);
+
+  // ---------- Touch (iPad without mouse) ----------
+  // Tap own unit = select (double tap = same type), tap ground/enemy with a selection = drive/attack,
+  // hold a finger = radial menu, one finger drags the camera, two fingers pan/zoom/turn.
+  // The small touch bar adds what a mouse has extra: frame selection, add to selection, all, deselect.
+  touchOn() {
+    if (this.touchBar) return;
+    this.root.classList.add('touch');
+    const bar = el('div', 'hud-touchbar'); this.touchBar = bar;
+    const knob = (id, symbol, title, on) => { const b = el('button', 'hud-k tb'); b.dataset.t = id; b.title = title; b.appendChild(icon(symbol, 18)); b.onclick = on; bar.appendChild(b); return b; };
+    knob('frame', 'rect', 'Rahmen ziehen (einmal)', () => this.touchFrameSet(!this.touchFrame));
+    knob('add', 'plus', 'Dazuwählen', () => { this.touchAdd = !this.touchAdd; bar.querySelector('[data-t=add]').classList.toggle('on', this.touchAdd); });
+    knob('all', 'humans', 'Alle Kampfeinheiten', () => this.select(this.A.units().filter(u => u.alive && u.team === this.A.team && this.A.data(kind(u)).damage > 0)));
+    knob('none', 'x', 'Abwählen', () => { this.endTarget?.(); this.select([]); });
+    this.root.appendChild(bar);
+  }
+  touchFrameSet(on) {
+    this.touchFrame = on; this.A.controls.touchFrame?.(on);
+    this.touchBar?.querySelector('[data-t=frame]').classList.toggle('on', on);
+  }
+  fingerTap(e) {
+    const A = this.A;
+    if (this.targetMode) { this.leftClick(e); return; }
+    const t = A.hit(e.clientX, e.clientY, 26);
+    const mine = (t?.kind === 'unit' && t.e.team === A.team) || (t?.kind === 'building' && t.g.team === A.team);
+    const orders = this.ownItemsSelection().length || (this.selection.building && this.selection.building.team === A.team);
+    if (mine || !orders) { this.leftClick(e, t, this.touchAdd); return; }
+    this.rightClick(e, t);
+  }
+  leftClick(e, t = this.A.hit(e.clientX, e.clientY), add = e.shiftKey) {
+    const A = this.A;
     if (this.targetMode) {
       if (t) { const p = t.kind === 'ground' ? t : t.kind === 'unit' ? t.e : t.g; const f = this.targetMode.f;
         A.command({ kind: 'ability', id: f.id, x: p.x, z: p.z }); this.decay[f.id] = f.cooldown;
@@ -415,23 +456,23 @@ class Hud {
     }
     const now = performance.now(), double = this.lastClick && now - this.lastClick.t < 320 && Math.hypot(e.clientX - this.lastClick.x, e.clientY - this.lastClick.y) < 12;
     this.lastClick = { t: now, x: e.clientX, y: e.clientY };
-    if (!t || t.kind === 'ground') { if (!e.shiftKey) this.select([]); return; }
+    if (!t || t.kind === 'ground') { if (!add) this.select([]); return; }
     if (t.kind === 'building') { this.select([], { building: t.g }); return; }
     const u = t.e;
     if (double && u.team === A.team) {   // all of the same type on screen
       const same = A.units().filter(o => o.alive && o.team === A.team && kind(o) === kind(u) && this.ontoScreen(o));
-      this.select(same, { add: e.shiftKey }); return;
+      this.select(same, { add: add }); return;
     }
-    if (e.shiftKey && u.team === A.team) {
+    if (add && u.team === A.team) {
       if (this.selection.units.has(u)) { this.selection.units.delete(u); this.selectionChanged(); } else this.select([u], { add: true });
       return;
     }
     this.select([u]);
   }
-  rightClick(e) {
+  rightClick(e, t = this.A.hit(e.clientX, e.clientY)) {
     const A = this.A;
     if (this.targetMode) { this.endTarget(); return; }
-    const t = A.hit(e.clientX, e.clientY); if (!t) return;
+    if (!t) return;
     const g = this.selection.building, us = this.ownItemsSelection();
     if (g && g.team === A.team && !us.length) {
       const p = t.kind === 'ground' ? t : t.kind === 'unit' ? t.e : t.g;
