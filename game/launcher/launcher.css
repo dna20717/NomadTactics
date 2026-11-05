@@ -1,0 +1,78 @@
+/* NomadTactics – Launcher. The diorama fills the screen, menu on the left, the live dials small in the corner.
+   Only tokens from game/ui.css; title in the pixel font (VT323), everything else Inter. */
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: #0e0e10; color: var(--ui-text);
+  font-family: var(--ui-font); font-size: 13px; user-select: none; -webkit-user-select: none; touch-action: none; }
+#scene { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+#field { position: fixed; inset: 0; width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; -webkit-touch-callout: none; }
+#field:active { cursor: grabbing; }
+#launcher { position: fixed; inset: 0; pointer-events: none; }
+#launcher > * { pointer-events: auto; }
+/* soft shade behind the menu so it stays readable on a bright sky */
+#launcher::before { content: ''; position: fixed; inset: 0 auto 0 0; width: min(560px, 70vw); pointer-events: none;
+  background: linear-gradient(90deg, rgba(8, 9, 12, .62), rgba(8, 9, 12, .28) 60%, rgba(8, 9, 12, 0)); }
+
+.ln-menu { position: absolute; left: calc(env(safe-area-inset-left, 0px) + 56px); top: 50%; transform: translateY(-50%); width: 320px; display: flex; flex-direction: column; }
+.ln-title { font-family: var(--ui-pixel); font-size: 64px; line-height: .9; letter-spacing: .04em; color: #f4f1ea;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, .55), 0 0 24px rgba(0, 0, 0, .35); }
+.ln-sub { color: rgba(244, 241, 234, .78); font-size: 14px; margin: 6px 0 28px; text-shadow: 0 1px 2px rgba(0, 0, 0, .6); }
+.ln-entries { display: flex; flex-direction: column; gap: 10px; }
+.ln-entry { display: flex; align-items: center; gap: 14px; height: 64px; padding: 0 16px; border-radius: var(--ui-r-pane); cursor: pointer; text-align: left;
+  background: var(--ui-glass); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border: 1px solid var(--ui-border); color: var(--ui-text); font: inherit;
+  box-shadow: var(--ui-shadow); transition: transform var(--ui-t1) var(--ui-curve), border-color var(--ui-t1) var(--ui-curve); }
+.ln-entry:hover { transform: translateX(4px); border-color: var(--ui-acc-line); }
+.ln-entry .ln-ic { width: 36px; height: 36px; border-radius: var(--ui-r-button); display: grid; place-items: center; background: var(--ui-head); color: var(--ui-text2); flex: none; }
+.ln-entry.main .ln-ic { background: var(--ui-acc); color: var(--ui-acc-text); }
+.ln-entry .ln-txt { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.ln-entry b { font-size: 16px; font-weight: 600; color: var(--ui-text-strong, var(--ui-text)); }
+.ln-entry small { font-size: 12px; color: var(--ui-text3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ln-entry .ln-go { color: var(--ui-text3); display: flex; }
+
+.ln-panel { margin-top: 12px; padding: 14px 16px 16px; border-radius: var(--ui-r-pane); background: var(--ui-glass); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--ui-border); box-shadow: var(--ui-shadow); display: flex; flex-direction: column; gap: 6px; }
+.ln-panel-head { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 14px; margin-bottom: 4px; }
+.ln-panel-head .ln-x { margin-left: auto; }
+.ln-panel label { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--ui-text3); margin-top: 8px; }
+.ln-field { height: 38px; border-radius: var(--ui-r-field); border: 1px solid var(--ui-border); background: var(--ui-field); color: var(--ui-text);
+  font: inherit; font-size: 14px; padding: 0 12px; outline: none; user-select: text; -webkit-user-select: text; }
+.ln-field:focus { border-color: var(--ui-acc-line); }
+.ln-hint { font-size: 11.5px; color: var(--ui-text3); }
+.ln-seg { display: flex; background: var(--ui-field); border: 1px solid var(--ui-border); border-radius: var(--ui-r-field); padding: 3px; gap: 2px; }
+.ln-seg button { flex: 1; height: 30px; border: 0; border-radius: 6px; background: transparent; color: var(--ui-text2); font: inherit; cursor: pointer; }
+.ln-seg button.on { background: var(--ui-acc-soft); color: var(--ui-acc-line); font-weight: 600; }
+.ln-x, .ln-mini { border: 0; background: transparent; color: var(--ui-text2); width: 28px; height: 28px; border-radius: 7px; display: grid; place-items: center; cursor: pointer; padding: 0; }
+.ln-x:hover, .ln-mini:hover { background: var(--ui-hover); color: var(--ui-text); }
+.ln-mini.on { background: var(--ui-acc-soft); color: var(--ui-acc-line); }
+
+/* live dials: small, quiet, wake up on hover */
+.ln-dials { position: absolute; right: calc(env(safe-area-inset-right, 0px) + 18px); bottom: calc(env(safe-area-inset-bottom, 0px) + 18px); width: 268px; padding: 8px 10px;
+  border-radius: 12px; background: rgba(16, 17, 20, .5); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, .08);
+  display: flex; flex-direction: column; gap: 6px; opacity: .62; transition: opacity var(--ui-t2) var(--ui-curve); }
+.ln-dials:hover, .ln-dials:focus-within { opacity: 1; }
+.ln-row { display: flex; align-items: center; gap: 4px; }
+.ln-dial-ic { color: #f2c14e; display: flex; width: 20px; }
+.ln-time { font-variant-numeric: tabular-nums; font-size: 12px; color: var(--ui-text2); width: 38px; text-align: right; }
+.ln-range { flex: 1; -webkit-appearance: none; appearance: none; height: 4px; border-radius: 2px; outline: none; margin: 0 4px;
+  background: linear-gradient(90deg, #1b2440 0%, #1b2440 20%, #e8a27a 27%, #9fc3d8 35%, #9fc3d8 65%, #f09a6a 74%, #1b2440 82%, #1b2440 100%); }
+.ln-range::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: #f4f1ea; border: 2px solid rgba(0, 0, 0, .4); cursor: pointer; }
+.ln-range::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%; background: #f4f1ea; border: 2px solid rgba(0, 0, 0, .4); cursor: pointer; }
+.ln-weather { justify-content: space-between; }
+.ln-climate { gap: 2px; }
+.ln-climate button { flex: 1; height: 24px; border: 0; border-radius: 6px; background: transparent; color: var(--ui-text3); font: inherit; font-size: 11.5px; cursor: pointer; }
+.ln-climate button:hover { color: var(--ui-text); background: var(--ui-hover); }
+.ln-climate button.on { color: var(--ui-acc-line); background: var(--ui-acc-soft); font-weight: 600; }
+
+.ln-foot { position: absolute; left: calc(env(safe-area-inset-left, 0px) + 56px); bottom: calc(env(safe-area-inset-bottom, 0px) + 18px); font-size: 11.5px; color: rgba(244, 241, 234, .55);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .6); pointer-events: none !important; }
+.ln-error { position: absolute; left: 50%; top: 24px; transform: translateX(-50%); background: var(--ui-glass); border: 1px solid var(--ui-red); color: var(--ui-red); padding: 8px 14px; border-radius: 10px; }
+
+/* narrow (iPad portrait split view, phones): menu on top, dials at the bottom over the full width */
+@media (max-width: 700px) {
+  #launcher::before { width: 100%; height: 62%; inset: 0 0 auto 0; background: linear-gradient(180deg, rgba(8, 9, 12, .6), rgba(8, 9, 12, 0)); }
+  .ln-menu { left: 16px; right: 16px; width: auto; top: calc(env(safe-area-inset-top, 0px) + 28px); transform: none; }
+  .ln-title { font-size: 48px; }
+  .ln-sub { margin-bottom: 18px; }
+  .ln-dials { left: 16px; right: 16px; width: auto; opacity: .85; }
+  .ln-foot { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { .ln-entry { transition: none; } }

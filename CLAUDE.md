@@ -16,7 +16,7 @@ Einstieg, Entscheidungen und Fahrplan stehen im claude.ai-Projekt „NOMADTactic
 
 - Sprache: Deutsch. Fragen an Daniel als Multiple Choice. Erst reden, dann bauen; kleine Geschmackstests darf Ava direkt bauen.
 - Ava ist frisch, vorausdenkend, manchmal frech, nutzt Emojis im Chat (in Oberflächen Lucide-Icons). Niemals das Schema „Das ist nicht X. Das ist Y.“
-- **Immer den Link mit ausgeben** (Daniel, 5.11.): Am Ende jeder Antwort, die etwas baut oder ändert, stehen die passenden Adressen zum Anklicken, z. B. Spiel https://nomadtactics.dna20717.workers.dev/party, Werkstatt https://nomadtactics.dna20717.workers.dev, Artifacts (siehe unten).
+- **Immer den Link mit ausgeben** (Daniel, 5.11.): Am Ende jeder Antwort, die etwas baut oder ändert, stehen die passenden Adressen zum Anklicken, z. B. Launcher https://nomadtactics.dna20717.workers.dev, Spiel https://nomadtactics.dna20717.workers.dev/party, Werkstatt https://nomadtactics.dna20717.workers.dev/workshop, Artifacts (siehe unten).
 - Commits direkt auf `main`, kurze deutsche Commit-Nachrichten mit Attribution. Vor dem Push `git pull --rebase`.
 - **Code auf Englisch:** Code, Kommentare, Datei- und Ordnernamen und die Feldnamen der Spieldaten (JSON) sind englisch. Deutsch bleiben: Texte in Oberflächen, Namen und Beschreibungen in den Spieldaten, Commit-Nachrichten, diese Anleitung und die Projekt-Docs. Neuer Code nimmt die Wörter aus `docs/glossary.md`. Inhalts-IDs dürfen deutsch bleiben.
 - **Lizenz:** GPL v3 oder später (`LICENSE`), weil der GPL-Code von Generals/Zero Hour (EA, 2025) gelesen und genutzt werden darf. Dessen Assets und INI-Daten bleiben tabu.
@@ -36,6 +36,7 @@ node tools/nt.js check         # Spieldaten prüfen
 npm run party:test             # Party-Server mit echten Browsern
 npm run view:test              # Diorama-Ansicht + HUD des Gefechts (WebGL per SwiftShader)
 npm run touch:test             # Touch-Steuerung im Gefecht (Antippen, Rahmen, Kreismenü, zwei Finger)
+npm run launcher:test          # Launcher: Diorama, Regler, Optionen, Weg ins Spiel
 python3 -m http.server 8790 & node tools/workshop_test.mjs   # Werkstatt bedienen
 cd prototypes/nomadtactics && npm run build:stress && npm run build   # Härtetest und Spielwiese bauen
 ```
@@ -43,13 +44,15 @@ cd prototypes/nomadtactics && npm run build:stress && npm run build   # Härtete
 ## Ordner
 
 ```
-tactics.html        Werkstatt (Daten-Editor)
+launcher.html       Launcher (Startseite: Diorama + Menü), online unter /
+tactics.html        Werkstatt (Daten-Editor), online unter /workshop
 party.html, host.html, start_party.bat   Party-Server: Spielseite, Gastgeber-Seite, Start unter Windows
 engine/tactics/     Regeln, Prüfung, Ebenen (General), Welt, Oberfläche, Erfahrung, Probe-Spiel, Gefecht (battle, map, flowfield, fixed)
 engine/net/         Lockstep, Raum, Protokoll, Verbindung
 engine/image.js, font.js   Bild und Pixelschrift (für nt image / Loader)
 game/tactics/       Werkstatt-Seiten und Spiel-HUD (hud/)
-game/party/         Party- und Gastgeber-Seite, QR-Code
+game/party/         Party- und Gastgeber-Seite, QR-Code, Gefecht in 2D/3D
+game/launcher/      Launcher (launcher.js, launcher.css)
 game/ui.js, ui.css, basis.css, icons.js, store.js, tree_canvas.js, browser_loader.js, font/   gemeinsamer Kern (Kopie)
 tools/nt.js         Kommandozeile
 tools/party/        Server, WebSocket, Test
@@ -65,7 +68,7 @@ output/             Bilder von nt image (nicht im Git)
 - Werkstatt: https://claude.ai/artifact/SqVmkapcUQSKpH4nTVTwLm (Slug `d139e608-ecfe-4695-bb07-cb3aa67bc0e2`)
 - Härtetest: https://claude.ai/artifact/FU6vGfNr7KpgPGqDHPu9j4 (Slug `7528ab9f-9035-43ea-ae65-110b26171e27`)
 - Spielwiese: https://claude.ai/artifact/RJZ64hUco8UkK9mPN5t8vj (Slug `c4cebf16-5907-49dc-a808-cae400e2c000`)
-- **Web-Werkstatt auf Cloudflare (seit 05.11.):** Worker `nomadtactics` (Workers Builds, mit GitHub verbunden) baut bei jedem Push auf `main` mit `npm run build:web` → `dist/` und liefert die Werkstatt unter `nomadtactics.<konto>.workers.dev` aus (`wrangler.jsonc`). Ava sieht den Worker über den Connector „Cloudflare Developer Platform“ (lesen, Speicher anlegen, Doku; Deploy geht nicht, die Cloudflare-API ist aus der Arbeitsumgebung gesperrt). Prüfen der Konfiguration: `npx wrangler deploy --dry-run --outdir /tmp/wout`.
+- **Web-Werkstatt auf Cloudflare (seit 05.11.):** Worker `nomadtactics` (Workers Builds, mit GitHub verbunden) baut bei jedem Push auf `main` mit `npm run build:web` → `dist/` und liefert unter `nomadtactics.<konto>.workers.dev` aus (`wrangler.jsonc`): `/` = Launcher (`dist/index.html` aus `launcher.html`), `/workshop` = Werkstatt (`dist/workshop.html` aus `tactics.html`), `/party` = Gefecht. Ava sieht den Worker über den Connector „Cloudflare Developer Platform“ (lesen, Speicher anlegen, Doku; Deploy geht nicht, die Cloudflare-API ist aus der Arbeitsumgebung gesperrt). Prüfen der Konfiguration: `npx wrangler deploy --dry-run --outdir /tmp/wout`.
   - **Speichern = Commit** (Daniel, 05.11.): `worker/index.js` beantwortet `/api/*` (`run_worker_first`): `GET /api/session` (Person aus Cloudflare Access), `GET /api/files` (alle JSON unter `DATA_DIR` vom aktuellen `main`, mit Blob-sha), `POST /api/commit` `{ base: {datei: sha|null}, changes: [{file, content|null}], force? }` → ein Commit über die Git-Data-API (Autor = angemeldete Person, Nachricht „Werkstatt: … (Name)“), Dateien mit `pretty()` formatiert. Abweichende Basis → 409 mit `conflicts`; Wettlauf am Ref → neu lesen und bis zu 3× versuchen; gleicher Inhalt → kein leerer Commit.
   - **Login:** Cloudflare Access (E-Mail-Code) vor dem workers.dev-Weg; der Worker prüft das JWT selbst (RS256 gegen `TEAM_DOMAIN/cdn-cgi/access/certs`, `aud` = `POLICY_AUD`, `iss`, `exp`). Ohne `TEAM_DOMAIN`/`POLICY_AUD` antwortet `/api` mit 503, ohne Anmeldung mit 401. `GITHUB_TOKEN` (fein eingestellter Schlüssel nur für dieses Repo, Contents lesen/schreiben) ist ein **Geheimnis im Cloudflare-Dashboard**, nie im Repo.
   - **Werkstatt:** `game/tactics/cloud_store.js` (`openCloudStore()`: findet den Worker über `/api/session`, sonst `null` → alter Speicher). Bei `kind: 'cloud'`: `persistCloud` schreibt alle geänderten Dateien als **einen** Commit, **automatisch nach 60 s Ruhe** (`?autosave=N` für Tests) oder sofort mit ⌘S. Status „Ungespeichert · seit …“ bzw. „Gespeichert · … “ (Tooltip mit Commit), Name der angemeldeten Person in der Menüleiste, Konflikt-Dialog „Jemand war schneller“ (Neu laden | Überschreiben). Kein „Übernimm“ mehr nötig: Ava holt sich vor der Arbeit einfach `git pull`.
@@ -179,6 +182,18 @@ Besprochen mit Daniel am 5.11.: **USA gegen USA, nur Einheiten, kleine Handkarte
 - Behoben: weitere Reste vom Englisch-Umbau im HUD: Markierungs-Shader (`aFarbe`/`zeit`/`dunkel` → `aColor`/`time`/`dark`, Auswahlmarken waren ohne Farbe), Funkstimme `u.long` → `u.lang` (auch in der Werkstatt-Vorschau), `e.oldKey` → `e.altKey`.
 - **Touch-Steuerung** (Daniel, 5.11.: „kleine Touch-Steuerung“ fürs iPad ohne Maus), in `hud.js` (`fingerTap`, `touchOn`, `touchFrameSet`), gilt damit auch im Härtetest: **Antippen** eigener Einheit = wählen, zweimal = alle gleichen Typs im Bild; **Tippen auf Boden/Feind** mit Auswahl = fahren/angreifen (wie Rechtsklick), ohne Auswahl = wählen/abwählen; **Finger halten** (450 ms) = Kreismenü; **ein Finger ziehen** = Kamera, zwei Finger = schieben/zoomen/drehen (`battle_input.js`). Fangradius für Finger 26 px (`A.hit(x, y, minRadius)`). Nach dem ersten Fingertipp erscheint links die **Touch-Leiste** (`.hud-touchbar`, Wurzel bekommt `.touch`): Rahmen (einmalig; ein Finger zieht dann einen Rahmen statt der Kamera, `A.controls.touchFrame`), Dazuwählen (Schalter, ersetzt Shift), Alle Kampfeinheiten, Abwählen. Test: `npm run touch:test` (`tools/party/touch_test.mjs`, ein Spieler gegen den Übungsgegner, echte Touch-Ereignisse über CDP, Antippen im Seitenkontext; `--3d`, `--images` → `output/touch_*.png`). Achtung: `hud.tap(node, content)` ist der Tooltip-Helfer.
 - **Lokal testen wie auf Cloudflare:** `npm run build:web`, dann `npx wrangler dev --local --port 8787 --ip 127.0.0.1 --var LOCAL_TEST:1` und http://127.0.0.1:8787/party öffnen. `LOCAL_TEST` lässt den Login nur auf localhost aus (`accessUser`), `/api/files` antwortet lokal 503 (kein GitHub-Schlüssel) → Rückfall auf die Dateien.
+
+### Launcher (Startseite, seit 5.11.)
+
+Daniels Idee (5.11., Projekt-Doc `claude/nomadtactics-fidelity.md`): Wer die Adresse öffnet, sieht sofort ein Diorama im aktuellen Stand der Technik plus Menü **Spiel · Werkstatt · Optionen** und kleine, unscheinbare Live-Regler.
+- `launcher.html` → `game/launcher/launcher.js` + `launcher.css`. Online unter `/` (die Werkstatt ist dafür nach **`/workshop`** umgezogen), im LAN unter `/launcher` (dort ohne Werkstatt-Knopf; `/` bleibt im LAN die Party-Seite).
+- **Diorama:** echte Simulation (`Battle`) offline im Browser, **vier Seiten** (Blau, Rot, Gelb, Grün) auf den vier Startplätzen der „Kreuzung“, Modus wie das Gefecht, aber Wellen alle 20 s und höchstens 28 Einheiten je Seite. **KI:** alle 3 s schickt jede Seite ihre untätigen Einheiten (`!u.order && !u.tgt`) gegen den nächsten feindlichen Landeplatz; sie kämpfen mit allem, was ihnen begegnet. Start mitten im Geschehen (260 Runden vorgespult). Ist die Partie vorbei, beginnt nach 9 s eine neue mit neuem Startwert. Gezeichnet mit **demselben Renderer wie das Gefecht** (`battleView3d`, `app.hud = true` blendet Ringe/Marschlinien aus), Modelle live aus den Werkstatt-Daten (`gameData()` in `game/party/game_data.js`, gemeinsam mit `party.js`).
+- **Kamera:** kreist langsam (0,035 rad/s), Abstand 285 m (schmal 320 m), Blick zu 30 % zum Schwerpunkt der Kämpfe gezogen, auf breiten Schirmen nach links versetzt, damit die Platte rechts neben dem Menü steht. Ziehen dreht/kippt, Rad zoomt, nach 6 s übernimmt wieder die Automatik.
+- **Live-Regler** (nur Optik, nur im Launcher, Daniels Wahl): Tageszeit (Schieber 0–24 Uhr, läuft von selbst mit 12 Min je Tag wie `world.daytime`, Anfassen hält sie an, Knopf Abspielen/Pause), Wetter (Klar, Bewölkt, Regen, Nebel, Schnee, Sturm, Wind), Klima (Gemäßigt, Steppe, Wüste, Winter). Gemerkt in localStorage `nomadtactics-launcher`.
+- **Optionen:** Name im Spiel (`nomadtactics-party-name`, gleicher Schlüssel wie die Party-Seite), Grafik-Qualität Schön/Mittel/Schnell (`nomadtactics-quality`, gilt auch im Gefecht; Mittel = bisheriger Look), Größe der Oberfläche 90–130 % (schreibt `scale` in `nt.hud.settings`).
+- **Atmosphäre in `battle_3d.js`** (für spätere Fidelity-Schritte auch im Gefecht nutzbar, dort bisher aus): `atmosphere({ hour, weather, climate })` schaltet sie ein; `applyAtmosphere(dt)` blendet je Bild weich über (~2 s): Himmels-/Nebelfarbe aus Stützstellen je Uhrzeit, Sonne wandert (Ost→West, tief = orange), nachts Mond (bläulich), Wetter nimmt Direktlicht weg und färbt den Himmel grau, Nebelweite je Wetter (wächst mit dem Kamera-Abstand), Sturm mit Blitzen. Niederschlag als ein InstancedMesh (`drawFall`: Regen, Schnee als Würfel, Staub bei Wind) in einem Kasten um den Blickpunkt, Größe wächst mit dem Abstand. Klima tönt die Bodenfarben (`CLIMATE`: Anteil je Bodenart zum Zielton, z. B. Winter weiß, Wüste sandig) und baut das Gelände neu. `quality('beautiful'|'medium'|'fast')`: Pixelverhältnis 2/1,5/1, Schattenkarte 4096/2048/aus. `view.cam` gibt die Kamera frei.
+- Test: `npm run launcher:test` (`tools/launcher_test.mjs`, LAN-Server, SwiftShader: Simulation läuft, vier Seiten mit KI-Befehlen, Regler und Optionen gemerkt, „Spiel“ führt zu `party.html`; `--images` → `output/launcher_*.png`).
+- Noch offen (Fidelity-Liste): AO/Bloom/Farbkorrektur, Gelände-Streuobjekte, Spuren, Wasser, Einheiten mit Leben, Maßstab je Modell; Highlights aus echten Partien; Diorama-Charme (Tilt-Shift) war nicht gewählt.
 
 ### Party-Server (Multiplayer-MVP, seit 4.11.)
 

@@ -16,6 +16,7 @@
     "party:test": "node tools/party/party_test.mjs",
     "view:test": "node tools/party/view3d_test.mjs",
     "touch:test": "node tools/party/touch_test.mjs",
+    "launcher:test": "node tools/launcher_test.mjs",
     "build:web": "node tools/build_web.mjs",
     "web:test": "node tools/workshop_cloud_test.mjs"
   },

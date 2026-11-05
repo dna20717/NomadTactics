@@ -21,7 +21,7 @@ walk(path.join(repo, 'projects/nomadtactics'));
 const g = fakeGitHub(files), access = await fakeAccess();
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.woff2': 'font/woff2', '.svg': 'image/svg+xml' };
 const assets = { fetch: async req => {
-  let p = decodeURIComponent(new URL(req.url).pathname); if (p.endsWith('/')) p += 'index.html';
+  let p = decodeURIComponent(new URL(req.url).pathname); if (p.endsWith('/')) p += 'index.html'; else if (!path.extname(p)) p += '.html';   // like Cloudflare: /workshop → workshop.html
   const f = path.join(dist, p);
   if (!f.startsWith(dist) || !fs.existsSync(f)) return new Response('not found', { status: 404 });
   return new Response(fs.readFileSync(f), { headers: { 'content-type': TYPES[path.extname(f)] || 'application/octet-stream' } });
@@ -43,7 +43,7 @@ const check = (ok, text) => { console.log(`  ${ok ? 'ok  ' : 'FEHLER'} ${text}`)
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
 const errors = []; page.on('pageerror', e => errors.push(e.message)); page.on('console', m => m.type() === 'error' && !/fonts\.googleapis|ERR_TUNNEL|net::ERR|status of 409/.test(m.text()) && errors.push(m.text()));
-await page.goto(base + '/?autosave=2');
+await page.goto(base + '/workshop?autosave=2');
 await page.waitForSelector('.tk-user', { timeout: 20000 });
 check((await page.textContent('.tk-user')).includes('Daniel'), 'angemeldet als Daniel (Name aus der E-Mail)');
 check(await page.evaluate(() => window.workshop.store.kind === 'cloud'), 'Werkstatt nutzt den Cloudflare-Speicher');

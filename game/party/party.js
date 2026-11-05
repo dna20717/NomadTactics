@@ -13,6 +13,7 @@ import { battleInput } from './battle_input.js';
 import { hudForBattle } from './hud_adapter.js';
 import { PRACTICE_SEAT, PRACTICE } from '../../engine/tactics/battle.js';
 import { icon } from '../icons.js';
+import { DATA, gameData } from './game_data.js';
 
 const q = new URLSearchParams(location.search);
 const ui = document.getElementById('ui');
@@ -29,24 +30,13 @@ const app = {
 };
 window.party = app; // for tests and the console
 
-// Game data: online (Cloudflare) live from the workshop, i.e. the current main branch via /api/files;
-// on the LAN party server the files it serves. Same data for everyone = same simulation (the room checks the fingerprint).
-const DATA = 'projects/nomadtactics/';
+// Game data: online live from the workshop, on the LAN the served files (see game_data.js).
+// Same data for everyone = same simulation (the room checks the fingerprint).
 async function dataSource() {
-  try {
-    const s = await fetch('/api/session', { cache: 'no-store' });
-    const session = s.ok ? await s.json() : null;
-    if (session?.user) {
-      app.online = session;
-      const r = await fetch('/api/files', { cache: 'no-store' });
-      if (r.ok) {
-        const { files, commit } = await r.json();
-        app.dataCommit = commit;
-        return async (p) => { if (!files[p]) throw new Error(p + ' fehlt im Repo'); return files[p].content; };
-      }
-    }
-  } catch { /* LAN or offline: static files */ }
-  return async (p) => { const r = await fetch(DATA + p, { cache: 'no-cache' }); if (!r.ok) throw new Error(p + ': HTTP ' + r.status); return r.json(); };
+  const d = await gameData();
+  if (d.online?.user) app.online = d.online;
+  app.dataCommit = d.commit;
+  return d.json;
 }
 app.setupReady = dataSource().then((json) => loadSkirmish(json))
   .then((s) => { app.setup = s; if (app.online?.user?.name && !lies(NAME_KEY)) remember(NAME_KEY, app.online.user.name); if (app.view === 'start') drawUi(); return s; })
@@ -338,6 +328,7 @@ app.toggleView = () => {
   drawUi();
 };
 app.setupReady.then((s) => { if (s && views['3d']) views['3d'].setModels(s.models); });
+views['3d']?.quality(lies('nomadtactics-quality') || 'medium');   // set in the launcher › Optionen
 const input = battleInput({ el: cv, app, send, meSeat, view: () => active });
 app.input = input;
 

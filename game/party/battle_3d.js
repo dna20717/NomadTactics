@@ -31,7 +31,7 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(SKY);
   scene.fog = new THREE.Fog(SKY, 260, 620);
-  scene.add(new THREE.HemisphereLight(0xcfe3ff, 0x8a7a5a, 1.5));
+  const hemi = new THREE.HemisphereLight(0xcfe3ff, 0x8a7a5a, 1.5); scene.add(hemi);
   const sun = new THREE.DirectionalLight(0xffe2b8, 2.6);
   sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.02;
   Object.assign(sun.shadow.camera, { left: -90, right: 90, top: 90, bottom: -90, near: 1, far: 400 });
@@ -41,6 +41,123 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
 
   const camera = new THREE.PerspectiveCamera(35, 1, 1, 1500);
   const cam = { tx: 128, tz: 128, yaw: 0.6, pitch: 0.92, dist: 150 };
+
+  // ---------- atmosphere: time of day, weather, climate (optics only, the simulation never sees this) ----------
+  // Standard = noon, clear, temperate: exactly the look the battle had before.
+  const atm = { hour: 12, weather: 'clear', climate: 'gemaessigt', on: false };
+  const SKY_STOPS = [[0, 0x070d1a], [4.6, 0x0d1730], [5.6, 0x5a5a7a], [6.4, 0xeaa27a], [7.6, 0xd6e4e8], [16.6, 0xd6e4e8], [17.8, 0xf3a06a], [18.6, 0x7a5a78], [19.6, 0x0f1830], [24, 0x070d1a]];
+  // per weather: share of direct light, how much the sky turns grey (and to which colour), fog distance, particles
+  const WEATHER = {
+    clear: { sun: 1, grey: 0, greyTo: 0xb8c2c8, fogNear: 260, fogFar: 620 },
+    cloudy: { sun: 0.42, grey: 0.5, greyTo: 0xa3acb3, fogNear: 220, fogFar: 560 },
+    rain: { sun: 0.26, grey: 0.68, greyTo: 0x7b858d, fogNear: 120, fogFar: 420, fall: 'rain', amount: 1 },
+    fog: { sun: 0.4, grey: 0.75, greyTo: 0xc5cacd, fogNear: 20, fogFar: 200 },
+    snow: { sun: 0.38, grey: 0.62, greyTo: 0xd5dbe0, fogNear: 90, fogFar: 380, fall: 'snow', amount: 1 },
+    storm: { sun: 0.12, grey: 0.85, greyTo: 0x4a535b, fogNear: 80, fogFar: 330, fall: 'rain', amount: 1.6, lightning: true, wind: 1 },
+    wind: { sun: 0.9, grey: 0.15, greyTo: 0xc9c0a8, fogNear: 200, fogFar: 560, fall: 'dust', amount: 0.7, wind: 1 },
+  };
+  // climate: ground colours pulled towards a tint (share per ground id, '*' = all others)
+  const CLIMATE = {
+    gemaessigt: null,
+    steppe: { to: 0xb0a465, share: { grass: 0.5, forest: 0.25, schlamm: 0.3, '*': 0 } },
+    wueste: { to: 0xd2b47c, share: { grass: 0.72, forest: 0.45, schlamm: 0.55, rubble: 0.25, strasse: 0.12, '*': 0 } },
+    winter: { to: 0xeaf0f4, share: { grass: 0.8, sand: 0.7, forest: 0.55, schlamm: 0.6, rubble: 0.55, strasse: 0.3, furt: 0.35, '*': 0 } },
+  };
+  const now3 = { sky: new THREE.Color(SKY), sun: 1, hemi: 1.5, fogNear: 260, fogFar: 620, fall: 0, flash: 0 };
+  const cA = new THREE.Color(), cB = new THREE.Color(), sunDir = new THREE.Vector3(-70, 120, -45).normalize();
+  const lerpStops = (stops, h, out) => {
+    for (let i = 1; i < stops.length; i++) if (h <= stops[i][0]) {
+      const [h0, a] = stops[i - 1], [h1, b] = stops[i], f = (h - h0) / (h1 - h0 || 1);
+      return out.setHex(a).lerp(cB.setHex(b), f);
+    }
+    return out.setHex(stops[stops.length - 1][1]);
+  };
+  function atmosphere(o = {}) {
+    if (o.hour != null) atm.hour = ((o.hour % 24) + 24) % 24;
+    if (o.weather && WEATHER[o.weather]) atm.weather = o.weather;
+    if (o.climate && o.climate in CLIMATE && o.climate !== atm.climate) { atm.climate = o.climate; if (world) world.climate = null; }
+    atm.on = true;
+    return { ...atm };
+  }
+  // called every frame: eases towards the wanted look (weather changes over ~2 s)
+  function applyAtmosphere(dt) {
+    if (!atm.on) return;
+    const w = WEATHER[atm.weather], h = atm.hour;
+    const angle = (h - 6) / 12 * Math.PI;            // 0 at sunrise, π at sunset
+    const elev = Math.sin(angle);
+    const day = Math.max(0, Math.min(1, (elev + 0.08) / 0.3));
+    const k = 1 - Math.exp(-dt * 1.6);
+    lerpStops(SKY_STOPS, h, cA);
+    cA.lerp(cB.setHex(w.greyTo).multiplyScalar(0.25 + 0.75 * day), w.grey);
+    now3.sky.lerp(cA, k);
+    scene.background.copy(now3.sky); scene.fog.color.copy(now3.sky);
+    // fog distances are made for the battle camera (~150 m away); further out (launcher) they grow along
+    const reach = Math.max(1, cam.dist / 150);
+    now3.fogNear += (w.fogNear * reach - now3.fogNear) * k; now3.fogFar += (w.fogFar * reach - now3.fogFar) * k;
+    scene.fog.near = now3.fogNear; scene.fog.far = now3.fogFar;
+    // sun by day, moon by night (same light, other direction and colour)
+    if (day > 0) {
+      sunDir.set(-Math.cos(angle) * 0.9, Math.max(0.12, elev), -0.45).normalize();
+      sun.color.setHex(0xff9a5a).lerp(cB.setHex(0xffe2b8), Math.min(1, elev * 2.2));
+    } else {
+      const ma = angle - Math.PI;
+      sunDir.set(-Math.cos(ma) * 0.9, Math.max(0.25, Math.sin(ma)), -0.3).normalize();
+      sun.color.setHex(0x9db4e6);
+    }
+    const wantSun = (day > 0 ? 2.6 * Math.min(1, day * 1.4) : 0.8) * w.sun;
+    now3.sun += (wantSun - now3.sun) * k;
+    now3.flash = Math.max(0, now3.flash - dt * 4);
+    if (w.lightning && Math.random() < dt * 0.12) now3.flash = 1;
+    sun.intensity = now3.sun + now3.flash * 6;
+    const wantHemi = (0.45 + 1.05 * day) * (0.75 + 0.25 * w.sun);
+    now3.hemi += (wantHemi - now3.hemi) * k;
+    hemi.intensity = now3.hemi + now3.flash * 2;
+    hemi.color.setHex(day > 0 ? 0xcfe3ff : 0x5c6f9c);
+    fill.intensity = 0.45 * (0.3 + 0.7 * day);
+    now3.fall += ((w.amount || 0) - now3.fall) * k;
+  }
+  // rain, snow or dust: boxes falling in a box around the camera target
+  const FALL_MAX = 2400;
+  const fallMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55, depthWrite: false });
+  const fall = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), fallMat, FALL_MAX); fall.frustumCulled = false; fall.count = 0; scene.add(fall);
+  const fallP = new Float32Array(FALL_MAX * 4);
+  for (let i = 0; i < FALL_MAX; i++) { fallP[i * 4] = Math.random(); fallP[i * 4 + 1] = Math.random(); fallP[i * 4 + 2] = Math.random(); fallP[i * 4 + 3] = Math.random(); }
+  function drawFall(dt) {
+    const w = WEATHER[atm.weather];
+    const n = Math.round(Math.min(FALL_MAX, 1500 * now3.fall));
+    if (!w.fall || n < 1) { fall.count = 0; return; }
+    const R = Math.min(130, Math.max(45, cam.dist * 0.7)), H = 40;
+    const big = Math.max(1, cam.dist / 90);   // far away (launcher) drops must stay visible
+    const kind = w.fall, wind = w.wind || 0;
+    const speed = kind === 'rain' ? 26 : kind === 'snow' ? 2.2 : 1.2;
+    fallMat.color.setHex(kind === 'rain' ? 0xa9b8c6 : kind === 'snow' ? 0xffffff : 0xcbb48a);
+    fallMat.opacity = kind === 'rain' ? 0.45 : kind === 'snow' ? 0.9 : 0.5;
+    const t = performance.now() / 1000;
+    for (let i = 0; i < n; i++) {
+      const b = i * 4;
+      fallP[b + 1] -= dt * speed * (0.8 + fallP[b + 3] * 0.4) / H;
+      if (kind === 'dust') { fallP[b] += dt * (0.12 + fallP[b + 3] * 0.1); fallP[b + 1] += dt * speed / H * 0.9; }
+      if (fallP[b + 1] < 0) { fallP[b + 1] += 1; fallP[b] = Math.random(); fallP[b + 2] = Math.random(); }
+      if (fallP[b] > 1) fallP[b] -= 1;
+      const x = cam.tx + (fallP[b] - 0.5) * 2 * R + (kind === 'snow' ? Math.sin(t * 0.7 + i) * 0.6 : 0) + wind * fallP[b + 1] * 8;
+      const z = cam.tz + (fallP[b + 2] - 0.5) * 2 * R;
+      const y = (kind === 'dust' ? 0.3 + fallP[b + 1] * 6 : fallP[b + 1] * H) + groundAt(cam.tx, cam.tz);
+      o3.position.set(x, y, z);
+      o3.rotation.set(0, 0, kind === 'rain' ? -wind * 0.35 : 0);
+      if (kind === 'rain') o3.scale.set(0.035 * big, 0.9 * big, 0.035 * big); else if (kind === 'snow') o3.scale.setScalar(0.11 * big); else o3.scale.set(0.5 * big, 0.08 * big, 0.08 * big);
+      o3.updateMatrix(); fall.setMatrixAt(i, o3.matrix);
+    }
+    fall.count = n; fall.instanceMatrix.needsUpdate = true;
+  }
+  // quality (Schön / Mittel / Schnell): pixel ratio and shadows. Mittel = the look the battle always had.
+  function quality(q) {
+    const ratio = q === 'fast' ? 1 : q === 'beautiful' ? 2 : 1.5;
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, ratio));
+    sun.castShadow = q !== 'fast';
+    const size = q === 'beautiful' ? 4096 : 2048;
+    if (sun.shadow.mapSize.x !== size) { sun.shadow.mapSize.set(size, size); sun.shadow.map?.dispose(); sun.shadow.map = null; }
+    canvas.width = 0;   // forces setSize on the next frame
+  }
 
   const terrainMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0 });
   const treeMat = voxelMaterial();
@@ -59,14 +176,17 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
 
   // ---------- terrain ----------
   function buildWorld(sim) {
-    if (world?.map === sim.map) return;
+    if (world?.map === sim.map && world.climate === atm.climate) return;
     if (world) { scene.remove(world.group); world.group.traverse((o) => o.geometry?.dispose?.()); }
     const m = sim.map, n = m.n, cell = m.cell * M, size = n * cell;
     const group = new THREE.Group();
     const terrains = sim.world.terrains || {};
     const water = m.grounds.map((id) => terrains[id]?.water || null);
     const color = m.grounds.map((id) => new THREE.Color(terrains[id]?.color || '#6f9a4a'));
-    const hexes = m.grounds.map((id) => parseInt((terrains[id]?.color || '#6f9a4a').slice(1), 16));
+    const tint = CLIMATE[atm.climate];
+    const tinted = (id, hex) => { const f = tint ? (tint.share[id] ?? tint.share['*']) : 0; return f ? cA.setHex(hex).lerp(cB.setHex(tint.to), f).getHex() : hex; };
+    const hexes = m.grounds.map((id) => tinted(id, parseInt((terrains[id]?.color || '#6f9a4a').slice(1), 16)));
+    for (let q = 0; q < color.length; q++) color[q].setHex(hexes[q]);
     // top height per cell (m): levels, half step on ramps next to the higher level, water lowered
     const top = new Float32Array(n * n);
     for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
@@ -196,7 +316,7 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
       group.add(im);
     });
     scene.add(group);
-    world = { map: sim.map, group, top, n, cell, size };
+    world = { map: sim.map, group, top, n, cell, size, climate: atm.climate };
   }
 
   // flat-shaded quads were pushed in a fixed corner order; flip triangles whose winding disagrees with the normal
@@ -364,7 +484,7 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
     const texel = (2 * ext) / 2048;
     const sx = Math.round(cam.tx / texel) * texel, sz = Math.round(cam.tz / texel) * texel;
     sun.target.position.set(sx, 0, sz);
-    sun.position.set(sx - 70, 120, sz - 45);
+    sun.position.set(sx + sunDir.x * 150, sunDir.y * 150, sz + sunDir.z * 150);
   }
   function clampCam() {
     const size = world?.size ?? 256;
@@ -483,8 +603,10 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
     if (app.view !== 'game' || !sim || !shown) { canvas.style.display = 'none'; return; }
     canvas.style.display = 'block';
     if (canvas.width !== Math.round(W * renderer.getPixelRatio())) { renderer.setSize(W, H, false); camera.aspect = W / H; camera.updateProjectionMatrix(); }
+    applyAtmosphere(dt);
     buildWorld(sim);
     placeCamera();
+    drawFall(dt);
     const t = Math.min(1, (now - beforeTime) / ROUND_MS);
     const pos = (u) => { const v = before?.get(u.id); return v ? [v[0] + (u.x - v[0]) * t, v[1] + (u.y - v[1]) * t] : [u.x, u.y]; };
     const colours = Object.fromEntries(playerList().map((x) => [x.seat, colourOf(x)]));
@@ -649,5 +771,5 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
   function show(on) { shown = on; if (!on) canvas.style.display = 'none'; }
 
   return { draw, drain, reset, project, unproject, pixelsPerMm, pan, zoom, rotate, centreOn, home, show, setModels, kind: '3d', renderer,
-    scene, camera, projectWorld, target, groundAt, inset, yawOf };
+    scene, camera, projectWorld, target, groundAt, inset, yawOf, atmosphere, quality, cam };
 }

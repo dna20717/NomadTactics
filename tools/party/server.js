@@ -14,7 +14,7 @@ import { Room } from '../../engine/net/room.js';
 import { PROTOCOL } from '../../engine/net/protocol.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const RELEASED = ['party.html', 'host.html', 'game/', 'engine/', 'projects/nomadtactics/', 'prototypes/nomadtactics/models/'];
+const RELEASED = ['party.html', 'host.html', 'launcher.html', 'game/', 'engine/', 'projects/nomadtactics/', 'prototypes/nomadtactics/models/'];
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
   '.json': 'application/json; charset=utf-8', '.vox': 'application/octet-stream', '.woff2': 'font/woff2', '.png': 'image/png', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.txt': 'text/plain; charset=utf-8' };
 
@@ -46,6 +46,7 @@ export function startServer({ port = 8080, max = 4, quiet = false, host = '0.0.0
     let p = decodeURIComponent(new URL(req.url, 'http://x').pathname).replace(/^\/+/, '');
     if (p === '' ) { res.writeHead(302, { location: '/party.html' }); return res.end(); }
     if (p === 'host') { res.writeHead(302, { location: '/host.html' }); return res.end(); }
+    if (p === 'launcher') { res.writeHead(302, { location: '/launcher.html' }); return res.end(); }
     if (p === 'host/status') {
       return reply(res, 200, { ...room.state(), addresses: addresses(port).map((a) => a.url), port, protocol: protocol.slice(-60), may: local(req), since: started });
     }
