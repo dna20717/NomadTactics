@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>html,body{margin:0}canvas{display:block}</style>
+<script type="importmap">{ "imports": { "three": "./node_modules/three/build/three.module.js", "three/addons/": "./node_modules/three/examples/jsm/" } }</script>
+</head><body>
+<script type="module">
+import * as THREE from 'three';
+import { tank, kaserne, mesh } from './voxel2.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { HorizontalTiltShiftShader } from 'three/addons/shaders/HorizontalTiltShiftShader.js';
+import { VerticalTiltShiftShader } from 'three/addons/shaders/VerticalTiltShiftShader.js';
+
+const W = 1600, H = 1000, BLUE = 0x2f6fd6, RED = 0xd63a2f;
+const r = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+r.shadowMap.enabled = true; r.shadowMap.type = THREE.PCFSoftShadowMap;
+
+const s = new THREE.Scene();
+s.fog = new THREE.Fog(0xd9e2e4, 90, 330);
+{ const gp = new THREE.Mesh(new THREE.PlaneGeometry(1600, 1600), new THREE.MeshStandardMaterial({ color: 0x5f6b3a, roughness: 1 })); gp.rotation.x = -Math.PI / 2; gp.position.y = -0.02; gp.receiveShadow = true; s.add(gp); }
+const sky = new THREE.Mesh(new THREE.SphereGeometry(400, 32, 16), new THREE.ShaderMaterial({
+  side: THREE.BackSide, depthWrite: false, fog: false,
+  uniforms: { top: { value: new THREE.Color(0x3f7fc4) }, center: { value: new THREE.Color(0x9cc3e4) }, horizon: { value: new THREE.Color(0xd9e2e4) }, ground: { value: new THREE.Color(0x8b8a6a) } },
+  vertexShader: 'varying vec3 p; void main(){ p = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
+  fragmentShader: `uniform vec3 oben, mitte, horizont, boden; varying vec3 p;
+    void main(){ float y = p.y; vec3 c = y > 0.0 ? mix(horizont, mitte, smoothstep(0.0, 0.12, y)) : boden;
+      c = y > 0.12 ? mix(mitte, oben, smoothstep(0.12, 0.6, y)) : c;
+      vec3 sonne = normalize(vec3(0.5, 0.35, 0.4)); c += vec3(1.0,0.9,0.7) * pow(max(dot(p, sonne), 0.0), 64.0) * 0.6;
+      gl_FragColor = vec4(c, 1.0); }`
+}));
+s.add(sky);
+// Distant mountain range as voxel silhouette
+{ const Wm = new Map();
+  for (let i = -60; i <= 60; i++) { const hh = Math.round(4 + 3 * Math.sin(i * 0.21) + 2 * Math.sin(i * 0.53 + 1) + Math.abs(Math.sin(i * 0.09)) * 5);
+    for (let y = 0; y < hh; y++) Wm.set(`${i},${y},0`, y > hh - 2 && hh > 9 ? 'concrete' : 'concreteDark'); }
+  for (const [ang, d] of [[0.7, 260], [2.3, 270], [3.9, 260], [5.4, 280]]) {
+    const m = mesh(Wm, { V: 4 }); m.material = new THREE.MeshBasicMaterial({ vertexColors: true, fog: true, color: 0x9aa7b4 });
+    m.position.set(Math.cos(ang) * d, -2, Math.sin(ang) * d); m.lookAt(0, -2, 0); m.castShadow = false; m.scale.y = 1.4; s.add(m); } }
+// Voxel-Wolken
+for (let i = 0; i < 14; i++) { const Wc = new Map();
+  const n = 3 + (i % 4);
+  for (let x = -n; x <= n; x++) for (let z = -2; z <= 2; z++) for (let y = 0; y <= 1; y++)
+    if (Math.abs(x) + Math.abs(z) * 1.5 + y * 2 < n + 1.5 - ((x * 7 + z * 3 + i) % 3 === 0 ? 1 : 0)) Wc.set(`${x},${y},${z}`, 'white');
+  const m = mesh(Wc, { V: 2.2 }); m.material = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85, fog: false });
+  const a = i * 0.45 + 0.2, d = 170 + (i % 5) * 30; m.position.set(Math.cos(a) * d, 55 + (i % 3) * 12, Math.sin(a) * d); m.rotation.y = i; m.castShadow = true; s.add(m); }
+s.add(new THREE.HemisphereLight(0xdfe8ff, 0x5a4a35, 1.1));
+const sun = new THREE.DirectionalLight(0xfff1dc, 2.2);
+sun.position.set(14, 22, 10); sun.castShadow = true; sun.shadow.mapSize.set(4096, 4096);
+Object.assign(sun.shadow.camera, { left: -30, right: 30, top: 30, bottom: -30, far: 100 });
+s.add(sun);
+
+// Ground: coarse voxel height field (1.2 m), grass with path
+const ground = new Map();
+const G = 1.2 / 0.4;   // Ground cube = 3 tank voxels
+for (let gx = -30; gx <= 30; gx++) for (let gz = -30; gz <= 30; gz++) {
+  const h = (Math.abs(gx) > 18 || Math.abs(gz) > 18) ? Math.max(0, Math.round(Math.sin(gx * 0.3) + Math.cos(gz * 0.25))) : 0;
+  const way = Math.abs(gx - 2) <= 1 && gz > 5;
+  for (let y = -1; y <= h - 1; y++) ground.set(`${gx},${y},${gz}`, way ? 'sand' : y === h - 1 ? 'oliv' : 'brown');
+}
+const groundMesh = mesh(ground, { V: 1.2 });
+groundMesh.material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1 });
+// Tint the grass a bit greener
+const colors = groundMesh.geometry.attributes.color;
+for (let i = 0; i < colors.count; i++) if (colors.getY(i) > colors.getX(i) && colors.getY(i) > 0.2) colors.setXYZ(i, colors.getX(i) * 0.95, colors.getY(i) * 1.25, colors.getZ(i) * 0.85);
+s.add(groundMesh);
+
+function spot(W, team, x, z, red) { const m = mesh(W, { team }); m.position.set(x, 0, z); m.rotation.y = red; s.add(m); return m; }
+const k1 = spot(kaserne(), BLUE, 0, 0, 0);
+const p1 = spot(tank(), BLUE, 9.5, 9, 0.5);
+spot(tank(), BLUE, 3, 11, 0.15);
+const k2 = spot(kaserne(), RED, -34, -30, Math.PI / 2);
+spot(tank(), RED, -20, -18, 2.4);
+spot(tank(), RED, -14, -23, 2.2);
+// Trees as voxels
+const tree = () => { const [Wb, sb] = [new Map(), (x, y, z, a) => Wb.set(`${x},${y},${z}`, a)];
+  for (let y = 0; y <= 3; y++) sb(0, y, 0, 'holz');
+  for (let y = 3; y <= 8; y++) { const rr = y < 6 ? 2 : y < 8 ? 1 : 0; for (let x = -rr; x <= rr; x++) for (let z = -rr; z <= rr; z++) if (Math.abs(x) + Math.abs(z) <= rr + 1) sb(x, y, z, 'oliv'); }
+  return Wb; };
+for (let i = 0; i < 16; i++) { const a = i * 2.3 + 0.5, d = 24 + (i % 3) * 4; spot(tree(), 0, Math.cos(a) * d, Math.sin(a) * d, i); }
+
+const cam = (fov, p, z) => { const c = new THREE.PerspectiveCamera(fov, 1, 0.1, 900); c.position.set(...p); c.lookAt(...z); return c; };
+function recording(camera, w, h, strength, focus) {
+  r.setSize(w, h); camera.aspect = w / h; camera.updateProjectionMatrix();
+  const c = new EffectComposer(r); c.setSize(w, h);
+  c.addPass(new RenderPass(s, camera));
+  for (let i = 0; i < 2; i++) {
+    const hp = new ShaderPass(HorizontalTiltShiftShader); hp.uniforms.h.value = strength / w; hp.uniforms.r.value = focus; c.addPass(hp);
+    const vp = new ShaderPass(VerticalTiltShiftShader); vp.uniforms.v.value = strength / h; vp.uniforms.r.value = focus; c.addPass(vp);
+  }
+  c.addPass(new OutputPass());
+  // Miniature look: a bit more saturation and contrast
+  c.addPass(new ShaderPass({ uniforms: { tDiffuse: { value: null } },
+    vertexShader: 'varying vec2 u; void main(){ u = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
+    fragmentShader: 'uniform sampler2D tDiffuse; varying vec2 u; void main(){ vec4 c = texture2D(tDiffuse, u); float g = dot(c.rgb, vec3(0.299,0.587,0.114)); c.rgb = mix(vec3(g), c.rgb, 1.15); c.rgb = (c.rgb - 0.5) * 1.05 + 0.5; gl_FragColor = c; }' }));
+
+  c.render();
+  return r.domElement.toDataURL('image/png');
+}
+const images = [
+  recording(cam(32, [30, 17, 40], [3, 1.5, 4]), 1600, 620, 1.8, 0.5),
+  recording(cam(30, [36, 50, 46], [-8, 0, -6]), 800, 480, 2.0, 0.55),
+  recording(cam(36, [-26, 11, 30], [-6, 4, -6]), 800, 480, 1.6, 0.55),
+];
+const canvas = document.createElement('canvas'); canvas.width = 1600; canvas.height = 1100; document.body.appendChild(canvas);
+const ctx = canvas.getContext('2d');
+const load = src => new Promise(res => { const i = new Image(); i.onload = () => res(i); i.src = src; });
+const [a, b, c] = await Promise.all(images.map(load));
+ctx.drawImage(a, 0, 0); ctx.drawImage(b, 0, 620); ctx.drawImage(c, 800, 620);
+r.domElement.remove();
+window.info = { tank: p1.userData, kaserne: k1.userData };
+window.done = true;
+</script></body></html>

@@ -1,0 +1,744 @@
+{
+ "id": "korea",
+ "name": "Südkorea",
+ "color": "#2fa58a",
+ "description": "Wehrpflicht-Armee mit guter Technik. Mittelteure Einheiten, die sich stark aufrüsten lassen, viel Artillerie und feste Stellungen. Hält die Linie und kontert hart.",
+ "playstyle": "Halten, aufrüsten, kontern",
+ "resources": [
+  "money",
+  "power",
+  "rank"
+ ],
+ "start": {
+  "money": 10000,
+  "building": [
+   "hauptquartier"
+  ],
+  "units": [
+   "bautrupp",
+   "bautrupp"
+  ]
+ },
+ "building": {
+  "hauptquartier": {
+   "name": "Hauptquartier",
+   "function": "hq",
+   "cost": {
+    "money": 2000
+   },
+   "buildTime": 40,
+   "health": 3200,
+   "armor": "building",
+   "size": [
+    8,
+    8
+   ],
+   "pos": [
+    0,
+    0
+   ],
+   "model": "kaserne",
+   "power": 5,
+   "produces": [
+    "bautrupp"
+   ],
+   "keywords": {
+    "scout": true
+   }
+  },
+  "kraftwerk": {
+   "name": "Kraftwerk",
+   "function": "power",
+   "cost": {
+    "money": 800
+   },
+   "buildTime": 12,
+   "health": 1300,
+   "armor": "building",
+   "size": [
+    5,
+    5
+   ],
+   "pos": [
+    -2,
+    1
+   ],
+   "power": 8,
+   "requires": [
+    "hauptquartier"
+   ]
+  },
+  "kaserne": {
+   "name": "Kaserne",
+   "function": "production",
+   "cost": {
+    "money": 600
+   },
+   "buildTime": 10,
+   "health": 1500,
+   "armor": "building",
+   "size": [
+    5,
+    4
+   ],
+   "pos": [
+    -1,
+    1
+   ],
+   "model": "kaserne",
+   "power": -1,
+   "produces": [
+    "wehrpflichtiger",
+    "raketentrupp"
+   ],
+   "requires": [
+    "hauptquartier"
+   ],
+   "keywords": {
+    "garnison": 8
+   }
+  },
+  "nachschubdepot": {
+   "name": "Nachschubdepot",
+   "function": "resource",
+   "cost": {
+    "money": 1500
+   },
+   "buildTime": 15,
+   "health": 1600,
+   "armor": "building",
+   "size": [
+    6,
+    6
+   ],
+   "pos": [
+    1,
+    1
+   ],
+   "power": -1,
+   "produces": [
+    "versorger"
+   ],
+   "requires": [
+    "hauptquartier"
+   ]
+  },
+  "waffenfabrik": {
+   "name": "Waffenfabrik",
+   "function": "production",
+   "cost": {
+    "money": 2000
+   },
+   "buildTime": 20,
+   "health": 2400,
+   "armor": "building",
+   "size": [
+    8,
+    8
+   ],
+   "pos": [
+    0,
+    2
+   ],
+   "power": -3,
+   "produces": [
+    "schuetzenpanzer",
+    "kampfpanzer",
+    "panzerhaubitze",
+    "flugabwehrpanzer"
+   ],
+   "requires": [
+    "kaserne",
+    "nachschubdepot"
+   ]
+  },
+  "landeplatz": {
+   "name": "Hubschrauber-Landeplatz",
+   "function": "production",
+   "cost": {
+    "money": 1500
+   },
+   "buildTime": 16,
+   "health": 1500,
+   "armor": "building",
+   "size": [
+    6,
+    6
+   ],
+   "pos": [
+    1,
+    3
+   ],
+   "power": -2,
+   "produces": [
+    "kampfhubschrauber"
+   ],
+   "requires": [
+    "waffenfabrik"
+   ]
+  },
+  "forschungszentrum": {
+   "name": "Forschungszentrum",
+   "function": "research",
+   "cost": {
+    "money": 1500
+   },
+   "buildTime": 20,
+   "health": 1400,
+   "armor": "building",
+   "size": [
+    5,
+    5
+   ],
+   "pos": [
+    -1,
+    3
+   ],
+   "power": -3,
+   "requires": [
+    "waffenfabrik"
+   ]
+  },
+  "artilleriestellung": {
+   "name": "Artilleriestellung",
+   "function": "defense",
+   "cost": {
+    "money": 1000
+   },
+   "buildTime": 12,
+   "health": 1100,
+   "armor": "building",
+   "size": [
+    3,
+    3
+   ],
+   "pos": [
+    -2,
+    2
+   ],
+   "power": -2,
+   "weapons": [
+    "haubitze"
+   ],
+   "requires": [
+    "kaserne"
+   ]
+  },
+  "flugabwehrstellung": {
+   "name": "Flugabwehrstellung",
+   "function": "defense",
+   "cost": {
+    "money": 700
+   },
+   "buildTime": 8,
+   "health": 800,
+   "armor": "building",
+   "size": [
+    2,
+    2
+   ],
+   "pos": [
+    -3,
+    2
+   ],
+   "power": -2,
+   "weapons": [
+    "abfangrakete"
+   ],
+   "requires": [
+    "kaserne"
+   ]
+  },
+  "grenzbunker": {
+   "name": "Grenzbunker",
+   "function": "defense",
+   "cost": {
+    "money": 600
+   },
+   "buildTime": 8,
+   "health": 1400,
+   "armor": "building",
+   "size": [
+    3,
+    3
+   ],
+   "pos": [
+    -3,
+    3
+   ],
+   "power": 0,
+   "requires": [
+    "kaserne"
+   ],
+   "keywords": {
+    "garnison": 6,
+    "tough": 5,
+    "nachtsicht": true
+   }
+  },
+  "marschflugkoerper": {
+   "name": "Marschflugkörper-Batterie",
+   "function": "superweapon",
+   "cost": {
+    "money": 4500
+   },
+   "buildTime": 55,
+   "health": 3800,
+   "armor": "building",
+   "size": [
+    6,
+    6
+   ],
+   "pos": [
+    0,
+    5
+   ],
+   "power": -8,
+   "weapons": [
+    "raketenhagel"
+   ],
+   "requires": [
+    "forschungszentrum",
+    "vernetztefeuerleitung"
+   ],
+   "description": "Einmal alle 5 Minuten: eine Salve Präzisionsraketen."
+  }
+ },
+ "units": {
+  "bautrupp": {
+   "name": "Bautrupp",
+   "role": "Bauen",
+   "class": "vehicle",
+   "model": "dozer",
+   "cost": {
+    "money": 1000
+   },
+   "buildTime": 10,
+   "health": 280,
+   "armor": "leicht",
+   "speed": 4.5,
+   "sight": 24,
+   "weapons": [],
+   "keywords": {
+    "builds": true,
+    "track": true
+   }
+  },
+  "versorger": {
+   "name": "Versorgungslaster",
+   "role": "Sammeln",
+   "class": "vehicle",
+   "model": "spaeher",
+   "cost": {
+    "money": 600
+   },
+   "buildTime": 10,
+   "health": 220,
+   "armor": "leicht",
+   "speed": 6,
+   "sight": 24,
+   "weapons": [],
+   "keywords": {
+    "collects": 300,
+    "wheel": true
+   }
+  },
+  "wehrpflichtiger": {
+   "name": "Wehrpflichtige",
+   "role": "Linie",
+   "class": "infantry",
+   "model": "soldat",
+   "cost": {
+    "money": 250
+   },
+   "buildTime": 5,
+   "health": 100,
+   "armor": "infantry",
+   "speed": 3,
+   "sight": 22,
+   "weapons": [
+    "sturmgewehr"
+   ],
+   "squad": 4,
+   "equipment": [
+    "mg_kr",
+    "panzerfaust_kr",
+    "unteroffizier",
+    "verstaerkung_kr"
+   ],
+   "keywords": {
+    "eingraben": true
+   }
+  },
+  "raketentrupp": {
+   "name": "Raketentrupp",
+   "role": "Panzerjagd",
+   "class": "infantry",
+   "model": "soldat",
+   "cost": {
+    "money": 400
+   },
+   "buildTime": 7,
+   "health": 90,
+   "armor": "infantry",
+   "speed": 3,
+   "sight": 22,
+   "weapons": [
+    "lenkrakete"
+   ],
+   "squad": 2,
+   "equipment": [
+    "unteroffizier"
+   ],
+   "keywords": {
+    "eingraben": true
+   }
+  },
+  "schuetzenpanzer": {
+   "name": "Schützenpanzer",
+   "role": "Transport",
+   "class": "vehicle",
+   "model": "spaeher",
+   "cost": {
+    "money": 700
+   },
+   "buildTime": 12,
+   "health": 300,
+   "armor": "leicht",
+   "speed": 7,
+   "sight": 24,
+   "weapons": [
+    "bordkanone"
+   ],
+   "keywords": {
+    "transport": 6,
+    "track": true,
+    "schwimmt": true,
+    "fahrtfeuer": true,
+    "schiessscharten": true,
+    "rauchwand": 12
+   },
+   "equipment": [
+    "aktivschutz",
+    "waermebild"
+   ]
+  },
+  "kampfpanzer": {
+   "name": "Kampfpanzer",
+   "role": "Linie",
+   "class": "vehicle",
+   "model": "tank",
+   "cost": {
+    "money": 1000
+   },
+   "buildTime": 12,
+   "health": 480,
+   "armor": "schwer",
+   "speed": 5.5,
+   "sight": 24,
+   "weapons": [
+    "kanone_120"
+   ],
+   "keywords": {
+    "tough": 3,
+    "track": true,
+    "fahrtfeuer": true,
+    "eingraben": true,
+    "rauchwand": 12
+   },
+   "equipment": [
+    "aktivschutz",
+    "waermebild"
+   ]
+  },
+  "panzerhaubitze": {
+   "name": "Panzerhaubitze",
+   "role": "Artillerie",
+   "class": "vehicle",
+   "model": "werfer",
+   "cost": {
+    "money": 1200
+   },
+   "buildTime": 12,
+   "health": 260,
+   "armor": "leicht",
+   "speed": 4.5,
+   "sight": 24,
+   "weapons": [
+    "haubitze"
+   ],
+   "equipment": [
+    "waermebild"
+   ],
+   "keywords": {
+    "track": true,
+    "aufbauen": 2
+   }
+  },
+  "flugabwehrpanzer": {
+   "name": "Flugabwehrpanzer",
+   "role": "Luftabwehr",
+   "class": "vehicle",
+   "model": "werfer",
+   "cost": {
+    "money": 900
+   },
+   "buildTime": 12,
+   "health": 260,
+   "armor": "leicht",
+   "speed": 5.5,
+   "sight": 24,
+   "weapons": [
+    "abfangrakete"
+   ],
+   "equipment": [
+    "aktivschutz"
+   ],
+   "keywords": {
+    "track": true,
+    "fahrtfeuer": true
+   }
+  },
+  "kampfhubschrauber": {
+   "name": "Kampfhubschrauber",
+   "role": "Panzerjagd",
+   "class": "air",
+   "cost": {
+    "money": 1300
+   },
+   "buildTime": 14,
+   "health": 260,
+   "armor": "air",
+   "speed": 14,
+   "sight": 30,
+   "weapons": [
+    "lenkrakete",
+    "bordkanone"
+   ],
+   "keywords": {
+    "flies": true,
+    "hovers": true
+   }
+  }
+ },
+ "research": {
+  "vernetztefeuerleitung": {
+   "name": "Vernetzte Feuerleitung",
+   "symbol": "N",
+   "cost": {
+    "money": 2000
+   },
+   "time": 35,
+   "researchIn": "forschungszentrum",
+   "requires": [
+    "forschungszentrum"
+   ],
+   "pos": [
+    0.5,
+    4
+   ],
+   "description": "Artillerie schießt 20 % weiter. Voraussetzung für die Marschflugkörper.",
+   "effect": [
+    {
+     "kind": "stat",
+     "target": "keyword:indirekt",
+     "field": "range",
+     "times": 1.2
+    }
+   ]
+  },
+  "reserve": {
+   "name": "Reservisten",
+   "symbol": "R",
+   "cost": {
+    "money": 900
+   },
+   "time": 20,
+   "researchIn": "forschungszentrum",
+   "requires": [
+    "forschungszentrum"
+   ],
+   "pos": [
+    -1.5,
+    4
+   ],
+   "description": "Wehrpflichtige kommen mit einem Mann mehr.",
+   "effect": [
+    {
+     "kind": "stat",
+     "target": "unit:wehrpflichtiger",
+     "field": "squad",
+     "plus": 1
+    }
+   ]
+  },
+  "befestigung": {
+   "name": "Befestigung",
+   "symbol": "B",
+   "cost": {
+    "money": 1200
+   },
+   "time": 25,
+   "researchIn": "forschungszentrum",
+   "requires": [
+    "forschungszentrum"
+   ],
+   "pos": [
+    -0.5,
+    4
+   ],
+   "description": "Abwehrgebäude halten 30 % mehr aus.",
+   "effect": [
+    {
+     "kind": "stat",
+     "target": "function:defense",
+     "field": "health",
+     "times": 1.3
+    }
+   ]
+  },
+  "gegenschlag": {
+   "name": "Gegenschlag",
+   "symbol": "✦",
+   "cost": {
+    "rank": 3
+   },
+   "time": 0,
+   "requires": [
+    "hauptquartier"
+   ],
+   "pos": [
+    1.5,
+    1
+   ],
+   "description": "General-Fähigkeit: Alle Einheiten in einem Gebiet schießen 15 s lang doppelt so schnell.",
+   "effect": [
+    {
+     "kind": "ability",
+     "name": "Gegenschlag",
+     "cooldown": 150,
+     "description": "Doppelte Feuerrate, Fläche 20 m, 15 s."
+    }
+   ]
+  }
+ },
+ "equipment": {
+  "mg_kr": {
+   "name": "MG-Schütze",
+   "symbol": "M",
+   "slot": "schwere_waffe",
+   "cost": {
+    "money": 150
+   },
+   "time": 6,
+   "description": "Ein Mann bekommt ein leichtes MG.",
+   "effect": [
+    {
+     "kind": "weapon",
+     "weapon": "mg"
+    }
+   ]
+  },
+  "panzerfaust_kr": {
+   "name": "Panzerfaust",
+   "symbol": "P",
+   "slot": "schwere_waffe",
+   "cost": {
+    "money": 150
+   },
+   "time": 6,
+   "description": "Ein Mann gegen Fahrzeuge.",
+   "effect": [
+    {
+     "kind": "weapon",
+     "weapon": "panzerfaust"
+    }
+   ]
+  },
+  "unteroffizier": {
+   "name": "Unteroffizier",
+   "symbol": "U",
+   "slot": "anfuehrer",
+   "cost": {
+    "money": 120
+   },
+   "time": 5,
+   "description": "Mehr Sicht, steigt schneller im Rang.",
+   "effect": [
+    {
+     "kind": "stat",
+     "field": "sight",
+     "times": 1.2
+    },
+    {
+     "kind": "keyword",
+     "keyword": "veteran"
+    }
+   ]
+  },
+  "verstaerkung_kr": {
+   "name": "Verstärkung",
+   "symbol": "+",
+   "slot": "verstaerkung",
+   "cost": {
+    "money": 70
+   },
+   "time": 3,
+   "multiple": 2,
+   "description": "Ein Wehrpflichtiger mehr (bis zu 2×).",
+   "effect": [
+    {
+     "kind": "stat",
+     "field": "squad",
+     "plus": 1
+    }
+   ]
+  },
+  "aktivschutz": {
+   "name": "Aktivschutz",
+   "symbol": "A",
+   "slot": "panzerung",
+   "cost": {
+    "money": 300
+   },
+   "time": 10,
+   "requires": [
+    "forschungszentrum"
+   ],
+   "description": "Fängt anfliegende Raketen ab.",
+   "effect": [
+    {
+     "kind": "keyword",
+     "keyword": "sign",
+     "stat": 80
+    }
+   ]
+  },
+  "waermebild": {
+   "name": "Wärmebild",
+   "symbol": "W",
+   "slot": "optik",
+   "cost": {
+    "money": 150
+   },
+   "time": 6,
+   "description": "Sieht weiter, nachts und durch Rauch und entdeckt Getarnte.",
+   "effect": [
+    {
+     "kind": "stat",
+     "field": "sight",
+     "times": 1.25
+    },
+    {
+     "kind": "keyword",
+     "keyword": "scout"
+    },
+    {
+     "kind": "keyword",
+     "keyword": "nachtsicht"
+    }
+   ]
+  }
+ },
+ "generals": {}
+}

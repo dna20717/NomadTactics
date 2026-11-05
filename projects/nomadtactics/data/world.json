@@ -1,0 +1,108 @@
+{
+ "maps": {
+  "groundGrid": 2,
+  "decoBorder": 32,
+  "startSlots": [2, 8],
+  "sizes": {
+   "s": {"name": "S · Duell", "meter": 256, "player": [2, 2], "description": "1 gegen 1, schnelle Partie."},
+   "m": {"name": "M · Doppel", "meter": 384, "player": [2, 4], "description": "2 gegen 2, Generals-typisch."},
+   "l": {"name": "L · Gefecht", "meter": 512, "player": [4, 6], "description": "3 gegen 3 oder 4 gegen 4."},
+   "xl": {"name": "XL · LAN-Party", "meter": 768, "player": [6, 8], "description": "Bis 8 Spieler. Braucht Detailstufen in der Ferne."}
+  }
+ },
+ "height": {
+  "threshold": 5,
+  "rangeDownhill": 20,
+  "hitUphill": -25,
+  "withoutWeapon": ["indirekt"],
+  "withoutUnit": ["flies"],
+  "description": "Ab der Schwelle (in Würfel-Lagen) zählt ein Höhenunterschied. Bergab schießt man weiter, bergauf trifft man schlechter. Klippen sperren Wege. Kein Sichtbonus."
+ },
+ "movementTypes": {
+  "infantry": {"name": "Infanterie", "detection": "class:infantry", "standard": 100},
+  "wheel": {"name": "Rad", "detection": "keyword:wheel", "standard": 100},
+  "track": {"name": "Kette", "detection": "keyword:track", "standard": 100},
+  "schwimmt": {"name": "Schwimmt", "detection": "keyword:schwimmt", "standard": 0},
+  "hovers": {"name": "Schwebt", "detection": "keyword:hovers", "ignoresGround": true},
+  "jet": {"name": "Jet", "detection": "keyword:jet", "ignoresGround": true}
+ },
+ "terrains": {
+  "strasse": {"name": "Straße", "color": "#5b5d63", "speed": {"infantry": 100, "wheel": 130, "track": 100}, "description": "Rad-Fahrzeuge fahren hier am schnellsten."},
+  "grass": {"name": "Gras/Feld", "color": "#6f9a4a", "speed": {"infantry": 100, "wheel": 100, "track": 100}, "tracks": true, "description": "Grundwert, alle fahren normal."},
+  "sand": {"name": "Sand/Schotter", "color": "#c9b27a", "speed": {"infantry": 85, "wheel": 70, "track": 90}, "tracks": true},
+  "schlamm": {"name": "Schlamm", "color": "#6b5236", "speed": {"infantry": 70, "wheel": 50, "track": 80}, "tracks": true, "description": "Entsteht auch durch Regen."},
+  "forest": {
+   "name": "Wald/Unterholz",
+   "color": "#2f5a32",
+   "speed": {"infantry": 90, "wheel": 0, "track": 60},
+   "cover": {"infantry": 30},
+   "sightBlocker": true,
+   "description": "Räder kommen nicht durch, Ketten walzen Schneisen."
+  },
+  "rubble": {
+   "name": "Schutt/Krater",
+   "color": "#7d776e",
+   "speed": {"infantry": 80, "wheel": 60, "track": 90},
+   "cover": {"infantry": 25},
+   "description": "Entsteht durch Einschläge und Einstürze."
+  },
+  "furt": {"name": "Furt (flach)", "color": "#5f8fa8", "speed": {"infantry": 60, "wheel": 50, "track": 70, "schwimmt": 70}, "water": "flat"},
+  "tiefwasser": {
+   "name": "Tiefwasser",
+   "color": "#2e5b82",
+   "speed": {"infantry": 0, "wheel": 0, "track": 0, "schwimmt": 60},
+   "water": "deep",
+   "description": "Nur wer schwimmt, kommt hinüber."
+  }
+ },
+ "transformations": {
+  "impact_rubble": {"name": "Einschläge zerwühlen den Boden", "trigger": "impact", "minDamage": 50, "from": ["grass", "sand", "strasse", "schlamm"], "to": "rubble"},
+  "collapse_rubble": {"name": "Einstürze hinterlassen Schutt", "trigger": "collapse", "from": ["grass", "sand", "strasse", "schlamm", "forest"], "to": "rubble"},
+  "regen_schlamm": {"name": "Regen weicht den Boden auf", "trigger": "weather", "weather": "rain", "after": 45, "from": ["grass", "sand"], "to": "schlamm", "back": 120},
+  "wald_schneise": {"name": "Ketten walzen Schneisen", "trigger": "runOver", "who": ["track"], "count": 3, "from": ["forest"], "to": "grass"}
+ },
+ "daytime": {
+  "phases": [
+   {"id": "tag", "name": "Tag", "duration": 300, "sight": 100},
+   {"id": "dusk", "name": "Dämmerung", "duration": 60, "sight": 75},
+   {"id": "night", "name": "Nacht", "duration": 300, "sight": 50},
+   {"id": "dawn", "name": "Morgengrauen", "duration": 60, "sight": 75}
+  ],
+  "ignores": "nachtsicht",
+  "muzzleFlash": {"duration": 2, "visibleOnto": 60},
+  "lobby": {"start": "tag", "cycle": true}
+ },
+ "weather": {
+  "clear": {"name": "Klar", "symbol": "sun", "color": "#f2c14e", "sight": 100, "speed": 100, "duration": [90, 240]},
+  "cloudy": {"name": "Bewölkt", "symbol": "cloud", "color": "#9aa3ad", "sight": 100, "speed": 100, "duration": [60, 120], "description": "Nur Look, kündigt oft Regen an."},
+  "rain": {
+   "name": "Regen",
+   "symbol": "rain",
+   "color": "#5aa9ff",
+   "sight": 85,
+   "speed": 100,
+   "duration": [60, 180],
+   "description": "Weicht Gras und Sand zu Schlamm auf (siehe Umwandlungen)."
+  },
+  "fog": {"name": "Nebel", "symbol": "fog", "color": "#c8ccd2", "sight": 40, "speed": 100, "duration": [60, 150], "description": "Perfekt für Hinterhalte."},
+  "snow": {"name": "Schnee", "symbol": "snow", "color": "#e8f1ff", "sight": 80, "speed": 85, "duration": [90, 210], "description": "Meist im Winter-Klima."},
+  "storm": {
+   "name": "Sturm",
+   "symbol": "storm",
+   "color": "#8a6cff",
+   "sight": 70,
+   "speed": 95,
+   "blocks": ["hovers"],
+   "duration": [45, 90],
+   "description": "Hubschrauber und Drohnen landen von selbst oder fliegen nach Hause."
+  },
+  "wind": {"name": "Wind", "symbol": "wind", "color": "#7fd1c7", "sight": 100, "speed": 100, "duration": [60, 150], "description": "Rauchwände treiben ab, FPV-Drohnen wackeln."}
+ },
+ "weatherSequence": {"announce": 60, "transition": 20},
+ "climates": {
+  "gemaessigt": {"name": "Gemäßigt", "start": "clear", "weather": {"clear": 40, "cloudy": 20, "rain": 20, "fog": 10, "wind": 8, "storm": 2}},
+  "steppe": {"name": "Steppe", "start": "clear", "weather": {"clear": 40, "fog": 25, "wind": 20, "rain": 10, "storm": 5}},
+  "wueste": {"name": "Wüste", "start": "clear", "weather": {"clear": 75, "wind": 18, "storm": 5, "rain": 2}},
+  "winter": {"name": "Winter", "start": "cloudy", "weather": {"clear": 30, "cloudy": 15, "snow": 35, "fog": 12, "storm": 8}}
+ }
+}

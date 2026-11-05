@@ -1,0 +1,325 @@
+{
+ "builds": {
+  "name": "Baut",
+  "for": [
+   "unit"
+  ],
+  "description": "Kann Gebäude errichten und reparieren."
+ },
+ "schnell": {
+  "name": "Schnell",
+  "for": [
+   "unit"
+  ],
+  "description": "Fährt auf Straßen 50 % schneller."
+ },
+ "tough": {
+  "name": "Zäh",
+  "number": true,
+  "for": [
+   "unit",
+   "building"
+  ],
+  "description": "Ignoriert die ersten X Schadenspunkte jedes Treffers."
+ },
+ "tarnung": {
+  "name": "Tarnung",
+  "for": [
+   "unit",
+   "building"
+  ],
+  "description": "Getarnt: unsichtbar, solange sie nicht schießt oder ein Aufklärer in der Nähe ist. Getarnte Einheiten dürfen sich bewegen."
+ },
+ "scout": {
+  "name": "Aufklärer",
+  "for": [
+   "unit",
+   "building"
+  ],
+  "description": "Sieht getarnte Gegner in Sichtweite."
+ },
+ "flies": {
+  "name": "Fliegt",
+  "for": [
+   "unit"
+  ],
+  "description": "Ignoriert Gelände, nur Flugabwehr trifft."
+ },
+ "ueberrollt": {
+  "name": "Überrollt",
+  "for": [
+   "unit"
+  ],
+  "description": "Fährt Infanterie einfach platt."
+ },
+ "transport": {
+  "name": "Transport",
+  "number": true,
+  "for": [
+   "unit"
+  ],
+  "description": "Hat X Transportplätze (Infanterie belegt 1, Fahrzeuge so viele, wie ihre Größe sagt)."
+ },
+ "garnison": {
+  "name": "Garnison",
+  "number": true,
+  "for": [
+   "building"
+  ],
+  "description": "Bis zu X Infanteristen können sich darin verschanzen und herausschießen."
+ },
+ "selfRepair": {
+  "name": "Selbstreparatur",
+  "number": true,
+  "for": [
+   "unit",
+   "building"
+  ],
+  "description": "Heilt X Leben pro Sekunde, wenn sie 5 s keinen Treffer bekommen hat."
+ },
+ "schwarm": {
+  "name": "Schwarm",
+  "for": [
+   "unit"
+  ],
+  "description": "Wird in Gruppen zu 3 gebaut (Kosten gelten für die Gruppe)."
+ },
+ "loot": {
+  "name": "Beute",
+  "for": [
+   "unit"
+  ],
+  "description": "Fährt über Wracks und bekommt dafür Schrott und Leben."
+ },
+ "veteran": {
+  "name": "Veteran",
+  "for": [
+   "unit"
+  ],
+  "description": "Steigt doppelt so schnell im Rang."
+ },
+ "tunnel": {
+  "name": "Tunnel",
+  "for": [
+   "building"
+  ],
+  "description": "Alle Tunnel sind verbunden: rein bei einem, raus bei einem anderen."
+ },
+ "selbstzerstoerung": {
+  "name": "Selbstzerstörung",
+  "number": true,
+  "for": [
+   "unit"
+  ],
+  "description": "Kann sich sprengen und richtet X Flächenschaden an."
+ },
+ "stromlos": {
+  "name": "Stromlos",
+  "for": [
+   "building"
+  ],
+  "description": "Braucht keinen Strom und schaltet nie ab."
+ },
+ "indirekt": {
+  "name": "Indirekt",
+  "for": [
+   "weapon"
+  ],
+  "description": "Schießt im Bogen über Hindernisse und muss das Ziel nicht selbst sehen: Es reicht, wenn irgendein Verbündeter es sieht."
+ },
+ "surface": {
+  "name": "Fläche",
+  "number": true,
+  "for": [
+   "weapon"
+  ],
+  "description": "Trifft alles im Umkreis von X Metern."
+ },
+ "collects": {
+  "name": "Sammelt",
+  "number": true,
+  "for": [
+   "unit",
+   "building"
+  ],
+  "description": "Bringt X Einheiten der Ressource pro Fahrt bzw. pro 10 s."
+ },
+ "sign": {
+  "name": "Schild",
+  "number": true,
+  "for": [
+   "unit",
+   "building"
+  ],
+  "description": "Energieschild schluckt X Schaden und lädt sich mit Strom wieder auf."
+ },
+ "companion": {
+  "name": "Begleiter",
+  "for": [
+   "unit"
+  ],
+  "description": "Wird nicht gebaut, sondern kommt als Ausrüstung mit einer anderen Einheit und folgt ihr. Stirbt die Einheit, stürzt der Begleiter ab."
+ },
+ "repaired": {
+  "name": "Repariert",
+  "number": true,
+  "for": [
+   "unit",
+   "building"
+  ],
+  "description": "Repariert X Leben pro Sekunde an Fahrzeugen in der Nähe."
+ },
+ "schwimmt": {
+  "name": "Schwimmt",
+  "for": [
+   "unit"
+  ],
+  "description": "Fährt auch über Wasser (langsamer als an Land)."
+ },
+ "track": {
+  "name": "Kette",
+  "for": [
+   "unit"
+  ],
+  "description": "Im Gelände fast voll schnell, auf Straßen kein Bonus."
+ },
+ "wheel": {
+  "name": "Rad",
+  "for": [
+   "unit"
+  ],
+  "description": "Auf Straßen 30 % schneller, im Gelände 30 % langsamer."
+ },
+ "hovers": {
+  "name": "Schwebt",
+  "for": [
+   "unit"
+  ],
+  "description": "Hubschrauber oder Drohne: kann in der Luft stehen bleiben und landen."
+ },
+ "jet": {
+  "name": "Jet",
+  "for": [
+   "unit"
+  ],
+  "description": "Muss in Bewegung bleiben, kreist über dem Ziel und kehrt nach dem Angriff zum Flugfeld zurück."
+ },
+ "munition": {
+  "name": "Munition",
+  "number": true,
+  "for": [
+   "unit"
+  ],
+  "description": "X Angriffe, dann muss die Einheit am Flugfeld oder Depot nachladen."
+ },
+ "fallschirm": {
+  "name": "Fallschirm",
+  "for": [
+   "unit"
+  ],
+  "description": "Kann aus Transportfliegern über jedem Punkt der Karte abgesetzt werden."
+ },
+ "aufbauen": {
+  "name": "Aufbauen",
+  "number": true,
+  "for": [
+   "unit"
+  ],
+  "description": "Braucht X Sekunden zum Aufbauen und Abbauen. Schießt nur aufgebaut."
+ },
+ "eingraben": {
+  "name": "Eingraben",
+  "for": [
+   "unit"
+  ],
+  "description": "Gräbt sich ein: hält 50 % mehr aus, kann sich aber nicht bewegen, bis sie wieder ausgräbt."
+ },
+ "mindestreichweite": {
+  "name": "Mindestreichweite",
+  "number": true,
+  "for": [
+   "weapon"
+  ],
+  "description": "Trifft nichts, was näher als X Meter ist."
+ },
+ "fahrtfeuer": {
+  "name": "Fahrtfeuer",
+  "for": [
+   "unit"
+  ],
+  "description": "Schießt ohne Abzug in voller Fahrt. Ohne dieses Stichwort hält die Einheit kurz an oder trifft schlechter."
+ },
+ "schiessscharten": {
+  "name": "Schießscharten",
+  "for": [
+   "unit"
+  ],
+  "description": "Mitfahrende Infanterie schießt mit ihren eigenen Waffen heraus."
+ },
+ "size": {
+  "name": "Größe",
+  "number": true,
+  "for": [
+   "unit"
+  ],
+  "description": "Belegt X Transportplätze. Ohne Angabe: Infanterie 1, Fahrzeuge 4."
+ },
+ "lazarett": {
+  "name": "Lazarett",
+  "number": true,
+  "for": [
+   "unit",
+   "building"
+  ],
+  "description": "Heilt Mitfahrende oder Verschanzte um X Leben pro Sekunde."
+ },
+ "bordwerkstatt": {
+  "name": "Bordwerkstatt",
+  "number": true,
+  "for": [
+   "unit"
+  ],
+  "description": "Repariert geladene Fahrzeuge um X pro Sekunde."
+ },
+ "nachtsicht": {
+  "name": "Nachtsicht",
+  "for": [
+   "unit",
+   "building"
+  ],
+  "description": "Volle Sichtweite bei Nacht und durch Rauch. Ohne Nachtsicht halbiert die Nacht die Sicht."
+ },
+ "rauchwand": {
+  "name": "Rauchwand",
+  "number": true,
+  "for": [
+   "unit"
+  ],
+  "description": "Kann auf Befehl eine Rauchwand legen, die X Sekunden hält. Durch Rauch sieht und zielt niemand (außer mit Nachtsicht)."
+ },
+ "paralyzes": {
+  "name": "Lähmt",
+  "number": true,
+  "for": [
+   "weapon"
+  ],
+  "description": "Wie EMP: Getroffene Fahrzeuge, Flieger und Gebäude fallen X Sekunden aus (keine Bewegung, kein Feuer, kein Strom). Infanterie bleibt unberührt."
+ },
+ "abgeschirmt": {
+  "name": "Abgeschirmt",
+  "for": [
+   "unit",
+   "building"
+  ],
+  "description": "Lässt sich nicht lähmen. Alte Technik ohne viel Elektronik oder gehärtete Systeme."
+ },
+ "tarnfeld": {
+  "name": "Tarnfeld",
+  "number": true,
+  "for": [
+   "unit",
+   "building"
+  ],
+  "description": "Tarnt alle Verbündeten im Umkreis von X Metern, solange sie still stehen."
+ }
+}

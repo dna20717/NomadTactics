@@ -1,0 +1,18 @@
+{
+ "money": {"name": "Geld", "color": "#e0b240", "kind": "supply", "symbol": "$", "description": "Kommt aus Nachschub-Lagern. Damit wird fast alles bezahlt."},
+ "power": {
+  "name": "Strom",
+  "color": "#5aa9ff",
+  "kind": "capacity",
+  "symbol": "⚡",
+  "description": "Kraftwerke liefern, Gebäude verbrauchen. Reicht er nicht, baut alles halb so schnell und Abwehranlagen schalten ab."
+ },
+ "schrott": {
+  "name": "Schrott",
+  "color": "#b07a4a",
+  "kind": "supply",
+  "symbol": "⚙",
+  "description": "Bleibt von Wracks liegen und wird eingesammelt. Die Ukraine baut und verbessert damit."
+ },
+ "rank": {"name": "Rangpunkte", "color": "#c07ad8", "kind": "points", "symbol": "★", "description": "Gibt es für Abschüsse. Kaufen die Fähigkeiten des Generals."}
+}

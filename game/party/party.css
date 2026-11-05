@@ -1,0 +1,75 @@
+/* NomadTactics – Party (MVP). Plain, only tokens from game/ui.css. Later: diorama in the background. */
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: var(--ui-canvas); color: var(--ui-text);
+  font-family: var(--ui-font); font-size: 13px; touch-action: none; user-select: none; -webkit-user-select: none; }
+#field { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+#ui { position: fixed; inset: 0; pointer-events: none; }
+#ui > * { pointer-events: auto; }
+
+.pt-map { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(92vw, 420px);
+  background: var(--ui-glass); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--ui-border); border-radius: var(--ui-r-pane); box-shadow: var(--ui-shadow); padding: 24px; }
+.pt-kind { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--ui-text3); }
+.pt-title { font-size: 20px; font-weight: 600; margin: 2px 0 18px; color: var(--ui-text-strong); }
+.pt-text { color: var(--ui-text2); line-height: 1.45; margin: 0 0 14px; }
+.pt-row { display: flex; gap: 8px; align-items: center; }
+.pt-field { flex: 1; height: 40px; border-radius: var(--ui-r-field); border: 1px solid var(--ui-border); background: var(--ui-field);
+  color: var(--ui-text); font: inherit; font-size: 15px; padding: 0 12px; outline: none; }
+.pt-field:focus { border-color: var(--ui-acc-line); }
+.pt-button { height: 40px; padding: 0 16px; border-radius: var(--ui-r-button); border: 1px solid var(--ui-border); background: var(--ui-head);
+  color: var(--ui-text); font: inherit; font-weight: 500; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
+.pt-button:hover { background: var(--ui-hover); }
+.pt-button.main { background: var(--ui-acc); color: var(--ui-acc-text); border-color: transparent; }
+.pt-button.main:hover { filter: brightness(1.06); }
+.pt-button.red { color: var(--ui-red); }
+.pt-button:disabled { opacity: .45; cursor: default; filter: none; }
+.pt-button.small { height: 32px; padding: 0 10px; font-size: 12px; }
+.pt-bottom { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 18px; }
+.pt-small { font-size: 12px; color: var(--ui-text3); }
+.pt-error { color: var(--ui-red); margin-top: 10px; min-height: 1em; }
+
+.pt-player { list-style: none; margin: 0 0 6px; padding: 0; display: grid; gap: 6px; }
+.pt-player li { display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 12px; border-radius: var(--ui-r-field);
+  background: var(--ui-field); border: 1px solid var(--ui-border); }
+.pt-player li.empty { color: var(--ui-text3); border-style: dashed; background: transparent; }
+.pt-point { width: 12px; height: 12px; border-radius: 3px; flex: none; }
+.pt-name { flex: 1; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pt-du { font-size: 11px; color: var(--ui-acc-line); margin-left: 6px; font-weight: 500; }
+.pt-info { font-size: 12px; color: var(--ui-text3); font-variant-numeric: tabular-nums; }
+.pt-info.way { color: var(--ui-red); }
+.pt-address { font-family: ui-monospace, monospace; font-size: 14px; color: var(--ui-text); background: var(--ui-field);
+  border: 1px solid var(--ui-border); border-radius: var(--ui-r-field); padding: 8px 12px; margin: 4px 0 14px; user-select: text; -webkit-user-select: text; }
+
+/* Leiste im Spiel */
+.pt-bar { position: absolute; top: 10px; left: 10px; right: 10px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 6px 8px; background: var(--ui-glass); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--ui-border); border-radius: var(--ui-r-button); }
+.pt-chip { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: var(--ui-r-chip);
+  background: var(--ui-field); border: 1px solid var(--ui-border); white-space: nowrap; }
+.pt-chip.way { border-color: var(--ui-red); color: var(--ui-red); }
+.pt-chip.waits { border-color: var(--ui-acc-line); }
+.pt-air { flex: 1; }
+.pt-measurement { font-size: 11px; color: var(--ui-text3); font-variant-numeric: tabular-nums; font-family: ui-monospace, monospace; }
+
+/* Hint in the middle (pause, countdown, connection) */
+.pt-banner { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); min-width: 280px; max-width: min(92vw, 460px);
+  text-align: center; background: var(--ui-glass); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--ui-border); border-radius: var(--ui-r-pane); box-shadow: var(--ui-shadow); padding: 20px 22px; }
+.pt-banner.red { border-color: var(--ui-red); }
+.pt-banner .pt-title { margin-bottom: 6px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.pt-banner .pt-text { margin-bottom: 0; }
+.pt-banner .pt-bottom { justify-content: center; flex-wrap: wrap; }
+.pt-big { font-size: 44px; font-weight: 600; color: var(--ui-acc-line); font-variant-numeric: tabular-nums; }
+.pt-tap { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); font-size: 12px; color: var(--ui-text3);
+  background: var(--ui-glass); padding: 4px 10px; border-radius: var(--ui-r-chip); white-space: nowrap; pointer-events: none; }
+@media (pointer: coarse) { .pt-tap .keys { display: none; } }
+.ic { flex: none; }
+.pt-spectator { display: flex; align-items: center; gap: 6px; margin-top: 8px; }
+.pt-colors { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+.pt-colors .pt-small { margin-right: 4px; }
+.pt-dab { width: 26px; height: 26px; border-radius: var(--ui-r-chip); border: 2px solid transparent; padding: 0; cursor: pointer;
+  box-shadow: inset 0 -3px 0 rgba(0,0,0,.25); transition: transform var(--ui-t1, 120ms); }
+.pt-dab:hover:not(:disabled) { transform: translateY(-1px); }
+.pt-dab.on { border-color: var(--ui-text-strong); }
+.pt-dab:disabled { opacity: .35; cursor: default; box-shadow: none;
+  background-image: linear-gradient(135deg, transparent 44%, rgba(0,0,0,.6) 44%, rgba(0,0,0,.6) 56%, transparent 56%); }

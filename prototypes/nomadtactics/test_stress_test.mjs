@@ -1,0 +1,34 @@
+import { chromium } from 'playwright';
+import { createServer } from 'http';
+import { readFileSync } from 'fs';
+import { join } from 'path';
+const srv = createServer((q, a) => { try { a.writeHead(200, { 'Content-Type': 'text/html' }); a.end(readFileSync(join(process.cwd(), 'nomadtactics_stress_test.html'))); } catch { a.writeHead(404); a.end(); } }).listen(8813);
+const b = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
+const s = await b.newPage({ viewport: { width: 1280, height: 760 }, deviceScaleFactor: 1 });
+s.on('pageerror', e => console.log('ERROR:', e.message));
+s.on('console', m => { if (m.type() === 'error' || m.text().startsWith('Messung')) console.log('terminal:', m.text()); });
+s.setDefaultTimeout(180000);
+const t0 = Date.now();
+await s.goto('http://localhost:8813/');
+await s.waitForFunction(() => window.stressTest, null, { timeout: 180000 });
+console.log('geladen in', Date.now() - t0, 'ms');
+console.log('Dreiecke je Einheit', JSON.stringify(await s.evaluate(() => stressTest.trianglesUnit)));
+await s.evaluate(() => stressTest.setQuality('middle'));
+await s.waitForTimeout(4000);
+await s.screenshot({ path: 'ht_0.png' });
+await s.waitForTimeout(14000);
+await s.screenshot({ path: 'ht_1.png' });
+await s.evaluate(() => stressTest.camera('near'));
+await s.waitForTimeout(2500);
+await s.screenshot({ path: 'ht_near.png' });
+await s.evaluate(() => stressTest.camera('far'));
+await s.waitForTimeout(2500);
+await s.screenshot({ path: 'ht_far.png' });
+const st = await s.evaluate(() => { const e = stressTest.units(); return { living: e.filter(u => u.alive).length, total: e.length, html: document.getElementById('details').innerText, fps: document.getElementById('fps').innerText }; });
+console.log(JSON.stringify(st));
+if (process.argv[2] === 'measure') {
+  await s.evaluate(() => { stressTest.rings.forEach(R => R.visible = true); stressTest.measureStart(); });
+  await s.waitForFunction(() => stressTest.result, null, { timeout: 200000 });
+  await s.screenshot({ path: 'ht_measurement.png' });
+}
+await b.close(); srv.close();

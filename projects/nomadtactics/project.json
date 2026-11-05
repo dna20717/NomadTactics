@@ -1,0 +1,21 @@
+{
+ "id": "nomadtactics",
+ "name": "NomadTactics",
+ "genre": "tactics",
+ "voxel": 0.4,
+ "resources": "data/resources.json",
+ "combat": "data/combat.json",
+ "keywords": "data/keywords.json",
+ "weapons": "data/weapons.json",
+ "models": "data/models.json",
+ "factions": [
+  "factions/usa.json",
+  "factions/china.json",
+  "factions/korea.json",
+  "factions/ukraine.json"
+ ],
+ "slots": "data/slots.json",
+ "world": "data/world.json",
+ "ui": "data/ui.json",
+ "experience": "data/experience.json"
+}

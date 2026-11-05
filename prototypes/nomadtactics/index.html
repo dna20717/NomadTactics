@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>html,body{margin:0;background:#1b1d22}canvas{display:block}</style>
+<script type="importmap">{ "imports": { "three": "./node_modules/three/build/three.module.js", "three/addons/": "./node_modules/three/examples/jsm/" } }</script>
+</head><body>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
+import { constructTank, countTriangles } from './leopard.js';
+
+const W = 1600, H = 1000;
+const r = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+r.setSize(W, H); r.shadowMap.enabled = true; r.shadowMap.type = THREE.PCFSoftShadowMap;
+r.setScissorTest(true);
+document.body.appendChild(r.domElement);
+
+function scene(ground) {
+  const s = new THREE.Scene(); s.background = new THREE.Color(0xb9c6cf); s.fog = new THREE.Fog(0xb9c6cf, 40, 120);
+  s.add(new THREE.HemisphereLight(0xdfe8ff, 0x5a4a35, 1.1));
+  const sun = new THREE.DirectionalLight(0xfff1dc, 2.2);
+  sun.position.set(8, 14, 6); sun.castShadow = true;
+  sun.shadow.mapSize.set(2048, 2048);
+  Object.assign(sun.shadow.camera, { left: -12, right: 12, top: 12, bottom: -12 });
+  s.add(sun);
+  const g = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.MeshStandardMaterial({ color: ground, roughness: 1 }));
+  g.rotation.x = -Math.PI / 2; g.receiveShadow = true; s.add(g);
+  return s;
+}
+
+// Panel 1-3: Studio
+const studio = scene(0x8a8572);
+const p = constructTank();
+p.getObjectByName('tower').rotation.y = 0.25;
+studio.add(p);
+
+// Panel 4: RTS zoom with three tanks in two teams
+const field = scene(0x7d7a52);
+const lawn = new THREE.Mesh(new THREE.PlaneGeometry(200, 200, 40, 40), new THREE.MeshStandardMaterial({ color: 0x6f7d45, flatShading: true }));
+const pos = lawn.geometry.attributes.position;
+for (let i = 0; i < pos.count; i++) pos.setZ(i, Math.sin(pos.getX(i) * 0.3) * 0.25 + Math.cos(pos.getY(i) * 0.25) * 0.25);
+lawn.geometry.computeVertexNormals(); lawn.rotation.x = -Math.PI / 2; lawn.position.y = -0.2; lawn.receiveShadow = true;
+field.add(lawn);
+for (const [x, z, red, team] of [[0, 0, 0.3, 0x2f6fd6], [-7, -5, 0.5, 0x2f6fd6], [9, 6, 3.6, 0xd63a2f]]) {
+  const t = constructTank({ team }); t.position.set(x, 0, z); t.rotation.y = red;
+  t.getObjectByName('tower').rotation.y = team === 0xd63a2f ? -0.3 : 0.2; field.add(t);
+}
+// a few rocks and trees for scale
+for (let i = 0; i < 14; i++) {
+  const tree = new THREE.Group();
+  const st = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.2, 1.2, 5), new THREE.MeshStandardMaterial({ color: 0x5a4030, flatShading: true }));
+  st.position.y = 0.6; tree.add(st);
+  const kr = new THREE.Mesh(new THREE.ConeGeometry(1.3, 3.2, 6), new THREE.MeshStandardMaterial({ color: 0x3d5a2a, flatShading: true }));
+  kr.position.y = 2.6; tree.add(kr);
+  const a = i * 2.4 + 0.4, d = 17 + (i % 3) * 3;
+  tree.position.set(Math.cos(a) * d, 0, Math.sin(a) * d * 0.7);
+  tree.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  field.add(tree);
+}
+
+function panel(sc, x, y, w, h, camera) {
+  r.setViewport(x, H - y - h, w, h); r.setScissor(x, H - y - h, w, h);
+  camera.aspect = w / h; camera.updateProjectionMatrix();
+  r.render(sc, camera);
+}
+function cam(fov, pos, target) { const c = new THREE.PerspectiveCamera(fov, 1, 0.1, 500); c.position.set(...pos); c.lookAt(...target); return c; }
+
+panel(studio, 0, 0, 800, 500, cam(30, [11, 6, 13], [0, 1.2, 1]));        // 3/4 vorne
+panel(studio, 800, 0, 800, 500, cam(30, [-10, 7, -12], [0, 1.2, 0]));      // 3/4 hinten
+panel(studio, 0, 500, 800, 500, cam(24, [22, 2.2, 0.8], [0, 1.2, 0.8]));   // Side
+panel(field, 800, 500, 800, 500, cam(35, [22, 34, 30], [0, 0, 0]));         // RTS-Blick
+
+window.triangles = countTriangles(p);
+window.glb = await new Promise(res => new GLTFExporter().parse(p, b => {
+  let s = ''; const u = new Uint8Array(b); for (let i = 0; i < u.length; i++) s += String.fromCharCode(u[i]); res(btoa(s));
+}, e => res('FEHLER ' + e), { binary: true }));
+window.done = true;
+</script></body></html>

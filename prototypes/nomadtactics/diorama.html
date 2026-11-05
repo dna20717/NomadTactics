@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>html,body{margin:0}canvas{display:block}</style>
+<script type="importmap">{ "imports": { "three": "./node_modules/three/build/three.module.js", "three/addons/": "./node_modules/three/examples/jsm/" } }</script>
+</head><body>
+<script type="module">
+import * as THREE from 'three';
+import { tank, kaserne } from './voxel2.js';
+import { mesh, tree, human, laterne, kiste } from './voxel3.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { HorizontalTiltShiftShader } from 'three/addons/shaders/HorizontalTiltShiftShader.js';
+import { VerticalTiltShiftShader } from 'three/addons/shaders/VerticalTiltShiftShader.js';
+
+const BLUE = 0x3a78d8, RED = 0xd8473a, V = 0.4;
+const r = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+r.shadowMap.enabled = true; r.shadowMap.type = THREE.VSMShadowMap;
+r.toneMapping = THREE.ACESFilmicToneMapping; r.toneMappingExposure = 1.0;
+document.body.appendChild(r.domElement);
+
+const s = new THREE.Scene();
+s.background = new THREE.Color(0xd8e6ea);
+s.fog = new THREE.Fog(0xd8e6ea, 120, 260);
+// Soft light: strong cool sky light from above, warm sun low and soft
+s.add(new THREE.HemisphereLight(0xcfe3ff, 0x8a7a5a, 1.6));
+const sun = new THREE.DirectionalLight(0xffe2b8, 2.4);
+sun.position.set(-18, 26, 14); sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048); sun.shadow.radius = 9; sun.shadow.blurSamples = 16; sun.shadow.bias = -0.0004;
+Object.assign(sun.shadow.camera, { left: -32, right: 32, top: 32, bottom: -32, far: 120 });
+s.add(sun);
+const fill = new THREE.DirectionalLight(0xbfd6ff, 0.5); fill.position.set(20, 10, -15); s.add(fill);
+
+// --- Terrain in 40 cm voxels: grass with tufts, paved paths, gentle steps ---
+const G = new Map(), gs = (x, y, z, a) => G.set(`${x},${y},${z}`, a);
+const N = 75;   // ±30 m
+const way = (x, z) => (Math.abs(x - 5) <= 3 && z > 18) || (Math.abs(z - 22) <= 3 && x < 8) || (Math.abs(x) <= 37 && z >= -25 && z <= 31 && false);
+const hof = (x, z) => x >= -43 && x <= 43 && z >= -25 && z <= 33;
+for (let x = -N; x <= N; x++) for (let z = -N; z <= N; z++) {
+  const d = Math.max(Math.abs(x), Math.abs(z));
+  let h = 0;
+  if (!hof(x, z)) h = Math.max(0, Math.round(1.2 + Math.sin(x * 0.08) * 1.5 + Math.cos(z * 0.07 + 1) * 1.5 - (d < 55 ? 1.5 : 0)));
+  for (let y = -2; y <= h; y++) {
+    let a = y < h ? 'earth' : 'grass';
+    if (y === h && way(x, z)) a = ((x + 100) % 3 === 0 || (z + 100) % 3 === 0) ? 'platesJoint' : 'plate';
+    gs(x, y, z, a);
+  }
+  // Tufts and flowers
+  const hsh = Math.abs((x * 92837111) ^ (z * 689287499)) % 100;
+  if (!way(x, z) && !hof(x, z) && hsh < 3) gs(x, h + 1, z, hsh < 1 ? 'flower' : 'grassBrightness');
+  if (!way(x, z) && hof(x, z) && hsh < 2 && Math.abs(x) > 40) gs(x, h + 1, z, 'grassBrightness');
+}
+const ground = mesh(G, { V }); ground.position.y = -V; s.add(ground);
+
+function spot(W, team, x, z, red = 0, y = 0) { const m = mesh(W, { V, team }); m.position.set(x, y, z); m.rotation.y = red; s.add(m); return m; }
+spot(kaserne(), BLUE, 0, 0);
+spot(tank(), BLUE, 11, 10.5, 0.35);
+spot(tank(), BLUE, 4.5, 12.5, -0.1);
+spot(tank(), RED, -21, 17, 2.3);
+// Life in the scene
+const people = [[1.5, 7.2], [-1.2, 7.6], [7.8, 7.4], [8.3, 6.7], [-6, 8.2], [3, 15.6], [-9.5, 10.5], [13.5, 7.5]];
+people.forEach(([x, z], i) => { const m = mesh(human(i), { V: 0.25, team: BLUE }); m.position.set(x, 0, z); m.rotation.y = i * 1.3; s.add(m); });
+for (const [x, z] of [[-4.5, 9], [9.5, 13.8], [-9, 13.8], [14.5, 13.8]]) spot(laterne(), 0, x, z);
+for (const [x, z, rr] of [[12.5, 4.6, 0.2], [-14, 5.5, 0.6], [-15, 7, 0]]) spot(kiste(), 0, x, z, rr);
+const trees = [[-19, -4, 2], [-22, 4, 1], [-18, 11, 2], [19, -6, 1], [21, 3, 2], [17, 15, 1], [-12, -13, 1], [12, -14, 2], [0, -16, 1], [24, 12, 0], [-25, -10, 2], [26, -12, 1], [-6, 22, 1], [-28, 16, 2], [28, 22, 2]];
+trees.forEach(([x, z, g], i) => spot(tree(g, i), 0, x, z, i));
+
+// --- Nachbearbeitung ---
+const W = 1600, H = 900;
+r.setSize(W, H);
+const cam = new THREE.PerspectiveCamera(22, W / H, 1, 600);
+cam.position.set(40, 44, 52); cam.lookAt(0, 0, 5);
+const comp = new EffectComposer(r); comp.setSize(W, H);
+comp.addPass(new RenderPass(s, cam));
+const ao = new GTAOPass(s, cam, W, H); ao.output = GTAOPass.OUTPUT.Default;
+ao.updateGtaoMaterial({ radius: 1.2, distanceExponent: 1.5, thickness: 2, scale: 1.4, samples: 16 });
+ao.blendIntensity = 0.85; comp.addPass(ao);
+comp.addPass(new UnrealBloomPass(new THREE.Vector2(W, H), 0.18, 0.6, 0.88));
+for (let i = 0; i < 2; i++) {
+  const hp = new ShaderPass(HorizontalTiltShiftShader); hp.uniforms.h.value = 1.7 / W; hp.uniforms.r.value = 0.52; comp.addPass(hp);
+  const vp = new ShaderPass(VerticalTiltShiftShader); vp.uniforms.v.value = 1.7 / H; vp.uniforms.r.value = 0.52; comp.addPass(vp);
+}
+comp.addPass(new OutputPass());
+// Color look: shadows slightly lifted and cool, highlights warm, a bit more saturation, soft vignette
+comp.addPass(new ShaderPass({ uniforms: { tDiffuse: { value: null } },
+  vertexShader: 'varying vec2 u; void main(){ u = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
+  fragmentShader: `uniform sampler2D tDiffuse; varying vec2 u;
+    void main(){ vec3 c = texture2D(tDiffuse, u).rgb;
+      float g = dot(c, vec3(0.299,0.587,0.114));
+      c = mix(vec3(g), c, 1.12);
+      c = c * 0.96 + vec3(0.02, 0.025, 0.035);
+      c *= mix(vec3(1.0), vec3(1.04, 1.0, 0.95), smoothstep(0.4, 0.9, g));
+      float vig = smoothstep(1.05, 0.35, length(u - 0.5)); c *= mix(0.86, 1.0, vig);
+      gl_FragColor = vec4(c, 1.0); }` }));
+comp.render();
+window.info = { ok: true };
+window.done = true;
+</script></body></html>

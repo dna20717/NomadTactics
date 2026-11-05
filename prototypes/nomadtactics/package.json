@@ -1,0 +1,15 @@
+{
+  "name": "nomadtactics-prototype",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "esbuild playground.js --bundle --minify --format=iife --outfile=bundle.js && python3 -c \"h=open('playground.html').read(); b=open('bundle.js').read().replace('</script','<\\\\/script'); open('nomadtactics_playground.html','w').write(h.replace('/*BUNDLE*/', b))\"",
+    "build:stress": "esbuild hud_test.js --bundle --minify --format=iife --loader:.css=text --outfile=bundle_stress.js && python3 -c \"h=open('stress_test.html').read(); b=open('bundle_stress.js').read().replace('</script','<\\\\/script'); open('nomadtactics_stress_test.html','w').write(h.replace('/*BUNDLE*/', b))\""
+  },
+  "dependencies": {
+    "three": "0.170.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.24.2"
+  }
+}

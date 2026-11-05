@@ -1,0 +1,581 @@
+{
+ "id": "usa",
+ "name": "USA",
+ "color": "#3a78d8",
+ "description": "Hochgerüstete Berufsarmee. Wenige, teure Einheiten mit Reichweite und Luftüberlegenheit. Jedes Gebäude braucht Strom: fällt das Netz, steht die Armee.",
+ "playstyle": "Halten und präzise zuschlagen",
+ "resources": ["money", "power", "rank"],
+ "start": {"money": 10000, "building": ["hauptquartier"], "units": ["bautrupp", "bautrupp"]},
+ "building": {
+  "hauptquartier": {
+   "name": "Hauptquartier",
+   "function": "hq",
+   "model": "kaserne",
+   "cost": {"money": 2000},
+   "buildTime": 40,
+   "health": 3000,
+   "armor": "building",
+   "size": [8, 8],
+   "power": 5,
+   "produces": ["bautrupp"],
+   "keywords": {"scout": true},
+   "pos": [0, 0]
+  },
+  "kraftwerk": {
+   "name": "Fusionskraftwerk",
+   "function": "power",
+   "cost": {"money": 800},
+   "buildTime": 15,
+   "health": 1200,
+   "armor": "building",
+   "size": [5, 5],
+   "power": 10,
+   "requires": ["hauptquartier"],
+   "pos": [-1, 1],
+   "description": "Explodiert heftig, wenn es zerstört wird."
+  },
+  "kaserne": {
+   "name": "Kaserne",
+   "function": "production",
+   "model": "kaserne",
+   "cost": {"money": 600},
+   "buildTime": 12,
+   "health": 1500,
+   "armor": "building",
+   "size": [6, 5],
+   "power": -1,
+   "produces": ["soldat", "scharfschuetze"],
+   "requires": ["kraftwerk"],
+   "keywords": {"garnison": 10},
+   "pos": [-1.5, 2]
+  },
+  "depot": {
+   "name": "Nachschubdepot",
+   "function": "resource",
+   "cost": {"money": 1500},
+   "buildTime": 20,
+   "health": 1600,
+   "armor": "building",
+   "size": [7, 6],
+   "power": -1,
+   "produces": ["versorger"],
+   "requires": ["kraftwerk"],
+   "pos": [-0.5, 2]
+  },
+  "waffenfabrik": {
+   "name": "Waffenfabrik",
+   "function": "production",
+   "cost": {"money": 2000},
+   "buildTime": 25,
+   "health": 2400,
+   "armor": "building",
+   "size": [9, 7],
+   "power": -3,
+   "produces": ["spaeher", "kampfpanzer", "lenkwerfer"],
+   "requires": ["depot"],
+   "pos": [-0.5, 3]
+  },
+  "flugfeld": {
+   "name": "Flugfeld",
+   "function": "production",
+   "cost": {"money": 1800},
+   "buildTime": 25,
+   "health": 1800,
+   "armor": "building",
+   "size": [10, 8],
+   "power": -4,
+   "produces": ["kampfdrohne", "jaeger", "transporter", "empbomber"],
+   "requires": ["waffenfabrik"],
+   "pos": [1, 4]
+  },
+  "forschungszentrum": {
+   "name": "Forschungszentrum",
+   "function": "research",
+   "cost": {"money": 1500},
+   "buildTime": 20,
+   "health": 1400,
+   "armor": "building",
+   "size": [6, 6],
+   "power": -3,
+   "requires": ["waffenfabrik"],
+   "pos": [-0.5, 4]
+  },
+  "abwehrlaser": {
+   "name": "Abwehrlaser",
+   "function": "defense",
+   "cost": {"money": 900},
+   "buildTime": 10,
+   "health": 1000,
+   "armor": "building",
+   "size": [2, 2],
+   "power": -2,
+   "weapons": ["laser"],
+   "requires": ["kaserne"],
+   "pos": [-2.5, 3]
+  },
+  "raketenabwehr": {
+   "name": "Raketenabwehr",
+   "function": "defense",
+   "cost": {"money": 800},
+   "buildTime": 10,
+   "health": 900,
+   "armor": "building",
+   "size": [2, 2],
+   "power": -2,
+   "weapons": ["abfangrakete"],
+   "requires": ["kaserne"],
+   "pos": [-1.5, 3]
+  },
+  "ionenkanone": {
+   "name": "Ionenkanone",
+   "function": "superweapon",
+   "cost": {"money": 5000},
+   "buildTime": 60,
+   "health": 4000,
+   "armor": "building",
+   "size": [6, 6],
+   "power": -10,
+   "weapons": ["ionenstrahl"],
+   "requires": ["forschungszentrum", "satellitennetz"],
+   "pos": [0, 6],
+   "description": "Einmal alle 5 Minuten: Ein Strahl aus dem Orbit."
+  }
+ },
+ "units": {
+  "bautrupp": {
+   "name": "Bautrupp",
+   "role": "Bauen",
+   "class": "vehicle",
+   "model": "dozer",
+   "cost": {"money": 1000},
+   "buildTime": 10,
+   "health": 250,
+   "armor": "leicht",
+   "speed": 4.5,
+   "sight": 20,
+   "keywords": {"builds": true, "track": true},
+   "equipment": ["spaeherdrohne", "gefechtsdrohne", "raketendrohne"],
+   "experience": {
+    "tiers": [
+     {"id": "vorarbeiter", "name": "Vorarbeiter", "min": 40, "effect": [{"kind": "stat", "field": "speed", "times": 1.2}]},
+     {
+      "id": "meister",
+      "name": "Meister",
+      "min": 120,
+      "effect": [{"kind": "stat", "field": "speed", "times": 1.08},{"kind": "stat", "field": "health", "times": 1.3}],
+      "text": "zäher und flinker"
+     }
+    ]
+   }
+  },
+  "versorger": {
+   "name": "Versorgungslaster",
+   "role": "Sammeln",
+   "class": "vehicle",
+   "model": "spaeher",
+   "cost": {"money": 600},
+   "buildTime": 10,
+   "health": 200,
+   "armor": "leicht",
+   "speed": 6,
+   "sight": 20,
+   "keywords": {"collects": 300, "wheel": true},
+   "equipment": ["spaeherdrohne", "gefechtsdrohne", "raketendrohne"]
+  },
+  "soldat": {
+   "name": "Soldat",
+   "role": "Grundtruppe",
+   "class": "infantry",
+   "model": "soldat",
+   "cost": {"money": 225},
+   "buildTime": 5,
+   "health": 120,
+   "armor": "infantry",
+   "speed": 2.8,
+   "sight": 24,
+   "weapons": ["sturmgewehr"],
+   "equipment": ["zielfernrohr"],
+   "keywords": {"fallschirm": true, "nachtsicht": true},
+   "experience": {
+    "tiers": [
+     {"id": "gefreiter", "name": "Gefreiter", "min": 30, "effect": [{"kind": "stat", "field": "damage", "times": 1.15}]},
+     {"id": "unteroffizier", "name": "Unteroffizier", "min": 90, "effect": [{"kind": "stat", "field": "health", "times": 1.25}]},
+     {"id": "feldwebel", "name": "Feldwebel", "min": 200, "effect": [{"kind": "stat", "field": "damage", "times": 1.17}]},
+     {
+      "id": "held",
+      "name": "Held",
+      "min": 400,
+      "effect": [{"kind": "stat", "field": "damage", "times": 1.1},{"kind": "stat", "field": "health", "times": 1.2},{"kind": "keyword", "keyword": "veteran"}],
+      "text": "Unerschütterlich"
+     }
+    ]
+   }
+  },
+  "scharfschuetze": {
+   "name": "Scharfschütze",
+   "role": "Infanterie-Jäger",
+   "class": "infantry",
+   "model": "soldat",
+   "cost": {"money": 600},
+   "buildTime": 10,
+   "health": 90,
+   "armor": "infantry",
+   "speed": 2.6,
+   "sight": 36,
+   "weapons": [
+    "scharfschuetzengewehr"
+   ],
+   "keywords": {"tarnung": true, "fallschirm": true, "nachtsicht": true},
+   "requires": ["forschungszentrum"],
+   "equipment": ["zielfernrohr"]
+  },
+  "spaeher": {
+   "name": "Späher",
+   "role": "Aufklärung",
+   "class": "vehicle",
+   "model": "spaeher",
+   "cost": {"money": 700},
+   "buildTime": 8,
+   "health": 240,
+   "armor": "leicht",
+   "speed": 10,
+   "sight": 34,
+   "weapons": ["mg"],
+   "keywords": {"scout": true, "transport": 4, "schnell": true, "wheel": true, "fahrtfeuer": true, "schiessscharten": true, "size": 3, "nachtsicht": true},
+   "equipment": ["spaeherdrohne", "gefechtsdrohne", "raketendrohne"],
+   "experience": {
+    "tiers": [
+     {"id": "veteran", "name": "Veteran", "min": 40, "effect": [{"kind": "stat", "field": "speed", "times": 1.15}]},
+     {
+      "id": "elite",
+      "name": "Elite",
+      "min": 120,
+      "effect": [{"kind": "stat", "field": "speed", "times": 1.09},{"kind": "stat", "field": "damage", "times": 1.2},{"kind": "stat", "field": "sight", "times": 1.25}]
+     },
+     {"id": "held", "name": "Held", "min": 260, "effect": [{"kind": "stat", "field": "damage", "times": 1.17},{"kind": "stat", "field": "health", "times": 1.2}]}
+    ]
+   }
+  },
+  "kampfpanzer": {
+   "name": "Kampfpanzer",
+   "role": "Panzerbrecher",
+   "class": "vehicle",
+   "model": "tank",
+   "cost": {"money": 1200},
+   "buildTime": 14,
+   "health": 500,
+   "armor": "schwer",
+   "speed": 5.5,
+   "sight": 26,
+   "weapons": ["kanone_120"],
+   "keywords": {"tough": 4, "track": true, "fahrtfeuer": true, "nachtsicht": true, "rauchwand": 12},
+   "equipment": ["spaeherdrohne", "gefechtsdrohne", "raketendrohne", "reaktivpanzerung"],
+   "experience": {
+    "tiers": [
+     {"id": "veteran", "name": "Veteran", "min": 80, "effect": [{"kind": "stat", "field": "damage", "times": 1.15}]},
+     {
+      "id": "elite",
+      "name": "Elite",
+      "min": 220,
+      "effect": [{"kind": "stat", "field": "damage", "times": 1.13},{"kind": "stat", "field": "health", "times": 1.2},{"kind": "keyword", "keyword": "selfRepair"}]
+     },
+     {
+      "id": "held",
+      "name": "Held",
+      "min": 450,
+      "effect": [{"kind": "stat", "field": "damage", "times": 1.15},{"kind": "stat", "field": "health", "times": 1.17},{"kind": "stat", "field": "speed", "times": 1.1}],
+      "text": "+50 % Schaden, +40 % Leben, schneller"
+     }
+    ]
+   }
+  },
+  "lenkwerfer": {
+   "name": "Lenkraketenwerfer",
+   "role": "Artillerie",
+   "class": "vehicle",
+   "model": "werfer",
+   "cost": {"money": 1400},
+   "buildTime": 16,
+   "health": 220,
+   "armor": "leicht",
+   "speed": 5,
+   "sight": 24,
+   "weapons": ["lenkrakete"],
+   "requires": ["forschungszentrum"],
+   "equipment": ["spaeherdrohne", "gefechtsdrohne", "raketendrohne"],
+   "keywords": {"wheel": true, "aufbauen": 3},
+   "experience": {
+    "tiers": [
+     {"id": "veteran", "name": "Veteran", "min": 60, "effect": [{"kind": "stat", "field": "damage", "times": 1.2}]},
+     {
+      "id": "elite",
+      "name": "Elite",
+      "min": 180,
+      "effect": [{"kind": "stat", "field": "damage", "times": 1.17},{"kind": "stat", "field": "health", "times": 1.15},{"kind": "stat", "field": "range", "times": 1.1}]
+     }
+    ]
+   }
+  },
+  "kampfdrohne": {
+   "name": "Kampfdrohne",
+   "role": "Schwarm",
+   "class": "air",
+   "cost": {"money": 900},
+   "buildTime": 10,
+   "health": 80,
+   "armor": "air",
+   "speed": 12,
+   "sight": 26,
+   "weapons": ["bordkanone"],
+   "keywords": {"flies": true, "schwarm": true, "hovers": true}
+  },
+  "jaeger": {
+   "name": "Jagdbomber",
+   "role": "Luftschlag",
+   "class": "air",
+   "cost": {"money": 1400},
+   "buildTime": 14,
+   "health": 200,
+   "armor": "air",
+   "speed": 24,
+   "sight": 30,
+   "weapons": ["air_ground"],
+   "keywords": {"flies": true, "jet": true, "munition": 4}
+  },
+  "transporter": {
+   "name": "Transporthubschrauber",
+   "role": "Transport",
+   "class": "air",
+   "cost": {"money": 900},
+   "buildTime": 10,
+   "health": 300,
+   "armor": "air",
+   "speed": 14,
+   "sight": 24,
+   "keywords": {"flies": true, "transport": 8, "hovers": true, "lazarett": 5}
+  },
+  "drohne_spaeh": {
+   "name": "Späherdrohne",
+   "role": "Begleiter",
+   "class": "air",
+   "armor": "air",
+   "cost": {},
+   "health": 40,
+   "speed": 12,
+   "sight": 40,
+   "keywords": {"flies": true, "companion": true, "scout": true, "hovers": true}
+  },
+  "drohne_gefecht": {
+   "name": "Gefechtsdrohne",
+   "role": "Begleiter",
+   "class": "air",
+   "armor": "air",
+   "cost": {},
+   "health": 60,
+   "speed": 12,
+   "sight": 26,
+   "weapons": ["mg"],
+   "keywords": {"flies": true, "companion": true, "repaired": 4, "hovers": true}
+  },
+  "drohne_rakete": {
+   "name": "Raketendrohne",
+   "role": "Begleiter",
+   "class": "air",
+   "armor": "air",
+   "cost": {},
+   "health": 50,
+   "speed": 12,
+   "sight": 26,
+   "weapons": ["drohnenrakete"],
+   "keywords": {"flies": true, "companion": true, "hovers": true}
+  },
+  "empbomber": {
+   "name": "EMP-Bomber",
+   "role": "Lähmen",
+   "class": "air",
+   "cost": {"money": 1600},
+   "buildTime": 16,
+   "health": 220,
+   "armor": "air",
+   "speed": 22,
+   "sight": 30,
+   "weapons": ["emp_bombe"],
+   "requires": ["forschungszentrum"],
+   "keywords": {"flies": true, "jet": true, "munition": 1},
+   "description": "Ein Überflug legt eine ganze Basis lahm."
+  }
+ },
+ "research": {
+  "verbundpanzerung": {
+   "name": "Verbundpanzerung",
+   "symbol": "V",
+   "cost": {"money": 1500},
+   "time": 30,
+   "researchIn": "forschungszentrum",
+   "requires": ["forschungszentrum"],
+   "pos": [-1, 5],
+   "description": "Alle Fahrzeuge halten 25 % mehr aus.",
+   "effect": [{"kind": "stat", "target": "class:vehicle", "field": "health", "times": 1.25}]
+  },
+  "laserzielsuche": {
+   "name": "Laser-Zielsuche",
+   "symbol": "L",
+   "cost": {"money": 1000},
+   "time": 25,
+   "researchIn": "forschungszentrum",
+   "requires": ["forschungszentrum"],
+   "pos": [0, 5],
+   "description": "Panzer und Abwehrlaser schießen 15 % weiter.",
+   "effect": [{"kind": "stat", "target": "unit:kampfpanzer", "field": "range", "times": 1.15},{"kind": "stat", "target": "building:abwehrlaser", "field": "range", "times": 1.15}]
+  },
+  "drohnenschild": {
+   "name": "Drohnenschild",
+   "symbol": "S",
+   "cost": {"money": 1200},
+   "time": 25,
+   "researchIn": "flugfeld",
+   "requires": ["flugfeld"],
+   "pos": [1.5, 5],
+   "description": "Kampfdrohnen bekommen ein Energieschild.",
+   "effect": [{"kind": "keyword", "target": "unit:kampfdrohne", "keyword": "sign", "stat": 60}]
+  },
+  "satellitennetz": {
+   "name": "Satellitennetz",
+   "symbol": "◎",
+   "cost": {"money": 2500},
+   "time": 45,
+   "researchIn": "forschungszentrum",
+   "requires": ["laserzielsuche"],
+   "pos": [0.5, 5.5],
+   "description": "Voraussetzung für die Ionenkanone. Alle Gebäude werden Aufklärer.",
+   "effect": [{"kind": "keyword", "target": "all_building", "keyword": "scout"}]
+  },
+  "praezisionsschlag": {
+   "name": "Präzisionsschlag",
+   "symbol": "✦",
+   "cost": {"rank": 3},
+   "time": 0,
+   "requires": ["hauptquartier"],
+   "pos": [1, 1],
+   "description": "General-Fähigkeit: Ein Marschflugkörper auf ein Ziel nach Wahl.",
+   "effect": [{"kind": "ability", "name": "Präzisionsschlag", "cooldown": 180, "description": "400 Schaden, Fläche 4 m."}]
+  }
+ },
+ "generals": {
+  "vega": {
+   "name": "Generalin Vega",
+   "title": "Luftmarschall",
+   "motto": "Wer oben ist, hat recht.",
+   "description": "Alles, was fliegt, ist billiger und besser. Schwere Panzer gibt es kaum.",
+   "modify": {
+    "units": {
+     "jaeger": {"cost": {"money": 1050}, "health": 260},
+     "kampfdrohne": {"cost": {"money": 700}},
+     "kampfpanzer": {"cost": {"money": 1500}, "buildTime": 18},
+     "tarnbomber": {
+      "name": "Tarnkappenbomber",
+      "role": "Bunkerbrecher",
+      "class": "air",
+      "cost": {"money": 2500},
+      "buildTime": 25,
+      "health": 250,
+      "armor": "air",
+      "speed": 22,
+      "sight": 26,
+      "weapons": ["bomb"],
+      "keywords": {"flies": true, "jet": true, "tarnung": true},
+      "requires": ["nachbrenner"]
+     }
+    },
+    "building": {
+     "flugfeld": {"produces": ["kampfdrohne", "jaeger", "transporter", "tarnbomber", "empbomber"], "cost": {"money": 1400}}
+    },
+    "research": {
+     "nachbrenner": {
+      "name": "Nachbrenner",
+      "symbol": "N",
+      "cost": {"money": 1500},
+      "time": 30,
+      "researchIn": "flugfeld",
+      "requires": ["flugfeld"],
+      "pos": [2.5, 5],
+      "description": "Flugzeuge 30 % schneller. Schaltet den Tarnkappenbomber frei.",
+      "effect": [{"kind": "stat", "target": "class:air", "field": "speed", "times": 1.3}]
+     }
+    },
+    "equipment": {
+     "gefechtsdrohne": {"cost": {"money": 180}},
+     "raketendrohne": {"cost": {"money": 220}}
+    }
+   },
+   "without": ["lenkwerfer"]
+  },
+  "okafor": {
+   "name": "General Okafor",
+   "title": "Lichtbringer",
+   "motto": "Strom ist Munition.",
+   "description": "Laser statt Kanonen. Mächtig, solange das Netz hält – und es braucht viel mehr Strom.",
+   "modify": {
+    "units": {
+     "kampfpanzer": {"name": "Laserpanzer", "weapons": ["laserkanone"], "cost": {"money": 1400}, "equipment": ["spaeherdrohne", "gefechtsdrohne", "reaktivpanzerung"]}
+    },
+    "building": {
+     "kraftwerk": {"power": 14, "cost": {"money": 900}},
+     "abwehrlaser": {"health": 1400, "keywords": {"sign": 300}},
+     "waffenfabrik": {"power": -5}
+    }
+   },
+   "without": ["raketenabwehr"]
+  }
+ },
+ "equipment": {
+  "spaeherdrohne": {
+   "name": "Späherdrohne",
+   "symbol": "S",
+   "slot": "drohne",
+   "cost": {"money": 100},
+   "time": 5,
+   "description": "Sieht weit und entdeckt Getarnte.",
+   "effect": [{"kind": "companion", "unit": "drohne_spaeh"}]
+  },
+  "gefechtsdrohne": {
+   "name": "Gefechtsdrohne",
+   "symbol": "G",
+   "slot": "drohne",
+   "cost": {"money": 250},
+   "time": 8,
+   "description": "Schießt mit und flickt das Fahrzeug.",
+   "effect": [{"kind": "companion", "unit": "drohne_gefecht"}]
+  },
+  "raketendrohne": {
+   "name": "Raketendrohne",
+   "symbol": "R",
+   "slot": "drohne",
+   "cost": {"money": 300},
+   "time": 10,
+   "requires": ["forschungszentrum"],
+   "description": "Feuert Raketen auf alles, was das Fahrzeug angreift.",
+   "effect": [{"kind": "companion", "unit": "drohne_rakete"}]
+  },
+  "reaktivpanzerung": {
+   "name": "Reaktivpanzerung",
+   "symbol": "P",
+   "slot": "panzerung",
+   "cost": {"money": 300},
+   "time": 10,
+   "onlyAt": "waffenfabrik",
+   "description": "Nur an der Waffenfabrik nachrüstbar.",
+   "effect": [{"kind": "stat", "field": "health", "plus": 150},{"kind": "stat", "field": "speed", "times": 0.9}]
+  },
+  "zielfernrohr": {
+   "name": "Zielfernrohr",
+   "symbol": "Z",
+   "slot": "optik",
+   "cost": {"money": 150},
+   "time": 6,
+   "description": "20 % mehr Reichweite.",
+   "effect": [{"kind": "stat", "field": "range", "times": 1.2}]
+  }
+ },
+ "ui": {"mood": "modern", "accent": "#4fa3ff"}
+}

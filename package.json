@@ -1,0 +1,19 @@
+{
+  "name": "nomadtactics",
+  "version": "0.1.0",
+  "description": "Echtzeit-Strategiespiel mit Basisbau als Hommage an C&C Generals / Zero Hour. Voxel-Diorama, Lockstep-Multiplayer, Daten-Werkstatt.",
+  "type": "module",
+  "private": true,
+  "license": "GPL-3.0-or-later",
+  "bin": { "nt": "tools/nt.js" },
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "nt": "node tools/nt.js",
+    "serve": "python3 -m http.server 8765",
+    "party": "node tools/party/server.js",
+    "party:test": "node tools/party/party_test.mjs"
+  },
+  "dependencies": {
+    "pngjs": "7.0.0"
+  }
+}

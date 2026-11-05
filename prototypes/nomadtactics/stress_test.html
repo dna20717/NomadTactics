@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="de"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>NomadTactics – Härtetest</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #d8e6ea; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif; touch-action: none; user-select: none; -webkit-user-select: none; }
+  canvas { display: block; }
+  .glass { background: rgba(28, 30, 34, 0.8); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); box-shadow: 0 6px 24px rgba(0,0,0,.25); color: #eee; border-radius: 14px; }
+  .bar { position: fixed; display: flex; gap: 4px; align-items: center; flex-wrap: wrap; padding: 6px; }
+  #top { top: 12px; left: 12px; max-width: calc(100vw - 260px); }
+  #bottom { bottom: 12px; left: 50%; transform: translateX(-50%); width: max-content; max-width: calc(100vw - 24px); justify-content: center; }
+  button.red { color: #ff8a7a; } button.red.on { background: rgba(255, 70, 50, .25); color: #ffb3a8; }
+  #countdown { position: fixed; inset: 0; display: grid; place-items: center; font-size: 22vmin; font-weight: 800; color: #ff3b2a; text-shadow: 0 0 40px rgba(255,60,40,.6); opacity: 0; pointer-events: none; transition: opacity .2s; }
+  #flash { position: fixed; inset: 0; background: #fff8ec; opacity: 0; pointer-events: none; }
+  .title { font-weight: 700; font-size: 13px; letter-spacing: .02em; padding: 0 8px 0 6px; color: #f3e7c8; }
+  .small { font-size: 11px; color: #999; padding: 0 4px 0 6px; }
+  button { font: inherit; font-size: 13px; color: #ddd; background: transparent; border: 0; border-radius: 10px; padding: 8px 11px; cursor: pointer; }
+  button:hover { background: rgba(255,255,255,.08); }
+  button.on { background: rgba(240, 196, 92, .22); color: #ffd98a; }
+  button.main { background: #e0b240; color: #241c08; font-weight: 600; }
+  button.main.on { background: #8a6d22; color: #fff2cc; }
+  .sep { width: 1px; height: 22px; background: rgba(255,255,255,.15); margin: 0 4px; }
+  #stats { position: fixed; top: 12px; right: 12px; padding: 10px 14px; min-width: 200px; font-size: 12px; line-height: 1.5; color: #bbb; }
+  #fps { font-size: 34px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+  #fps::after { content: ' fps'; font-size: 13px; font-weight: 500; color: #999; }
+  #fps.good { color: #8fe08a; } #fps.middle { color: #ffd36a; } #fps.bad { color: #ff7a6a; }
+  #legend { position: fixed; bottom: 70px; left: 12px; padding: 10px 14px; font-size: 12px; line-height: 1.55; max-width: 290px; }
+  #legend.to .content { display: none; }
+  #legend b { color: #f3e7c8; font-weight: 600; }
+  #legend .head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+  #legend .head button { padding: 2px 8px; font-size: 12px; }
+  #result { position: fixed; inset: 0; display: none; place-items: center; background: rgba(10,12,16,.35); }
+  #result.da { display: grid; }
+  #result .map { padding: 20px 24px; min-width: 300px; max-width: 420px; font-size: 13px; }
+  #result h2 { margin: 0 0 10px; font-size: 15px; color: #f3e7c8; }
+  #result .big { font-size: 44px; font-weight: 800; color: #8fe08a; margin-bottom: 10px; }
+  #result .big small { font-size: 14px; font-weight: 500; color: #aaa; }
+  #result table { width: 100%; border-collapse: collapse; }
+  #result td { padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,.08); }
+  #result td:last-child { text-align: right; color: #fff; font-variant-numeric: tabular-nums; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #result .foot { display: flex; justify-content: flex-end; margin-top: 14px; }
+  .lf { position: fixed; z-index: 5; display: flex; flex-direction: column; opacity: 0; transform: scale(.96); transition: opacity .18s, transform .18s; }
+  .lf.da { opacity: 1; transform: none; }
+  .lf.blink .lf-image { animation: blink .9s ease-out; }
+  @keyframes blink { 0% { box-shadow: 0 0 0 4px #ffd060, 0 8px 28px rgba(0,0,0,.3); } 100% { box-shadow: 0 0 0 1px rgba(255,255,255,.35), 0 8px 28px rgba(0,0,0,.3); } }
+  .lf-head { display: flex; align-items: center; gap: 6px; padding: 4px 4px 4px 10px; border-radius: 12px 12px 0 0; cursor: grab; touch-action: none; font-size: 12px; }
+  .lf-head:active { cursor: grabbing; }
+  .lf-point { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+  .lf-title { font-weight: 700; color: #f3e7c8; white-space: nowrap; }
+  .lf-sub { color: #999; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .lf-head button { padding: 5px 6px; border-radius: 8px; line-height: 0; color: #bbb; }
+  .lf-head button.on { color: #ffd98a; }
+  .lf-image { background: transparent; box-shadow: 0 0 0 1px rgba(255,255,255,.35), 0 8px 28px rgba(0,0,0,.3); cursor: crosshair; touch-action: none; }
+  .lf[data-kind=event] .lf-head { box-shadow: inset 0 -2px 0 #ff8a3a; }
+  .lf-foot { display: flex; align-items: center; gap: 8px; padding: 5px 10px; border-radius: 0 0 12px 12px; font-size: 11px; color: #aaa; }
+  .lf-info { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .lf-bar { width: 70px; height: 5px; border-radius: 3px; background: rgba(255,255,255,.12); overflow: hidden; }
+  .lf-bar i { display: block; height: 100%; width: 0; }
+  .lf[data-kind=post] .lf-bar { display: none; }
+  .lf-image { position: relative; overflow: hidden; }
+  .lf-jam { position: absolute; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 4px; pointer-events: none; font-family: ui-monospace, Menlo, Consolas, monospace; }
+  .lf-jam b { font-size: 15px; letter-spacing: .18em; color: #ff6a5a; background: rgba(10,10,12,.72); padding: 5px 10px; border-radius: 4px; animation: flick 1.1s steps(2) infinite; }
+  .lf-jam span { font-size: 11px; letter-spacing: .08em; color: #ddd; background: rgba(10,10,12,.6); padding: 2px 8px; border-radius: 3px; }
+  .lf.way .lf-jam { display: flex; }
+  .lf.way .lf-image { box-shadow: 0 0 0 1px rgba(255,106,90,.6), 0 8px 28px rgba(0,0,0,.3); }
+  @keyframes flick { 0%, 100% { opacity: 1; } 50% { opacity: .55; } }
+  .lf-corner { position: absolute; right: -4px; bottom: -4px; width: 18px; height: 18px; cursor: nwse-resize; touch-action: none; }
+  .lf-corner::after { content: ''; position: absolute; right: 7px; bottom: 7px; width: 7px; height: 7px; border-right: 2px solid #aaa; border-bottom: 2px solid #aaa; }
+  #load { position: fixed; inset: 0; display: grid; place-items: center; font-size: 14px; color: #555; }
+  @media (max-width: 900px) { #top { max-width: calc(100vw - 24px); } #stats { top: auto; bottom: 70px; } #legend { display: none; } }
+  #bridges { position: fixed; right: 12px; bottom: 70px; padding: 8px; display: flex; flex-direction: column; gap: 3px; font-size: 12px; min-width: 190px; }
+  #bridges b { font-weight: 600; padding: 0 4px 2px; }
+  #bridges button { display: flex; align-items: center; gap: 7px; text-align: left; justify-content: flex-start; }
+  #bridges button i { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto; }
+  #bridges button small { margin-left: auto; opacity: .7; }
+  #hint { position: fixed; left: 50%; bottom: 70px; transform: translateX(-50%); padding: 8px 14px; opacity: 0; transition: opacity .2s; pointer-events: none; font-size: 13px; }
+  #hint.da { opacity: 1; }
+</style></head><body>
+<div id="load">Armeen werden gewürfelt …</div>
+<div id="top" class="bar glass">
+  <span class="title">NomadTactics · Härtetest</span>
+  <span class="small">Einheiten</span>
+  <button data-n="40">40</button><button data-n="80" class="on">80</button><button data-n="160">160</button><button data-n="300">300</button>
+  <span class="sep"></span>
+  <button data-q="up" class="on">Schön</button><button data-q="middle">Mittel</button><button data-q="low">Schnell</button>
+  <span class="sep"></span>
+  <span class="small">Licht</span><button data-light="soft">Weich</button><button data-light="hard" class="on">Hart</button>
+  <span class="small">Oberfläche</span><button data-ofl="off">Aus</button><button data-ofl="on" class="on">An</button>
+  <span class="sep"></span>
+  <span class="small">Wetter</span><button data-weather="clear" class="on">Klar</button><button data-weather="cloudy">Bewölkt</button><button data-weather="rain">Regen</button><button data-weather="fog">Nebel</button><button data-weather="snow">Schnee</button><button data-weather="storm">Sturm</button><button data-weather="wind">Wind</button>
+  <span class="sep"></span>
+  <button id="rings">Ringe</button><button id="crater" class="on">Krater</button><button id="sound" class="on">Ton</button><button id="pause">Pause</button>
+  <span class="sep"></span>
+  <button id="new">Neu</button>
+  <button id="measure" class="main">Messen (20 s)</button>
+</div>
+<div id="stats" class="glass"><div id="fps">–</div><div id="details"></div></div>
+<div id="bottom" class="bar glass">
+  <span class="small">Klick</span>
+  <button data-weapon="off" class="on">Auswählen</button><button data-weapon="post">Wachposten</button>
+  <span class="sep"></span>
+  <span class="small">Waffe</span>
+  <button data-weapon="granate">Granate</button><button data-weapon="rakete">Rakete</button><button data-weapon="super" class="red">Superwaffe</button>
+  <span class="sep"></span>
+  <span class="small">Pioniere</span>
+  <button data-weapon="charge">Sprengladung</button><button data-weapon="blaze">Brand</button><button data-weapon="repair">Reparieren</button><button id="slowmo">Zeitlupe</button><button id="scale">Maßstab</button>
+  <span class="sep"></span>
+  <span class="small">Kamera</span>
+  <button id="zurStadt">Flussstadt</button><button data-cam="detail">Detail</button><button data-cam="near">Nah</button><button data-cam="game" class="on">Spielhöhe</button><button data-cam="far">Weit</button>
+</div>
+<div id="legend" class="glass">
+  <div class="head"><b>Wer ist wer?</b><button id="legendButton">ein/aus</button></div>
+  <div class="content">
+    <b>Kampfpanzer</b> breit, flach, langes Rohr<br>
+    <b>Raketenwerfer</b> Laster mit schrägem Kasten, schießt im Bogen<br>
+    <b>Spähwagen</b> klein, schnell, MG-Leuchtspur<br>
+    <b>Infanterie</b> Trupps zu fünft<br>
+    <b>Dozer</b> gelb, Schaufel, bleibt an der Basis<br>
+    <span style="color:#999">Erst ohne Legende raten, dann prüfen.</span><br><br>
+    <b>Live-Fenster</b> Einheit antippen (Auswählen) öffnet ein Fenster, das ihr folgt. Wachposten: Ort antippen. Ereignisse abseits der Kamera ploppen von selbst auf. Im Fenster geht alles wie draußen, auch Waffen.<br><br><span style="color:#999">Tippen = Klick · Ziehen = schieben · Rechts/zwei Finger = drehen · Rad/Pinch = Zoom · WASD, Q/E</span>
+  </div>
+</div>
+<div id="bridges" class="glass"></div>
+<div id="hint" class="glass"></div>
+<div id="result"><div class="map glass"><h2>Messung</h2><div id="resultText"></div><div class="foot"><button id="to" class="main">Schließen</button></div></div></div>
+<div id="countdown"></div>
+<div id="flash"></div>
+<script>/*BUNDLE*/</script>
+</body></html>

@@ -1,0 +1,26 @@
+{
+ "damageTypes": {
+  "kleinkaliber": {"name": "Kleinkaliber", "description": "Gewehre und MGs"},
+  "panzerbrechend": {"name": "Panzerbrechend", "description": "Kanonen und Panzerfäuste"},
+  "explosiv": {"name": "Explosiv", "description": "Raketen, Granaten, Bomben"},
+  "fire": {"name": "Feuer", "description": "Flammenwerfer, Brandsätze"},
+  "energy": {"name": "Energie", "description": "Laser und Ionenstrahlen"},
+  "flugabwehr": {"name": "Flugabwehr", "description": "Flak und Abfangraketen"}
+ },
+ "armors": {
+  "infantry": {"name": "Infanterie"},
+  "leicht": {"name": "Leicht gepanzert"},
+  "schwer": {"name": "Schwer gepanzert"},
+  "building": {"name": "Gebäude"},
+  "air": {"name": "Luft"}
+ },
+ "table": {
+  "kleinkaliber": {"infantry": 1, "leicht": 0.5, "schwer": 0.1, "building": 0.2, "air": 0.3},
+  "panzerbrechend": {"infantry": 0.3, "leicht": 1, "schwer": 1.25, "building": 0.6, "air": 0},
+  "explosiv": {"infantry": 0.8, "leicht": 0.9, "schwer": 0.7, "building": 1.2, "air": 0},
+  "fire": {"infantry": 1.5, "leicht": 0.6, "schwer": 0.2, "building": 1, "air": 0},
+  "energy": {"infantry": 0.8, "leicht": 1, "schwer": 1.1, "building": 0.8, "air": 0.6},
+  "flugabwehr": {"infantry": 0.2, "leicht": 0.3, "schwer": 0.1, "building": 0, "air": 1.5}
+ },
+ "classes": {"infantry": {"name": "Infanterie"}, "vehicle": {"name": "Fahrzeug"}, "air": {"name": "Luft"}}
+}

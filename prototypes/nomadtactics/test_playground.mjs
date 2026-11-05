@@ -1,0 +1,28 @@
+import { chromium } from 'playwright';
+import { createServer } from 'http';
+import { readFileSync } from 'fs';
+import { join } from 'path';
+
+const srv = createServer((q, a) => { try { a.writeHead(200, { 'Content-Type': 'text/html' }); a.end(readFileSync(join(process.cwd(), 'nomadtactics_playground.html'))); } catch { a.writeHead(404); a.end(); } }).listen(8812);
+const b = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
+const s = await b.newPage({ viewport: { width: 960, height: 560 } });
+s.on('pageerror', e => console.log('ERROR:', e.message));
+s.on('console', m => { if (m.type() === 'error') console.log('terminal:', m.text()); });
+await s.goto('http://localhost:8812/');
+await s.waitForFunction(() => window.playground, null, { timeout: 90000 });
+const pause = ms => s.waitForTimeout(ms);
+s.setDefaultTimeout(120000);
+await s.evaluate(() => playground.setQuality('middle'));
+const fps = async () => s.evaluate(() => new Promise(res => { let n = 0; const t0 = performance.now(); const f = () => { n++; if (performance.now() - t0 < 1000) requestAnimationFrame(f); else res(n); }; requestAnimationFrame(f); }));
+console.log('fps (swiftshader) ruhig:', await fps());
+await s.screenshot({ path: 'sw_0.png' });
+await s.evaluate(() => { playground.boom(-17, 15, 'rakete'); playground.boom(2, 4, 'rakete'); });
+await pause(350); await s.screenshot({ path: 'sw_1.png' });
+await pause(900); await s.screenshot({ path: 'sw_2.png' });
+await s.evaluate(() => { playground.boom(-3, 1, 'rakete'); playground.boom(4, 0, 'rakete'); });
+await pause(2500); await s.screenshot({ path: 'sw_3.png' });
+await s.evaluate(() => playground.boom(8, 10, 'super'));
+await pause(3600); await s.screenshot({ path: 'sw_4.png' });
+await pause(2500); await s.screenshot({ path: 'sw_5.png' });
+console.log('fps (swiftshader) nach Chaos:', await fps());
+await b.close(); srv.close();

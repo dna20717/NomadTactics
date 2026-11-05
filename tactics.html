@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="NomadTactics">
+<title>NomadTactics – Werkstatt 1.0</title>
+<script>try { document.documentElement.dataset.theme = localStorage.getItem('nomad.theme') || 'gray'; } catch (e) { document.documentElement.dataset.theme = 'gray'; }</script>
+<link rel="stylesheet" href="game/basis.css">
+<link rel="stylesheet" href="game/ui.css">
+<link rel="stylesheet" href="game/tactics/workshop.css">
+<link rel="stylesheet" href="game/tactics/hud/hud.css">
+</head>
+<body class="tk">
+<div id="editor" hidden></div>
+<div id="tk-load">Fraktionen werden aufgestellt …</div>
+<script type="module">
+  import { Workshop } from './game/tactics/workshop.js';
+  const w = new Workshop(document.getElementById('editor'), new URL('projects/nomadtactics/', location.href));
+  window.workshop = w;
+  w.start().then(() => document.getElementById('tk-load').remove()).catch(e => { document.getElementById('tk-load').textContent = 'Fehler beim Laden: ' + e.message; console.error(e); });
+</script>
+</body>
+</html>

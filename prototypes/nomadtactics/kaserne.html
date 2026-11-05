@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>html,body{margin:0}canvas{display:block}</style>
+<script type="importmap">{ "imports": { "three": "./node_modules/three/build/three.module.js", "three/addons/": "./node_modules/three/examples/jsm/" } }</script>
+</head><body>
+<script type="module">
+import * as THREE from 'three';
+import { tank, kaserne, mesh } from './voxel2.js';
+
+const W = 1600, H = 1000, BLUE = 0x2f6fd6, RED = 0xd63a2f;
+const r = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+r.setSize(W, H); r.shadowMap.enabled = true; r.shadowMap.type = THREE.PCFSoftShadowMap; r.setScissorTest(true);
+document.body.appendChild(r.domElement);
+
+const s = new THREE.Scene();
+s.background = new THREE.Color(0xb9c6cf); s.fog = new THREE.Fog(0xb9c6cf, 110, 220);
+s.add(new THREE.HemisphereLight(0xdfe8ff, 0x5a4a35, 1.1));
+const sun = new THREE.DirectionalLight(0xfff1dc, 2.2);
+sun.position.set(14, 22, 10); sun.castShadow = true; sun.shadow.mapSize.set(4096, 4096);
+Object.assign(sun.shadow.camera, { left: -30, right: 30, top: 30, bottom: -30, far: 100 });
+s.add(sun);
+
+// Ground: coarse voxel height field (1.2 m), grass with path
+const ground = new Map();
+const G = 1.2 / 0.4;   // Ground cube = 3 tank voxels
+for (let gx = -30; gx <= 30; gx++) for (let gz = -30; gz <= 30; gz++) {
+  const h = (Math.abs(gx) > 18 || Math.abs(gz) > 18) ? Math.max(0, Math.round(Math.sin(gx * 0.3) + Math.cos(gz * 0.25))) : 0;
+  const way = Math.abs(gx - 2) <= 1 && gz > 5;
+  for (let y = -1; y <= h - 1; y++) ground.set(`${gx},${y},${gz}`, way ? 'sand' : y === h - 1 ? 'oliv' : 'brown');
+}
+const groundMesh = mesh(ground, { V: 1.2 });
+groundMesh.material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1 });
+// Tint the grass a bit greener
+const colors = groundMesh.geometry.attributes.color;
+for (let i = 0; i < colors.count; i++) if (colors.getY(i) > colors.getX(i) && colors.getY(i) > 0.2) colors.setXYZ(i, colors.getX(i) * 0.95, colors.getY(i) * 1.25, colors.getZ(i) * 0.85);
+s.add(groundMesh);
+
+function spot(W, team, x, z, red) { const m = mesh(W, { team }); m.position.set(x, 0, z); m.rotation.y = red; s.add(m); return m; }
+const k1 = spot(kaserne(), BLUE, 0, 0, 0);
+const p1 = spot(tank(), BLUE, 9.5, 9, 0.5);
+spot(tank(), BLUE, 3, 11, 0.15);
+const k2 = spot(kaserne(), RED, -34, -30, Math.PI / 2);
+spot(tank(), RED, -20, -18, 2.4);
+spot(tank(), RED, -14, -23, 2.2);
+// Trees as voxels
+const tree = () => { const [Wb, sb] = [new Map(), (x, y, z, a) => Wb.set(`${x},${y},${z}`, a)];
+  for (let y = 0; y <= 3; y++) sb(0, y, 0, 'holz');
+  for (let y = 3; y <= 8; y++) { const rr = y < 6 ? 2 : y < 8 ? 1 : 0; for (let x = -rr; x <= rr; x++) for (let z = -rr; z <= rr; z++) if (Math.abs(x) + Math.abs(z) <= rr + 1) sb(x, y, z, 'oliv'); }
+  return Wb; };
+for (let i = 0; i < 16; i++) { const a = i * 2.3 + 0.5, d = 24 + (i % 3) * 4; spot(tree(), 0, Math.cos(a) * d, Math.sin(a) * d, i); }
+
+function panel(x, y, w, h, cam) { r.setViewport(x, H - y - h, w, h); r.setScissor(x, H - y - h, w, h); cam.aspect = w / h; cam.updateProjectionMatrix(); r.render(s, cam); }
+const cam = (fov, p, z) => { const c = new THREE.PerspectiveCamera(fov, 1, 0.1, 400); c.position.set(...p); c.lookAt(...z); return c; };
+
+panel(0, 0, 1600, 560, cam(32, [26, 15, 34], [3, 1.5, 4]));         // Nah: Kaserne + Panzer
+panel(0, 560, 800, 440, cam(30, [36, 50, 46], [-8, 0, -6]));       // RTS-Blick
+panel(800, 560, 800, 440, cam(30, [19, 5.5, 21], [7.5, 1.5, 6]));       // Panzer nah
+
+window.info = { tank: p1.userData, kaserne: k1.userData };
+window.done = true;
+</script></body></html>

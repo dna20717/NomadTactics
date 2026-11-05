@@ -1,0 +1,50 @@
+/* NomadTactics – host page. Plain, tokens from ui.css; behind it a calm background (later the diorama). */
+body.gg { overflow: auto; touch-action: auto; user-select: text; -webkit-user-select: text; }
+body.gg #field { position: fixed; inset: 0; z-index: 0; }
+#gg { position: relative; z-index: 1; max-width: 1080px; margin: 0 auto; padding: 24px 20px 40px; display: grid; gap: 16px;
+  grid-template-columns: 340px 1fr; grid-template-areas: "kopf kopf" "qr spieler" "qr leiter" "protokoll protokoll"; }
+@media (max-width: 860px) { #gg { grid-template-columns: 1fr; grid-template-areas: "kopf" "qr" "spieler" "leiter" "protokoll"; } }
+
+.gg-box { background: var(--ui-glass); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--ui-border); border-radius: var(--ui-r-pane); box-shadow: var(--ui-shadow); padding: 18px 20px; }
+.gg-head { grid-area: kopf; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.gg-head .pt-title { margin: 0; }
+.gg-status { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: var(--ui-r-chip);
+  background: var(--ui-field); border: 1px solid var(--ui-border); font-weight: 500; }
+.gg-status.running { border-color: var(--ui-green); color: var(--ui-green); }
+.gg-status.pause { border-color: var(--ui-acc-line); color: var(--ui-acc-line); }
+.gg-status.red { border-color: var(--ui-red); color: var(--ui-red); }
+.gg-air { flex: 1; }
+
+.gg-qr { grid-area: qr; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px; align-self: start; }
+.gg-qr > svg { width: 220px; height: 220px; background: #fff; border-radius: var(--ui-r-button); padding: 12px; }
+.gg-big { font-family: ui-monospace, monospace; font-size: 17px; font-weight: 600; color: var(--ui-text-strong); user-select: all; -webkit-user-select: all; }
+.gg-qr .pt-small { line-height: 1.4; }
+.gg-qr .pt-bottom { width: 100%; justify-content: center; margin-top: 4px; flex-wrap: wrap; }
+
+.gg-player { grid-area: spieler; }
+.gg-ladder { grid-area: leiter; }
+.gg-protocol { grid-area: protokoll; }
+.gg-h { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--ui-text3); margin: 0 0 10px; display: flex; align-items: center; gap: 8px; }
+.gg-h .gg-air { flex: 1; }
+
+.gg-table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.gg-table th { text-align: left; font-weight: 500; font-size: 11px; color: var(--ui-text3); padding: 0 8px 6px; }
+.gg-table td { padding: 8px; border-top: 1px solid var(--ui-border); vertical-align: middle; }
+.gg-table td.right, .gg-table th.right { text-align: right; }
+.gg-way { color: var(--ui-red); }
+.gg-empty { color: var(--ui-text3); padding: 10px 8px; }
+
+.gg-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
+.gg-wind { display: grid; grid-template-columns: repeat(3, 40px); grid-auto-rows: 40px; gap: 6px; }
+.gg-wind .pt-button { height: 40px; }
+.gg-wind .pt-button { width: 40px; padding: 0; justify-content: center; }
+.gg-wind .center { visibility: hidden; }
+.gg-ladder-row { display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap; }
+.gg-ladder-text { flex: 1; min-width: 200px; color: var(--ui-text2); line-height: 1.45; margin: 0; }
+
+.gg-log { list-style: none; margin: 0; padding: 0; max-height: 240px; overflow: auto; font-size: 12px;
+  font-family: ui-monospace, monospace; color: var(--ui-text2); display: flex; flex-direction: column-reverse; }
+.gg-log li { padding: 3px 0; border-top: 1px solid var(--ui-point); }
+.gg-log time { color: var(--ui-text3); margin-right: 10px; }
+.gg-hint { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); z-index: 5; }

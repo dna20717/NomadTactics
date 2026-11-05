@@ -1,0 +1,13 @@
+{
+ "sources": {"damage": 1, "kill": 12, "killStat": 0.5, "taken": 0.2, "fight": 1, "support": 0.8, "recon": 0.6},
+ "tiers": [
+  {"id": "veteran", "name": "Veteran", "min": 100, "effect": [{"kind": "stat", "field": "damage", "times": 1.15}]},
+  {"id": "elite", "name": "Elite", "min": 250, "effect": [{"kind": "stat", "field": "damage", "times": 1.15},{"kind": "stat", "field": "health", "times": 1.2}]},
+  {
+   "id": "held",
+   "name": "Held",
+   "min": 500,
+   "effect": [{"kind": "stat", "field": "damage", "times": 1.15},{"kind": "stat", "field": "health", "times": 1.15},{"kind": "stat", "field": "speed", "times": 1.1}]
+  }
+ ]
+}

@@ -1,0 +1,22 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><style>html,body{margin:0}canvas{display:block}</style>
+<script type="importmap">{ "imports": { "three": "./node_modules/three/build/three.module.js", "three/addons/": "./node_modules/three/examples/jsm/" } }</script>
+</head><body><script type="module">
+import * as THREE from 'three';
+import { mesh } from './voxel3.js';
+const data = await (await fetch('tank_vox.json')).json();
+const W = new Map(), pal = {};
+const xs = data.voxel.map(v => v[0]), ys = data.voxel.map(v => v[1]);
+const cx = Math.round((Math.min(...xs) + Math.max(...xs)) / 2), cy = Math.round((Math.min(...ys) + Math.max(...ys)) / 2);
+for (const [x, y, z, c] of data.voxel) { const a = 'f' + c; pal[a] = [parseInt(data.palette[c - 1].slice(1), 16)]; W.set(`${x - cx},${z},${-(y - cy)}`, a); }
+const r = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); r.setSize(1600, 500); r.setScissorTest(true);
+r.shadowMap.enabled = true; r.toneMapping = THREE.ACESFilmicToneMapping; document.body.appendChild(r.domElement);
+const s = new THREE.Scene(); s.background = new THREE.Color(0xd8e6ea);
+s.add(new THREE.HemisphereLight(0xcfe3ff, 0x8a7a5a, 1.6));
+const l = new THREE.DirectionalLight(0xffe2b8, 2.4); l.position.set(-6, 10, 5); l.castShadow = true; s.add(l);
+const m = mesh(W, { V: 1, pal }); s.add(m);
+const g = new THREE.Mesh(new THREE.PlaneGeometry(60, 60), new THREE.MeshStandardMaterial({ color: 0x77ad50 })); g.rotation.x = -Math.PI / 2; g.receiveShadow = true; s.add(g);
+const toThe = [[14, 9, 14], [-14, 9, -12], [0, 22, 0.01], [18, 2.5, 0]];
+toThe.forEach((p, i) => { const k = new THREE.PerspectiveCamera(30, 1, 0.1, 200); k.position.set(...p); k.lookAt(0, 1.5, 0);
+  r.setViewport(i * 400, 0, 400, 500); r.setScissor(i * 400, 0, 400, 500); k.aspect = 400 / 500; k.updateProjectionMatrix(); r.render(s, k); });
+window.info = { voxel: W.size }; window.done = true;
+</script></body></html>

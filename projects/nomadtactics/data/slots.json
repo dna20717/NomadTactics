@@ -1,0 +1,10 @@
+{
+ "drohne": {"name": "Drohne", "description": "Ein Begleiter pro Fahrzeug (wie bei Generals)."},
+ "schwere_waffe": {"name": "Schwere Waffe", "description": "Ein Mann im Trupp trägt sie (wie bei Dawn of War)."},
+ "anfuehrer": {"name": "Anführer", "description": "Ein Unteroffizier führt den Trupp."},
+ "verstaerkung": {"name": "Verstärkung", "description": "Mehr Leute im Trupp."},
+ "panzerung": {"name": "Panzerung", "description": "Zusätzlicher Schutz."},
+ "aufbau": {"name": "Aufbau", "description": "Waffenaufbau auf dem Fahrzeug. Nur einer passt."},
+ "optik": {"name": "Optik", "description": "Zielgeräte und Sensoren."},
+ "tarnung": {"name": "Tarnung", "description": "Umhänge, Netze, Tarnfarbe."}
+}

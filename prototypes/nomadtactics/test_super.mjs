@@ -1,0 +1,15 @@
+import { chromium } from 'playwright';
+import { createServer } from 'http';
+import { readFileSync } from 'fs';
+const srv = createServer((q, a) => { a.writeHead(200, { 'Content-Type': 'text/html' }); a.end(readFileSync('nomadtactics_playground.html')); }).listen(8813);
+const b = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
+const s = await b.newPage({ viewport: { width: 800, height: 470 } });
+s.setDefaultTimeout(120000);
+s.on('pageerror', e => console.log('ERROR:', e.message));
+await s.goto('http://localhost:8813/');
+await s.waitForFunction(() => window.playground, null, { timeout: 90000 });
+await s.evaluate(() => { playground.setQuality('low'); playground.boom(4, 6, 'super'); });
+await s.waitForFunction(() => document.getElementById('countdown').style.opacity === '0' && document.getElementById('flash').style.opacity === '0', null, { timeout: 120000, polling: 200 });
+await s.waitForTimeout(6000); await s.screenshot({ path: 'sw_super1.png' });
+await s.waitForTimeout(12000); await s.screenshot({ path: 'sw_super2.png' });
+await b.close(); srv.close();
