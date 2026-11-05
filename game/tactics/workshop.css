@@ -9,7 +9,8 @@ body.tk { background: var(--ui-bg); color: var(--ui-text); font-family: var(--ui
 .tk-checkButton.yellow { color: var(--ui-acc-line); }
 .tk-checkButton.red { color: var(--ui-red); border-color: var(--ui-red) !important; }
 .tk-state, .tk-user { display: inline-flex; align-items: center; gap: 4px; margin-right: 8px; }
-.tk-user { color: var(--ui-text2); }
+.tk-user { color: var(--ui-text2); gap: 6px; }
+.tk-user-dot { width: 10px; height: 10px; border-radius: 50%; box-shadow: 0 0 0 2px var(--ui-border); }
 .tk-data { grid-template-columns: 244px minmax(360px, 1fr) minmax(360px, 460px); }
 .tk-spacing { margin-top: 14px; }
 .tk-fpoint { width: 12px; height: 12px; margin: 0 3px; }
@@ -179,10 +180,11 @@ body.tk { background: var(--ui-bg); color: var(--ui-text); font-family: var(--ui
 .tk-tier-head .ed-field:not(.small) { flex: 1; min-width: 0; }
 .tk-tier-foot { gap: 6px; }
 .tk-tier-foot .ed-field { flex: 1; min-width: 0; }
-.tk-angle { color: #e8b23a; font-weight: 800; letter-spacing: -2px; min-width: 22px; }
+.tk-angle { color: #e8b23a; min-width: 22px; display: inline-flex; justify-content: center; }
+.chevrons-box { display: inline-flex; color: #e8b23a; }
 .tk-ladder { position: relative; height: 46px; margin: 4px 8px 6px; }
 .tk-ladder-band { position: absolute; left: 0; right: 0; top: 14px; height: 6px; border-radius: 3px; background: linear-gradient(90deg, var(--ui-border), #e8b23a); }
 .tk-ladder-tier { position: absolute; top: 0; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; white-space: nowrap; }
-.tk-ladder-tier b { color: #e8b23a; font-size: 16px; line-height: 12px; letter-spacing: -2px; }
+.tk-ladder-tier .chevrons-box { color: #e8b23a; }
 .tk-ladder-tier small { margin-top: 12px; color: var(--ui-text2); font-size: 11px; }
 .tk-std { color: var(--ui-text3); font-style: italic; }

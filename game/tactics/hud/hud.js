@@ -15,6 +15,7 @@
 //   steuerung: { springe(x, z), linksZiehen(an), blickfeld() → 4 Bodenpunkte, ziel() }
 //   welt: { min, max }, minimap(ebene) → canvas with base image, faehigkeiten: [{ id, name, symbol, cooldown, description }]
 //   portrait(el | null, e) → live image of a unit in el;  livePane(e);  testDesk?() (optional)
+import { chevronsSvg } from '../chevrons.js';
 import { PaneSystem } from './pane.js';
 import { applyMoodOn, token, loadFonts, setMoods, moods } from './moods.js';
 import { Markers, FORM } from './markers.js';
@@ -619,7 +620,7 @@ class Hud {
         const lattice = el('div', 'tiles');
         if (this.e.multiple === 'single') {
           for (const u of sel.slice(0, 40)) {
-            const d = A.data(kind(u)), k = el('button', 'tile', `<span class="ai"></span><b>${d.short}</b><span class="kb"><i></i></span><span class="kv">${'›'.repeat(u.tier || 0)}</span>`);
+            const d = A.data(kind(u)), k = el('button', 'tile', `<span class="ai"></span><b>${d.short}</b><span class="kb"><i></i></span><span class="kv">${chevronsSvg(u.tier || 0)}</span>`);
             k.querySelector('.ai').appendChild(icon(d.symbol, 16)); k._u = u;
             k.onclick = ev => { if (ev.shiftKey) { this.selection.units.delete(u); this.selection.groups.clear(); this.select(sel.filter(o => o !== u)); } else this.select([u]); };
             lattice.appendChild(k);

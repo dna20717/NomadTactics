@@ -24,7 +24,13 @@ function cloudStore(base, session) {
   return {
     kind: 'cloud',
     user: session.user,
+    profile: session.profile || { name: session.user?.name, autosave: 60 },
     repo: session.repo,
+    async saveProfile(p) {
+      const data = await call('/api/profile', { method: 'PUT', body: JSON.stringify(p) });
+      this.profile = data; this.user = { ...this.user, name: data.name };
+      return data;
+    },
     commit: null,
     async all() {
       const data = await call('/api/files');

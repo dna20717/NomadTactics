@@ -1,5 +1,6 @@
 // Workshop › UI (moods, HUD defaults, radio) and game rules › experience, plus the tier editor for units.
 // Data: data/ui.json, data/experience.json, unit.experience.tiers. Rules: engine/tactics/ui.js, experience.js.
+import { chevronsEl } from './chevrons.js';
 import { icon } from '../icons.js';
 import { el } from '../ui.js';
 import { catalog } from './pages.js';
@@ -142,13 +143,13 @@ export function tiersEditor(w, list, set) {
   const number = (stat, f, ph, width = 64) => { const x = el('input', { type: 'number', step: 'any', class: 'ed-field small', placeholder: ph, value: stat ?? '', style: `width:${width}px` }); x.addEventListener('change', () => f(x.value === '' ? undefined : +x.value)); return x; };
   const text = (stat, f, ph) => { const x = el('input', { class: 'ed-field', placeholder: ph, value: stat ?? '' }); x.addEventListener('change', () => f(x.value || undefined)); return x; };
   const max = Math.max(1, ...list.map(s => s.min || 0)) * 1.1;
-  const ladder = el('div', { class: 'tk-ladder' }, el('i', { class: 'tk-ladder-band' }), ...list.map((s, i) => el('span', { class: 'tk-ladder-tier', style: `left:${(s.min || 0) / max * 100}%` }, el('b', {}, '›'.repeat(i + 1)), el('small', {}, `${s.name} · ${s.min}`))));
+  const ladder = el('div', { class: 'tk-ladder' }, el('i', { class: 'tk-ladder-band' }), ...list.map((s, i) => el('span', { class: 'tk-ladder-tier', style: `left:${(s.min || 0) / max * 100}%` }, chevronsEl(i + 1, 1.2), el('small', {}, `${s.name} · ${s.min}`))));
   return el('div', { class: 'tk-tiers' }, list.length ? ladder : el('p', { class: 'ed-small' }, 'Noch keine Stufen.'),
     ...list.map((s, i) => {
       const eff = s.effect || [];
       const changeW = (j, part) => change(i, { effect: eff.map((x, k) => k === j ? { ...x, ...part } : x) });
       return el('div', { class: 'tk-tier' },
-        el('div', { class: 'tk-tier-head' }, el('b', { class: 'tk-angle' }, '›'.repeat(i + 1)), text(s.name, v => change(i, { name: v }), 'Name'), el('span', { class: 'ed-small' }, 'ab'), number(s.min, v => change(i, { min: v }), 'EP', 72), el('span', { class: 'ed-small' }, 'EP'),
+        el('div', { class: 'tk-tier-head' }, chevronsEl(i + 1, 1.3, 'tk-angle'), text(s.name, v => change(i, { name: v }), 'Name'), el('span', { class: 'ed-small' }, 'ab'), number(s.min, v => change(i, { min: v }), 'EP', 72), el('span', { class: 'ed-small' }, 'EP'),
           el('button', { class: 'ed-button small red', title: 'Stufe löschen', onclick: () => set(list.filter((_, j) => j !== i)) }, icon('delete', 14))),
         el('div', { class: 'tk-effects' }, ...eff.map((x, j) => el('div', { class: 'da-row' }, el('b', { class: 'da-kind' }, TIERS_EFFECTS[x.kind] || x.kind),
           ...(x.kind === 'stat' ? [w.selection(Object.entries(TIERS_STATS), x.field || '', v => changeW(j, { field: v }), '— Wert —'), el('span', { class: 'ed-small' }, '×'), number(x.times, v => changeW(j, { times: v }), '1'), el('span', { class: 'ed-small' }, '+'), number(x.plus, v => changeW(j, { plus: v }), '0')]

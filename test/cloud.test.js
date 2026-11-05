@@ -56,7 +56,7 @@ test('Speichern wird ein Commit mit Autor, Konflikte werden erkannt', async () =
   assert.match(g.fileAt('projects/nomadtactics/factions/usa.json'), /"cost": 2/);
   assert.equal(g.fileAt('README.md'), '# x\n');   // everything else stays untouched
   const c = g.commits.get(r.data.commit);
-  assert.equal(c.author.name, 'Daniel Nomad'); assert.equal(c.author.email, 'daniel.nomad@example.com');
+  assert.equal(c.author.name, 'Daniel Nomad'); assert.equal(c.author.email, 'daniel-nomad@werkstatt.nomadtactics.invalid');   // the login e-mail stays private
   assert.match(c.message, /^Werkstatt: usa, neu \(Daniel Nomad\)/);
   assert.equal(r.data.files['factions/usa.json'], await blobSha(g.fileAt('projects/nomadtactics/factions/usa.json')));
 
@@ -94,4 +94,22 @@ test('Gleicher Inhalt erzeugt keinen leeren Commit, ungültige Pfade werden abge
   const info = await call('/api/access-info');
   assert.equal(info.data.POLICY_AUD, 'aud-test-123'); assert.equal(info.data.login, true);
   assert.equal((await call('/api/access-info', { email: null })).data.login, false);
+});
+
+test('Profil: Name, Commit-E-Mail, Farbe, Autospeichern, Darstellung', async () => {
+  const { g, call } = await setup();
+  const p = await call('/api/profile');
+  assert.equal(p.data.name, 'Daniel Nomad'); assert.equal(p.data.autosave, 60); assert.equal(p.data.email, 'daniel.nomad@example.com');
+  assert.equal((await call('/api/profile', { method: 'PUT', body: { name: '' } })).status, 400);
+  assert.equal((await call('/api/profile', { method: 'PUT', body: { name: 'Daniel', commitEmail: 'kaputt' } })).status, 400);
+  const w = await call('/api/profile', { method: 'PUT', body: { name: 'Daniel', commitEmail: '123+dna@users.noreply.github.com', color: '#ff8800', autosave: 300, theme: 'violet', extra: 'weg' } });
+  assert.equal(w.status, 200); assert.equal(w.data.extra, undefined);
+  const s = await call('/api/session');
+  assert.equal(s.data.user.name, 'Daniel'); assert.equal(s.data.profile.theme, 'violet'); assert.equal(s.data.profile.autosave, 300);
+  assert.equal((await call('/api/session', { email: 'freund@example.com' })).data.user.name, 'Freund');   // profiles are per person
+  const f = await call('/api/files');
+  const r = await call('/api/commit', { method: 'POST', body: { base: { 'project.json': f.data.files['project.json'].sha }, changes: [{ file: 'project.json', content: { name: 'NT 3' } }] } });
+  const c = g.commits.get(r.data.commit);
+  assert.equal(c.author.name, 'Daniel'); assert.equal(c.author.email, '123+dna@users.noreply.github.com');
+  assert.match(c.message, /\(Daniel\)/);
 });

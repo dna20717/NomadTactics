@@ -28,11 +28,14 @@ export async function handle(request, env, fetchFn) {
     if (!env.TEAM_DOMAIN || !env.POLICY_AUD) return failure(503, 'Login ist noch nicht eingerichtet (TEAM_DOMAIN / POLICY_AUD fehlen).');
     const user = await accessUser(request, env, fetchFn);
     if (!user) return failure(401, 'Nicht angemeldet.');
-    if (url.pathname === '/api/session') return json({ user, repo: env.GITHUB_REPO, branch: branch(env) });
+    const prof = await readProfile(env, user);
+    if (url.pathname === '/api/session') return json({ user: { ...user, name: prof.name }, profile: prof, repo: env.GITHUB_REPO, branch: branch(env) });
+    if (url.pathname === '/api/profile' && request.method === 'GET') return json(prof);
+    if (url.pathname === '/api/profile' && request.method === 'PUT') return await writeProfile(env, user, await request.json());
     if (!env.GITHUB_TOKEN) return failure(503, 'GitHub-Schlüssel fehlt (GITHUB_TOKEN).');
     const gh = github(env, fetchFn);
     if (url.pathname === '/api/files' && request.method === 'GET') return json(await readFiles(gh, env));
-    if (url.pathname === '/api/commit' && request.method === 'POST') return await commit(gh, env, user, await request.json());
+    if (url.pathname === '/api/commit' && request.method === 'POST') return await commit(gh, env, { name: prof.name, email: commitEmail(prof) }, await request.json());
     return failure(404, 'Unbekannter Weg.');
   } catch (e) {
     return failure(e.status || 500, e.message || String(e));
@@ -96,6 +99,41 @@ function b64url(s) {
   return Uint8Array.from(b, c => c.charCodeAt(0));
 }
 const text = bytes => new TextDecoder().decode(bytes);
+
+// ---------- Profile (KV binding PROFILES, key "profile:<login e-mail>") ----------
+// The login e-mail never goes into the repository: commits use the profile's commit e-mail or an anonymous address.
+export const THEMES = ['gray', 'violet', 'brightness'];
+export const AUTOSAVE = [0, 30, 60, 300];
+const slug = t => String(t).toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'werkstatt';
+export function standardProfile(user) { return { name: user.name, commitEmail: '', color: '#4a90d9', autosave: 60, theme: 'gray' }; }
+export function commitEmail(prof) { return prof.commitEmail || `${slug(prof.name)}@werkstatt.nomadtactics.invalid`; }
+
+async function readProfile(env, user) {
+  const saved = env.PROFILES ? await env.PROFILES.get('profile:' + user.email.toLowerCase(), 'json').catch(() => null) : null;
+  return { ...standardProfile(user), ...(saved || {}), email: user.email };
+}
+
+export function checkProfile(p) {
+  const out = {};
+  const name = String(p?.name ?? '').trim();
+  if (!name || name.length > 40) return { error: 'Der Name braucht 1 bis 40 Zeichen.' };
+  out.name = name;
+  const mail = String(p?.commitEmail ?? '').trim();
+  if (mail && !/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(mail)) return { error: 'Die Commit-E-Mail sieht nicht wie eine E-Mail-Adresse aus.' };
+  out.commitEmail = mail;
+  out.color = /^#[0-9a-f]{6}$/i.test(p?.color) ? p.color : '#4a90d9';
+  out.autosave = AUTOSAVE.includes(Number(p?.autosave)) ? Number(p.autosave) : 60;
+  out.theme = THEMES.includes(p?.theme) ? p.theme : 'gray';
+  return { profile: out };
+}
+
+async function writeProfile(env, user, body) {
+  if (!env.PROFILES) return failure(503, 'Profilspeicher fehlt (KV-Bindung PROFILES).');
+  const r = checkProfile(body);
+  if (r.error) return failure(400, r.error);
+  await env.PROFILES.put('profile:' + user.email.toLowerCase(), JSON.stringify(r.profile));
+  return json({ ...r.profile, email: user.email });
+}
 
 // ---------- GitHub ----------
 function github(env, fetchFn) {

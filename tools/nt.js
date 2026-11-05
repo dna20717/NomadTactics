@@ -166,7 +166,7 @@ const B = {
     const { createServer } = await import('node:http');
     const repo = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
     const type = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.woff2': 'font/woff2' };
-    const srv = createServer((q, a) => { try { const f = path.join(repo, decodeURIComponent(q.url.split('?')[0])); a.writeHead(200, { 'Content-Type': type[path.extname(f)] || 'application/octet-stream' }); a.end(fs.readFileSync(f)); } catch { a.writeHead(404); a.end(); } }).listen(0);
+    const srv = createServer((q, a) => { try { const f = path.join(repo, decodeURIComponent(q.url.split('?')[0])); const data = fs.readFileSync(f); a.writeHead(200, { 'Content-Type': type[path.extname(f)] || 'application/octet-stream' }); a.end(data); } catch { a.writeHead(404); a.end(); } }).listen(0);
     const port = srv.address().port;
     const t = target.split('/'), fid = p.factions.has(t[0]) ? t[0] : null;
     const SUB = { units: 'units', building: 'building', techTree: 'techTree', generals: 'generals', equipment: 'equipment', overview: 'overview' };

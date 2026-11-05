@@ -48,6 +48,16 @@ await page.waitForSelector('.tk-user', { timeout: 20000 });
 check((await page.textContent('.tk-user')).includes('Daniel'), 'angemeldet als Daniel (Name aus der E-Mail)');
 check(await page.evaluate(() => window.workshop.store.kind === 'cloud'), 'Werkstatt nutzt den Cloudflare-Speicher');
 
+// Profile: change the name
+await page.click('.tk-user');
+await page.waitForSelector('.ed-dialogue input');
+await page.fill('.ed-dialogue input.ed-field', 'Daniel K.');
+await page.waitForTimeout(400);
+if (images) await page.screenshot({ path: path.join(repo, 'output/cloud_profile.png') });
+await page.click('.ed-dialogue button.main');
+await page.waitForFunction(() => document.querySelector('.tk-user')?.textContent.includes('Daniel K.'), null, { timeout: 10000 });
+check(true, 'Profil: Name geändert');
+
 const usaFile = 'projects/nomadtactics/' + await page.evaluate(() => window.workshop.p.factionPaths.get('usa'));
 const startRef = g.refs.main;
 await page.evaluate(() => { const w = window.workshop; w.change(w.p.factionPaths.get('usa'), () => { w.p.factions.get('usa').playstyle = 'Test aus der Web-Werkstatt'; }); });
@@ -56,7 +66,7 @@ if (images) await page.screenshot({ path: path.join(repo, 'output/cloud_unsaved.
 await page.waitForFunction(() => document.querySelector('.ed-status')?.textContent.includes('Gespeichert'), null, { timeout: 15000 });
 check(g.refs.main !== startRef, 'nach 2 s Ruhe automatisch ein Commit');
 check(/Test aus der Web-Werkstatt/.test(g.fileAt(usaFile)), 'Änderung steht im Repository');
-check(g.commits.get(g.refs.main).author.email === 'daniel@example.com', 'Autor ist die angemeldete Person');
+check(g.commits.get(g.refs.main).author.name === 'Daniel K.' && !g.commits.get(g.refs.main).author.email.includes('example.com'), 'Autor ist die angemeldete Person, Login-E-Mail bleibt privat');
 const title = await page.getAttribute('.ed-status', 'title');
 check(/Commit [0-9a-f]{7}/.test(title), 'Status nennt den Commit: ' + title);
 if (images) await page.screenshot({ path: path.join(repo, 'output/cloud_saved.png') });
@@ -83,6 +93,7 @@ check(/Dritter Stand/.test(g.fileAt(usaFile)), '„Überschreiben“ speichert d
 
 // Reload shows the state from the repository
 await page.reload(); await page.waitForSelector('.tk-user', { timeout: 20000 });
+check((await page.textContent('.tk-user')).includes('Daniel K.'), 'Profil bleibt nach Neuladen erhalten');
 check(await page.evaluate(() => window.workshop.p.factions.get('usa').playstyle) === 'Dritter Stand', 'nach Neuladen kommt der Stand aus dem Repository');
 check(!errors.length, 'keine Fehler in der Browser-Konsole' + (errors.length ? ': ' + errors.join(' | ') : ''));
 

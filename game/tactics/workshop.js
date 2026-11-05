@@ -14,8 +14,10 @@ import { UI_PAGES, experiencePage } from './ui_pages.js';
 
 const THEMES = { gray: 'Grau', violet: 'Violett', brightness: 'Hell' };
 const clockTime = () => new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
-// Web workshop: save automatically after this many seconds without a new change (?autosave=5 for tests)
-const AUTOSAVE_S = (() => { try { const n = Number(new URLSearchParams(location.search).get('autosave')); return n > 0 ? n : 60; } catch { return 60; } })();
+// Web workshop: save automatically after this many seconds without a new change (profile; ?autosave=5 for tests)
+const AUTOSAVE_URL = (() => { try { const n = Number(new URLSearchParams(location.search).get('autosave')); return n > 0 ? n : null; } catch { return null; } })();
+const AUTOSAVE_TEXT = { 0: 'Aus (nur mit ⌘S)', 30: 'nach 30 s Ruhe', 60: 'nach 1 Min. Ruhe', 300: 'nach 5 Min. Ruhe' };
+const secondsText = s => s < 60 ? s + ' s' : Math.round(s / 60) + ' Min.';
 import { Overlay as OverlayCore, freeId, same } from '../../engine/tactics/overlay.js';
 export { freeId, same };
 
@@ -37,6 +39,7 @@ export class Workshop {
   async start() {
     try { this.store = await openCloudStore(); } catch (e) { this.cloudError = e.message; }
     if (!this.store) this.store = await openStore({ project: 'nomadtactics', withoutAssets: true });
+    if (this.store.kind === 'cloud') this.applyProfile();
     this.state = await this.store.all().catch(() => new Map());
     const repo = browserLoader(this.basis), state = this.state;
     const loader = { ...repo, json: async p => state.has(p) ? structuredClone(state.get(p)) : repo.json(p) };
@@ -66,10 +69,40 @@ export class Workshop {
   repeat() { if (this.redo.length) { this.undo.push(this.snapshot()); this.spotHer(this.redo.pop()); } }
   changed(file) { if (file) this.dirty.add(file); this.planAutosave(); }
   // Web workshop: one minute after the last change everything is saved (= one commit)
+  autosaveS() { return AUTOSAVE_URL ?? (this.store?.profile?.autosave ?? 60); }
   planAutosave() {
     if (this.store?.kind !== 'cloud') return;
     clearTimeout(this.autosaveTimer);
-    if (this.dirty.size) this.autosaveTimer = setTimeout(() => this.persist({ auto: true }), AUTOSAVE_S * 1000);
+    if (this.dirty.size && this.autosaveS() > 0) this.autosaveTimer = setTimeout(() => this.persist({ auto: true }), this.autosaveS() * 1000);
+  }
+  // ---------- Profile (web workshop) ----------
+  applyProfile() {
+    const p = this.store.profile || {};
+    if (p.theme && THEMES[p.theme]) { document.documentElement.dataset.theme = p.theme; try { localStorage.setItem('nomad.theme', p.theme); } catch { /* privat */ } }
+  }
+  showProfile() {
+    const st = this.store, p = { ...st.profile };
+    const field = (label, input, hint) => el('label', { class: 'da-field' }, el('span', {}, label), el('div', {}, input, hint ? el('p', { class: 'ed-small' }, hint) : null));
+    const name = el('input', { class: 'ed-field', value: p.name || '', maxlength: 40 });
+    const color = el('input', { type: 'color', class: 'ed-field', value: p.color || '#4a90d9' });
+    const mail = el('input', { class: 'ed-field', value: p.commitEmail || '', placeholder: 'leer = anonym' });
+    const auto = el('select', { class: 'ed-field' }, ...Object.entries(AUTOSAVE_TEXT).map(([k, t]) => el('option', { value: k, selected: +k === (p.autosave ?? 60) }, t)));
+    const theme = el('select', { class: 'ed-field' }, ...Object.entries(THEMES).map(([k, t]) => el('option', { value: k, selected: k === (p.theme || document.documentElement.dataset.theme) }, t)));
+    openDialogue({
+      title: 'Dein Profil', icon: 'person',
+      content: [
+        el('p', { class: 'ed-small' }, `Angemeldet als ${st.user.email || p.email}. Diese Adresse bleibt privat und landet nie im Repository.`),
+        field('Name', name, 'So stehst du in der Werkstatt und als Autor in den Commits.'),
+        field('Farbe', color, 'Deine Farbe in der Werkstatt (später auch, wenn mehrere gleichzeitig bauen).'),
+        field('E-Mail im Commit', mail, 'Leer lassen = anonym. Mit deiner GitHub-noreply-Adresse (GitHub › Settings › Emails) zeigt GitHub deine Commits mit Bild an.'),
+        field('Automatisch speichern', auto),
+        field('Darstellung', theme)],
+      main: { text: 'Speichern', icon: 'save', action: async ({ error }) => {
+        try { await st.saveProfile({ name: name.value, color: color.value, commitEmail: mail.value, autosave: +auto.value, theme: theme.value }); }
+        catch (e) { error(e.message); return false; }
+        this.applyProfile(); this.planAutosave(); this.drawMenu(); this.hint('Profil gespeichert.');
+      } },
+    });
   }
   change(file, f) { this.begin(); const r = f(); this.changed(file); this.draw(); return r; }
   path(kind) { return this.p.paths[kind] || (this.p.paths[kind] = this.p.def[kind] = `data/${kind}.json`); }
@@ -145,7 +178,7 @@ export class Workshop {
     if (!n) this.unsavedSince = null;
     if (kind === 'saves') return ['isOpen', icon('save', 14), this.store?.kind === 'cloud' ? 'Schreibe ins Repository …' : 'Speichere …', '', ''];
     if (this.store?.kind === 'cloud' && !this.storeError) {
-      if (n) return ['isOpen', el('i', { class: 'ed-status-point' }), 'Ungespeichert · seit ', this.unsavedSince, `Ungespeichert seit ${this.unsavedSince} · ${n} ${n === 1 ? 'Datei' : 'Dateien'} geändert · speichert automatisch nach ${AUTOSAVE_S < 60 ? AUTOSAVE_S + ' s' : Math.round(AUTOSAVE_S / 60) + ' Min.'} Ruhe · ⌘S speichert sofort`];
+      if (n) return ['isOpen', el('i', { class: 'ed-status-point' }), 'Ungespeichert · seit ', this.unsavedSince, `Ungespeichert seit ${this.unsavedSince} · ${n} ${n === 1 ? 'Datei' : 'Dateien'} geändert · ${this.autosaveS() ? `speichert automatisch nach ${secondsText(this.autosaveS())} Ruhe · ⌘S speichert sofort` : '⌘S speichert (automatisch speichern ist im Profil aus)'}`];
       if (this.latestSaved) return ['ok', icon('check', 14), 'Gespeichert · ', this.latestSaved, `Gespeichert um ${this.latestSaved} als Commit ${this.latestCommit} in ${this.store.repo}`];
     }
     return this.storeError ? ['error', icon('warning', 14), 'Fehler beim Speichern', '', this.storeError]
@@ -173,7 +206,8 @@ export class Workshop {
       el('button', { class: 'ed-button tk-checkButton' + (error ? ' red' : warn ? ' yellow' : ' green'), title: 'Prüfung (wie nt check)', onclick: () => this.go({ area: 'validation' }) },
         icon(error ? 'error' : warn ? 'warning' : 'verify', 16), error ? ` ${error} Fehler` : warn ? ` ${warn} Warnungen` : ' Alles stimmig'),
       el('span', { class: 'ed-grow' }),
-      this.store.kind === 'cloud' ? el('span', { class: 'ed-small tk-user', title: `Angemeldet als ${this.store.user.email} · speichert direkt in ${this.store.repo}` }, icon('person', 14), ' ' + this.store.user.name) : null,
+      this.store.kind === 'cloud' ? el('button', { class: 'ed-button tk-user', title: `Dein Profil · angemeldet als ${this.store.user.email} · speichert direkt in ${this.store.repo}`, onclick: () => this.showProfile() },
+        el('i', { class: 'tk-user-dot', style: `background:${this.store.profile?.color || '#4a90d9'}` }), ' ' + this.store.user.name) : null,
       this.cloudError ? el('span', { class: 'ed-small tk-state', title: this.cloudError }, icon('warning', 14), ' Nur in diesem Browser') : null,
       this.state.size && this.store.kind !== 'cloud' ? el('span', { class: 'ed-small tk-state', title: 'Gespeicherte Stände überdecken diese Repo-Dateien, bis Ava sie übernimmt: ' + [...this.state.keys()].join(', ') }, icon('info', 14), ` ${this.state.size} gespeicherte ${this.state.size === 1 ? 'Datei' : 'Dateien'}`) : null,
       el('button', { class: 'ed-button ed-theme', title: `Darstellung: ${THEMES[document.documentElement.dataset.theme] || 'Grau'}`, onclick: () => this.nextTheme() }, icon('contrast', 18)),
@@ -183,6 +217,7 @@ export class Workshop {
   nextTheme() {
     const ids = Object.keys(THEMES), new_ = ids[(ids.indexOf(document.documentElement.dataset.theme) + 1) % ids.length];
     document.documentElement.dataset.theme = new_; try { localStorage.setItem('nomad.theme', new_); } catch { /* privat */ }
+    if (this.store?.saveProfile) this.store.saveProfile({ ...this.store.profile, theme: new_ }).catch(() => {});
     this.drawMenu(); this.hint(`Darstellung: ${THEMES[new_]}`);
   }
   hint(text, opt = {}) {

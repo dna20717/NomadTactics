@@ -81,4 +81,6 @@ export function cloudFetch(g, access) {
   return async (url, opt) => String(url).startsWith(TEAM) ? new Response(JSON.stringify(access.certs), { headers: { 'content-type': 'application/json' } }) : g.fetch(url, opt);
 }
 
-export const testEnv = (assets = { fetch: async () => new Response('asset') }) => ({ GITHUB_REPO: 'dna20717/NomadTactics', BRANCH: 'main', DATA_DIR: 'projects/nomadtactics', TEAM_DOMAIN: TEAM, POLICY_AUD: AUD, GITHUB_TOKEN: 'test-token', ASSETS: assets });
+export function fakeKV() { const m = new Map(); return { m, async get(k, type) { const v = m.get(k); return v == null ? null : type === 'json' ? JSON.parse(v) : v; }, async put(k, v) { m.set(k, v); } }; }
+
+export const testEnv = (assets = { fetch: async () => new Response('asset') }) => ({ PROFILES: fakeKV(), GITHUB_REPO: 'dna20717/NomadTactics', BRANCH: 'main', DATA_DIR: 'projects/nomadtactics', TEAM_DOMAIN: TEAM, POLICY_AUD: AUD, GITHUB_TOKEN: 'test-token', ASSETS: assets });

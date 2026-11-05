@@ -11,6 +11,9 @@
     "binding": "ASSETS",
     "run_worker_first": ["/api/*"]
   },
+  "kv_namespaces": [
+    { "binding": "PROFILES", "id": "72b6478ab327446b8451059dcf7284bb" }
+  ],
   "vars": {
     "GITHUB_REPO": "dna20717/NomadTactics",
     "BRANCH": "main",
