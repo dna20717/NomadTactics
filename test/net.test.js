@@ -353,3 +353,18 @@ test('Gastgeber: starten, pausieren, rauswerfen und als Spielleiter eingreifen',
   w.room.host({ t: 'lobby' });
   assert.equal(w.room.phase, 'lobby');
 });
+
+test('Unterschiedliche Spieldaten: Start wird abgelehnt, mit gleichen Daten geht es', () => {
+  const w = world();
+  const a = w.new('A'), b = w.new('B');
+  a.connect(); b.connect();
+  a.send({ t: 'hello', protocol: PROTOCOL, name: 'A', token: a.token, data: 'aaaa1111' });
+  b.send({ t: 'hello', protocol: PROTOCOL, name: 'B', token: b.token, data: 'bbbb2222' });
+  assert.deepEqual(a.state.player.map((p) => p.data), ['aaaa1111', 'bbbb2222']);
+  a.send({ t: 'start' });
+  assert.equal(w.room.phase, 'lobby');
+  assert.ok(a.last('error').text.includes('Spieldaten'));
+  b.send({ t: 'hello', protocol: PROTOCOL, name: 'B', token: b.token, data: 'aaaa1111' });
+  a.send({ t: 'start' });
+  assert.equal(w.room.phase, 'running');
+});

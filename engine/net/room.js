@@ -95,6 +95,7 @@ export class Room {
         if (old) { old.seat = null; old.send({ t: 'rejected', reason: 'superseded', text: `„${p.name}“ spielt jetzt in einem anderen Fenster weiter.` }); }
       }
     }
+    p.data = typeof m.data === 'string' ? m.data.slice(0, 16) : null; // fingerprint of the game data
     v.spectator = false;
     this.setOnto(vid, v, p);
     this.validatePause();
@@ -179,6 +180,8 @@ export class Room {
     if (this.phase !== 'lobby') return;
     const da = this.active().filter((x) => x.online);
     if (da.length < 2) return this.on(p, { t: 'error', text: 'Es braucht mindestens zwei Spieler.' });
+    // Different game data = guaranteed desync: everyone has to load the same version first
+    if (new Set(da.map((x) => x.data ?? null)).size > 1) return this.on(p, { t: 'error', text: 'Nicht alle haben dieselben Spieldaten. Bitte alle die Seite neu laden.' });
     // Close gaps: whoever is offline is dropped from the lobby
     for (const x of this.active()) if (!x.online) this.seats[x.seat] = { ...x, free: true };
     this.phase = 'running';
@@ -349,7 +352,7 @@ export class Room {
       waits,
       spectator: [...this.connections.values()].filter((v) => v.spectator).map((v) => ({ name: v.name })),
       player: this.seats.filter((p) => p && !p.free).map((p) => ({
-        seat: p.seat, name: p.name, color: p.color, online: p.online, ping: p.ping, out: !!p.out, round: p.sync.round,
+        seat: p.seat, name: p.name, color: p.color, online: p.online, ping: p.ping, out: !!p.out, round: p.sync.round, data: p.data ?? null,
       })),
     };
   }

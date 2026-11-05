@@ -8,8 +8,8 @@ import { PROTOCOL, PING_MS, DEAD_AFTER_MS } from './protocol.js';
 
 export class Connection {
   // url: ws://host:port/netz · name · speicher: { lies(), schreib(token) } · test: { verz, zitter } in ms
-  constructor({ url, name, store = null, test = {}, WS = globalThis.WebSocket, now = () => Date.now() }) {
-    this.url = url; this.name = name; this.store = store; this.test = test; this.WS = WS; this.now = now;
+  constructor({ url, name, store = null, test = {}, WS = globalThis.WebSocket, now = () => Date.now(), data = null }) {
+    this.url = url; this.name = name; this.data = data; this.store = store; this.test = test; this.WS = WS; this.now = now;
     this.token = store?.lies() || null;
     this.ws = null;
     this.status = 'off';      // off | connect | there | gone | rejected
@@ -43,7 +43,7 @@ export class Connection {
     ws.onopen = () => {
       if (ws !== this.ws) return;
       this.attempt = 0;
-      this.sendNow({ t: 'hello', protocol: PROTOCOL, name: this.name, token: this.token });
+      this.sendNow({ t: 'hello', protocol: PROTOCOL, name: this.name, token: this.token, data: this.data });
     };
     ws.onmessage = (e) => {
       if (ws !== this.ws) return;

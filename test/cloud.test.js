@@ -114,3 +114,18 @@ test('Profil: Name, Commit-E-Mail, Farbe, Autospeichern, Darstellung', async () 
   assert.deepEqual(c.committer, c.author);   // no token owner e-mail as committer
   assert.match(c.message, /\(Daniel\)/);
 });
+
+test('Party online: /net nur mit Anmeldung, dann in den festen Raum „main“', async () => {
+  const { access, env, fetchFn } = await setup();
+  const seen = [];
+  const PARTY = { idFromName: (n) => { seen.push(n); return 'id-' + n; }, get: (id) => ({ fetch: async () => new Response('raum ' + id) }) };
+  const ws = async (token, e = { ...env, PARTY }) => handle(new Request('https://nt.example.workers.dev/net', { headers: { Upgrade: 'websocket', ...(token ? { 'cf-access-jwt-assertion': token } : {}) } }), e, fetchFn);
+  assert.equal((await ws(null)).status, 401);
+  assert.equal((await ws(await access.token('x@y.de', { aud: 'falsch' }))).status, 401);
+  assert.equal(await (await ws(await access.token('daniel@x.de'))).text(), 'raum id-main');
+  assert.deepEqual(seen, ['main']);
+  assert.equal((await ws(await access.token('daniel@x.de'), env)).status, 503);
+  // the local test door only opens on localhost
+  const far = await handle(new Request('https://nt.example.workers.dev/net', { headers: { Upgrade: 'websocket' } }), { ...env, PARTY, LOCAL_TEST: '1' }, fetchFn);
+  assert.equal(far.status, 401);
+});

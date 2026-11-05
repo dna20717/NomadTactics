@@ -29,7 +29,7 @@ Einstieg, Entscheidungen und Fahrplan stehen im claude.ai-Projekt „NOMADTactic
 npm install
 ln -s "$(npm root -g)/playwright" node_modules/playwright          # für nt image, Tests im Browser
 (cd prototypes/nomadtactics && npm install && ln -s "$(npm root -g)/playwright" node_modules/playwright)
-npm test                       # 46 Tests (tactics, world, experience, battle, net, cloud)
+npm test                       # 48 Tests (tactics, world, experience, battle, net, cloud)
 npm run web:test               # Web-Werkstatt mit Worker, falschem GitHub und Login
 node tools/nt.js check         # Spieldaten prüfen
 npm run party:test             # Party-Server mit echten Browsern
@@ -164,6 +164,9 @@ Besprochen mit Daniel am 5.11.: **USA gegen USA, nur Einheiten, kleine Handkarte
 - **Laden** `engine/tactics/skirmish.js`: `loadSkirmish(json)` (Browser per fetch, Node per fs), `dataVersion(setup)` (Fingerabdruck der Daten, noch ungenutzt), `battleRun(setup)` (Gefechts-Check auf der Startseite).
 - **Darstellung** `game/party/battle_view.js` (Draufsicht in 2D, grob; das Diorama kommt später auf dieselbe Simulation): Kartenbild mit Klippenkanten und Schatten, Fahrzeuge mit Turm zum Ziel, Infanterie als Punkte, Landeplätze, Leben, Geschosse, Explosionen, Wracks, Funk-Meldungen. Klick-Quittung sofort lokal. Eingaben: Klick/Rahmen wählt, Doppelklick = gleicher Typ, Klick/Rechtsklick ins Feld fährt, auf Feinde greift an, Rad zoomt, Rechts- oder Mitte-Ziehen schiebt, WASD/Pfeile, Leertaste = eigener Landeplatz, Strg+A, H, Strg+1–9/1–9 (zweimal = hinspringen), P.
 - Tests: `test/battle.test.js`; `npm run party:test` prüft Gefechts-Check und Prüfsummen über drei Geräte.
+- **Online über Cloudflare (seit 5.11., Daniels Wunsch nach dem LAN-Test):** Der Worker liefert `party.html` mit aus (`dist/party.html`, Adresse **`/party`**, `/party.html` leitet dorthin). WebSocket **`/net`** (`run_worker_first`) prüft den Access-Login und geht in **einen festen Raum** (Daniels Wahl): Durable Object `PartyRoom` (`worker/party_room.js`, Bindung `PARTY`, Name „main“, SQLite-Klasse wegen Gratis-Tarif, Migration `v1` in `wrangler.jsonc`). Darin läuft derselbe `Room` wie im LAN-Server, Takt `tick()` alle 20 ms nur solange jemand verbunden ist; Zustand nur im Speicher. Kosten Gratis-Tarif: grob 28 Spielstunden/Tag (13.000 GB-s), Nachrichten reichen für ~90 h.
+- **Spieldaten live aus der Werkstatt:** Online lädt `party.js` die Daten über `/api/files` (aktueller `main`, also sofort nach dem Speichern in der Werkstatt, ohne Neubau); im LAN die ausgelieferten Dateien (der LAN-Server antwortet auf `/api/session` mit `{ lan: true }`). `Connection` schickt `data` (= `dataVersion(setup)`) im `hello`, der Raum zeigt sie je Spieler und **startet nur, wenn alle dieselbe Version haben** („Bitte alle die Seite neu laden“). Die Lobby zeigt Version und Commit.
+- **Lokal testen wie auf Cloudflare:** `npm run build:web`, dann `npx wrangler dev --local --port 8787 --ip 127.0.0.1 --var LOCAL_TEST:1` und http://127.0.0.1:8787/party öffnen. `LOCAL_TEST` lässt den Login nur auf localhost aus (`accessUser`), `/api/files` antwortet lokal 503 (kein GitHub-Schlüssel) → Rückfall auf die Dateien.
 
 ### Party-Server (Multiplayer-MVP, seit 4.11.)
 

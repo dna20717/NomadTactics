@@ -56,6 +56,8 @@ export function startServer({ port = 8080, max = 4, quiet = false, host = '0.0.0
       req.on('end', () => { let m; try { m = JSON.parse(body); } catch { return reply(res, 400, { ok: false }); } reply(res, 200, room.host(m)); });
       return;
     }
+    // The battle page asks this to find out where it is: here it reads the game data from the served files
+    if (p === 'api/session') return reply(res, 200, { lan: true });
     if (p === 'addresses') { res.writeHead(200, { 'content-type': TYPES['.json'], 'cache-control': 'no-store' }); return res.end(JSON.stringify(addresses(port).map((a) => a.url))); }
     if (p === 'status') { res.writeHead(200, { 'content-type': TYPES['.json'], 'cache-control': 'no-store' }); return res.end(JSON.stringify(room.state())); }
     const file = path.resolve(ROOT, p);

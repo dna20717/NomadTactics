@@ -39,7 +39,7 @@ const basis = `http://127.0.0.1:${PORT}`;
 function nodeClient(name, test = {}) {
   const c = { name };
   c.ls = new Lockstep(newSim, { reportSync: (round, sum) => c.l.send({ t: 'sync', round, sum }) });
-  c.l = new Connection({ url: `ws://127.0.0.1:${PORT}/net`, name, test, store: { lies: () => c.token, write: (t) => { c.token = t; } } });
+  c.l = new Connection({ url: `ws://127.0.0.1:${PORT}/net`, name, test, data: setup.version, store: { lies: () => c.token, write: (t) => { c.token = t; } } });
   c.l.on('match', (m) => c.ls.match(m)).on('round', (m) => c.ls.round(m)).on('state', (m) => { c.state = m; });
   c.l.start();
   c.clock = setInterval(() => c.ls.progress(), 16);

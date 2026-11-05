@@ -25,10 +25,27 @@ const app = {
 };
 window.party = app; // for tests and the console
 
-// Game data comes from the party server (same files for everyone = same simulation)
+// Game data: online (Cloudflare) live from the workshop, i.e. the current main branch via /api/files;
+// on the LAN party server the files it serves. Same data for everyone = same simulation (the room checks the fingerprint).
 const DATA = 'projects/nomadtactics/';
-app.setupReady = loadSkirmish(async (p) => { const r = await fetch(DATA + p, { cache: 'no-cache' }); if (!r.ok) throw new Error(p + ': HTTP ' + r.status); return r.json(); })
-  .then((s) => { app.setup = s; return s; })
+async function dataSource() {
+  try {
+    const s = await fetch('/api/session', { cache: 'no-store' });
+    const session = s.ok ? await s.json() : null;
+    if (session?.user) {
+      app.online = session;
+      const r = await fetch('/api/files', { cache: 'no-store' });
+      if (r.ok) {
+        const { files, commit } = await r.json();
+        app.dataCommit = commit;
+        return async (p) => { if (!files[p]) throw new Error(p + ' fehlt im Repo'); return files[p].content; };
+      }
+    }
+  } catch { /* LAN or offline: static files */ }
+  return async (p) => { const r = await fetch(DATA + p, { cache: 'no-cache' }); if (!r.ok) throw new Error(p + ': HTTP ' + r.status); return r.json(); };
+}
+app.setupReady = dataSource().then((json) => loadSkirmish(json))
+  .then((s) => { app.setup = s; if (app.online?.user?.name && !lies(NAME_KEY)) remember(NAME_KEY, app.online.user.name); if (app.view === 'start') drawUi(); return s; })
   .catch((e) => { app.message = 'Spieldaten fehlen: ' + e.message; drawUi(); });
 const newSim = (seed, seats) => new Battle(seed, seats, app.setup);
 
@@ -61,7 +78,7 @@ function join(name) {
   app.connection?.stop();
   const url = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/net';
   const test = { delay: Number(q.get('delay')) || 0, jitter: Number(q.get('jitter')) || 0 };
-  const l = new Connection({ url, name, store, test });
+  const l = new Connection({ url, name, store, test, data: app.setup.version });
   app.connection = l;
   app.view = 'connect';
   l.onStatus = (s, info) => {
@@ -146,7 +163,7 @@ function startMap() {
 
 // Address for fellow players: whoever opens the server on their own PC via "localhost" needs the home network address
 let lanAddresses = [];
-fetch('/addresses').then((r) => r.json()).then((l) => { lanAddresses = l; if (app.view === 'lobby') drawUi(); }).catch(() => {});
+app.setupReady.then(() => { if (!app.online) fetch('/addresses').then((r) => r.json()).then((l) => { lanAddresses = l; if (app.view === 'lobby') drawUi(); }).catch(() => {}); });
 function invite() {
   const local = /^(localhost|127\.|\[::1\])/.test(location.hostname);
   return local && lanAddresses.length ? lanAddresses[0] : location.origin;
@@ -185,9 +202,12 @@ function lobbyMap() {
     el('div', { class: 'pt-title' }, app.spectator ? 'Du schaust zu' : online < 2 ? 'Warte auf Mitspieler …' : `${online} Spieler bereit`),
     el('ul', { class: 'pt-player' }, rows),
     colorChoice(list.find((x) => x.seat === me)),
+    new Set(list.filter((x) => x.online).map((x) => x.data)).size > 1
+      ? el('div', { class: 'pt-error' }, icon('warning', 14), ' Nicht alle haben dieselben Spieldaten (jemand hat in der Werkstatt gespeichert). Bitte alle die Seite neu laden.')
+      : el('div', { class: 'pt-small' }, `Spieldaten ${app.setup?.version ?? '–'}${app.dataCommit ? ' · live aus der Werkstatt (' + app.dataCommit.slice(0, 7) + ')' : ''}`),
     spectator.length ? el('div', { class: 'pt-small pt-spectator' }, icon('auge', 14), 'Zuschauer: ', spectator.map((x) => x.name).join(', ')) : null,
-    el('div', { class: 'pt-small', style: 'margin-top:12px' }, 'Andere im selben WLAN öffnen:'),
-    el('div', { class: 'pt-address', id: 'pt-address' }, invite()),
+    el('div', { class: 'pt-small', style: 'margin-top:12px' }, app.online ? 'Andere öffnen (Login per E-Mail-Code):' : 'Andere im selben WLAN öffnen:'),
+    el('div', { class: 'pt-address', id: 'pt-address' }, app.online ? location.origin + '/party' : invite()),
     el('div', { class: 'pt-error' }, app.message),
     el('div', { class: 'pt-bottom' },
       button('Verlassen', () => { app.connection?.stop(); store?.write(null); app.view = 'start'; app.state = null; drawUi(); }, '', 'arrow_left'),

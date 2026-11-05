@@ -9,6 +9,7 @@
 //   DATA_DIR      "projects/nomadtactics"          TEAM_DOMAIN  "https://<team>.cloudflareaccess.com"
 //   POLICY_AUD    Access application audience tag  GITHUB_TOKEN (secret) fine-grained token, contents read/write
 import { pretty } from '../tools/json.js';
+export { PartyRoom } from './party_room.js';
 
 const GITHUB = 'https://api.github.com';
 const json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' } });
@@ -21,6 +22,7 @@ export default {
 // fetchFn is injectable for tests (fake GitHub, fake Access certificates).
 export async function handle(request, env, fetchFn) {
   const url = new URL(request.url);
+  if (url.pathname === '/net') return await party(request, env, fetchFn);
   if (!url.pathname.startsWith('/api/')) return env.ASSETS.fetch(request);
   try {
     // Setup help: shows the (unverified) team domain and audience of the own Access login, nothing else
@@ -42,6 +44,15 @@ export async function handle(request, env, fetchFn) {
   }
 }
 
+// ---------- Party (Gefecht online) ----------
+// WebSocket /net → the one fixed party room (Durable Object „main“). Same login as the workshop.
+async function party(request, env, fetchFn) {
+  if (!env.PARTY) return failure(503, 'Party-Raum ist nicht eingerichtet (Durable Object PARTY fehlt).');
+  if (request.headers.get('Upgrade') !== 'websocket') return failure(426, 'Erwartet WebSocket.');
+  if (!(await accessUser(request, env, fetchFn))) return failure(401, 'Nicht angemeldet.');
+  return env.PARTY.get(env.PARTY.idFromName('main')).fetch(request);
+}
+
 const branch = env => env.BRANCH || 'main';
 const dataDir = env => (env.DATA_DIR || 'projects/nomadtactics').replace(/\/+$/, '');
 
@@ -58,6 +69,8 @@ export function accessInfo(request) {
 const certCache = new Map();   // team domain -> { keys, time }
 
 export async function accessUser(request, env, fetchFn) {
+  // Local test with `wrangler dev --var LOCAL_TEST:1`: only ever on localhost, never on the real address
+  if (env.LOCAL_TEST === '1' && /^(localhost|127\.0\.0\.1)$/.test(new URL(request.url).hostname)) return { email: 'test@localhost', name: 'Test' };
   const token = request.headers.get('cf-access-jwt-assertion');
   if (!token) return null;
   const parts = token.split('.');
