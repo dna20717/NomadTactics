@@ -23,6 +23,8 @@ export async function handle(request, env, fetchFn) {
   const url = new URL(request.url);
   if (!url.pathname.startsWith('/api/')) return env.ASSETS.fetch(request);
   try {
+    // Setup help: shows the (unverified) team domain and audience of the own Access login, nothing else
+    if (url.pathname === '/api/access-info') return json(accessInfo(request));
     if (!env.TEAM_DOMAIN || !env.POLICY_AUD) return failure(503, 'Login ist noch nicht eingerichtet (TEAM_DOMAIN / POLICY_AUD fehlen).');
     const user = await accessUser(request, env, fetchFn);
     if (!user) return failure(401, 'Nicht angemeldet.');
@@ -41,6 +43,15 @@ const branch = env => env.BRANCH || 'main';
 const dataDir = env => (env.DATA_DIR || 'projects/nomadtactics').replace(/\/+$/, '');
 
 // ---------- Cloudflare Access ----------
+export function accessInfo(request) {
+  const token = request.headers.get('cf-access-jwt-assertion');
+  if (!token) return { login: false, hint: 'Kein Access-Login: Cloudflare Access ist für diese Adresse noch nicht eingeschaltet.' };
+  try {
+    const body = JSON.parse(text(b64url(token.split('.')[1])));
+    return { login: true, email: body.email, TEAM_DOMAIN: body.iss, POLICY_AUD: Array.isArray(body.aud) ? body.aud[0] : body.aud };
+  } catch { return { login: false, hint: 'Access-Kopfzeile nicht lesbar.' }; }
+}
+
 const certCache = new Map();   // team domain -> { keys, time }
 
 export async function accessUser(request, env, fetchFn) {

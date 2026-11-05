@@ -91,4 +91,7 @@ test('Gleicher Inhalt erzeugt keinen leeren Commit, ungültige Pfade werden abge
   for (const bad of ['../README.md', '/etc/x.json', 'a/../b.json', 'x.js', '']) assert.equal(validFile(bad), false, bad);
   assert.equal((await call('/api/commit', { method: 'POST', body: { changes: [{ file: '../README.md', content: {} }] } })).status, 400);
   assert.equal(nameFromEmail('anna-lena+nt@web.de'), 'Anna Lena');
+  const info = await call('/api/access-info');
+  assert.equal(info.data.POLICY_AUD, 'aud-test-123'); assert.equal(info.data.login, true);
+  assert.equal((await call('/api/access-info', { email: null })).data.login, false);
 });
