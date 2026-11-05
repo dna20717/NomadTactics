@@ -61,6 +61,7 @@ output/             Bilder von nt image (nicht im Git)
 - Werkstatt: https://claude.ai/artifact/SqVmkapcUQSKpH4nTVTwLm (Slug `d139e608-ecfe-4695-bb07-cb3aa67bc0e2`)
 - Härtetest: https://claude.ai/artifact/FU6vGfNr7KpgPGqDHPu9j4 (Slug `7528ab9f-9035-43ea-ae65-110b26171e27`)
 - Spielwiese: https://claude.ai/artifact/RJZ64hUco8UkK9mPN5t8vj (Slug `c4cebf16-5907-49dc-a808-cae400e2c000`)
+- **Cloudflare (seit 05.11.):** Worker `nomadtactics` (Workers Builds, mit GitHub verbunden) baut bei jedem Push auf `main` mit `npm run build:web` → `dist/` und liefert die Werkstatt unter `nomadtactics.<konto>.workers.dev` aus (`wrangler.jsonc`). Speichern dort vorerst nur im Browser (localStorage). Ava sieht den Worker über den Connector „Cloudflare Developer Platform“ (nur lesen/Speicher anlegen; Deploy geht nicht, die Cloudflare-API ist aus der Arbeitsumgebung gesperrt).
 - Geplant (Gespräch 05.11.): Werkstatt als Web-App auf Cloudflare (Pages + Worker + Durable Object, Login per E-Mail-Code über Cloudflare Access, jeder Speichervorgang wird ein Commit). Daniels Cloudflare-Konto ist mit GitHub verbunden. Details: Projekt-Doc `claude/nomadtactics-umzug.md`.
 
 ## Oberflächen-Regeln (aus NomadHouse übernommen)
