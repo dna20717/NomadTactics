@@ -213,7 +213,7 @@ async function commit(gh, env, user, body) {
     const names = effective.map(w => w.file.replace(/\.json$/, '').split('/').pop());
     const message = `Werkstatt: ${names.slice(0, 4).join(', ')}${names.length > 4 ? ` und ${names.length - 4} weitere` : ''} (${user.name})\n\nGespeichert in der Web-Werkstatt von ${user.name}.`;
     const who = { name: user.name, email: user.email, date: new Date().toISOString() };
-    const c = await gh('POST', 'git/commits', { message, tree: tree.sha, parents: [h.commit], author: who });
+    const c = await gh('POST', 'git/commits', { message, tree: tree.sha, parents: [h.commit], author: who, committer: who });   // committer too, otherwise GitHub puts in the token owner's e-mail
     try {
       await gh('PATCH', `git/refs/heads/${branch(env)}`, { sha: c.sha, force: false });
     } catch (e) {

@@ -50,7 +50,7 @@ export function fakeGitHub(files, repo = 'dna20717/NomadTactics') {
       }
       return ok({ sha: await putTree(entries) }, 201);
     }
-    if (method === 'POST' && p === 'git/commits') { const c = id(); commits.set(c, { tree: body.tree, parents: body.parents, message: body.message, author: body.author }); return ok({ sha: c }, 201); }
+    if (method === 'POST' && p === 'git/commits') { const c = id(); commits.set(c, { tree: body.tree, parents: body.parents, message: body.message, author: body.author, committer: body.committer }); return ok({ sha: c }, 201); }
     if (method === 'PATCH' && (m = p.match(/^git\/refs\/heads\/(.+)$/))) {
       if (g.raceOnce) { g.raceOnce = false; await g.pushOther('projects/nomadtactics/race.json', '{}\n'); }
       if (!commits.get(body.sha).parents.includes(g.refs[m[1]]) && !body.force) return ok({ message: 'Update is not a fast forward' }, 422);

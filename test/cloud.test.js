@@ -111,5 +111,6 @@ test('Profil: Name, Commit-E-Mail, Farbe, Autospeichern, Darstellung', async () 
   const r = await call('/api/commit', { method: 'POST', body: { base: { 'project.json': f.data.files['project.json'].sha }, changes: [{ file: 'project.json', content: { name: 'NT 3' } }] } });
   const c = g.commits.get(r.data.commit);
   assert.equal(c.author.name, 'Daniel'); assert.equal(c.author.email, '123+dna@users.noreply.github.com');
+  assert.deepEqual(c.committer, c.author);   // no token owner e-mail as committer
   assert.match(c.message, /\(Daniel\)/);
 });
