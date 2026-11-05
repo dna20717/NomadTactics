@@ -419,5 +419,6 @@
    "effect": [{"kind": "keyword", "keyword": "transport", "stat": 5},{"kind": "keyword", "keyword": "schiessscharten"}]
   }
  },
- "generals": {}
+ "generals": {},
+ "ui": {"accent": "#e22400", "mood": "modern"}
 }
