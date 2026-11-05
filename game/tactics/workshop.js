@@ -5,6 +5,7 @@
 import { icon } from '../icons.js';
 import { el, openDialogue, suchChoice, draggable, inspectorHead, cleanId } from '../ui.js';
 import { openStore } from '../store.js';
+import { openCloudStore } from './cloud_store.js';
 import { browserLoader } from '../browser_loader.js';
 import { loadTactics, validateTactics } from '../../engine/tactics/index.js';
 import { PAGES, NAVBAR } from './pages.js';
@@ -13,6 +14,8 @@ import { UI_PAGES, experiencePage } from './ui_pages.js';
 
 const THEMES = { gray: 'Grau', violet: 'Violett', brightness: 'Hell' };
 const clockTime = () => new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+// Web workshop: save automatically after this many seconds without a new change (?autosave=5 for tests)
+const AUTOSAVE_S = (() => { try { const n = Number(new URLSearchParams(location.search).get('autosave')); return n > 0 ? n : 60; } catch { return 60; } })();
 import { Overlay as OverlayCore, freeId, same } from '../../engine/tactics/overlay.js';
 export { freeId, same };
 
@@ -32,7 +35,8 @@ export class Workshop {
   }
 
   async start() {
-    this.store = await openStore({ project: 'nomadtactics', withoutAssets: true });
+    try { this.store = await openCloudStore(); } catch (e) { this.cloudError = e.message; }
+    if (!this.store) this.store = await openStore({ project: 'nomadtactics', withoutAssets: true });
     this.state = await this.store.all().catch(() => new Map());
     const repo = browserLoader(this.basis), state = this.state;
     const loader = { ...repo, json: async p => state.has(p) ? structuredClone(state.get(p)) : repo.json(p) };
@@ -53,13 +57,20 @@ export class Workshop {
     this.p.def = x.def; this.p.data = x.data; this.p.factions = new Map(x.factions); this.p.factionPaths = new Map(x.paths);
     const afterwards = this.fileDrafts();   // only files that have really changed count as unsaved
     for (const d of new Set([...before.keys(), ...afterwards.keys()])) if (before.get(d) !== afterwards.get(d)) this.dirty.add(d);
+    this.planAutosave();
     if (!this.p.factions.has(this.page.faction)) this.page.faction = [...this.p.factions.keys()][0] || null;
     this.draw();
   }
   begin() { this.undo.push(this.snapshot()); if (this.undo.length > 100) this.undo.shift(); this.redo = []; }
   undo() { if (this.undo.length) { this.redo.push(this.snapshot()); this.spotHer(this.undo.pop()); } }
   repeat() { if (this.redo.length) { this.undo.push(this.snapshot()); this.spotHer(this.redo.pop()); } }
-  changed(file) { if (file) this.dirty.add(file); }
+  changed(file) { if (file) this.dirty.add(file); this.planAutosave(); }
+  // Web workshop: one minute after the last change everything is saved (= one commit)
+  planAutosave() {
+    if (this.store?.kind !== 'cloud') return;
+    clearTimeout(this.autosaveTimer);
+    if (this.dirty.size) this.autosaveTimer = setTimeout(() => this.persist({ auto: true }), AUTOSAVE_S * 1000);
+  }
   change(file, f) { this.begin(); const r = f(); this.changed(file); this.draw(); return r; }
   path(kind) { return this.p.paths[kind] || (this.p.paths[kind] = this.p.def[kind] = `data/${kind}.json`); }
   allFiles() { return ['project.json', ...Object.values(this.p.paths), ...this.p.factionPaths.values()]; }
@@ -69,7 +80,8 @@ export class Workshop {
     for (const [id, pf] of this.p.factionPaths) if (pf === file) return this.p.factions.get(id);
     return null;
   }
-  async persist() {
+  async persist(opt = {}) {
+    if (this.store.saveAll) return this.persistCloud(opt);
     if (!this.dirty.size) { this.hint('Nichts zu speichern.'); return; }
     this.storeError = null; this.statusShowing('saves');
     try {
@@ -77,6 +89,40 @@ export class Workshop {
       this.latestSaved = clockTime(); this.hint(this.store.kind === 'artifact' ? 'Gespeichert. Ava übernimmt die Stände ins Repository.' : 'Gespeichert (in diesem Browser).');
     } catch (e) { this.storeError = e.message; this.hint('Speichern fehlgeschlagen: ' + e.message); }
     this.drawMenu();
+  }
+  // Web workshop: all changed files as one commit into the repository
+  async persistCloud({ auto = false, force = false } = {}) {
+    clearTimeout(this.autosaveTimer);
+    if (this.saving) { this.saveAgain = true; return; }
+    if (!this.dirty.size) { if (!auto) this.hint('Nichts zu speichern.'); return; }
+    const files = [...this.dirty], sent = new Map(files.map(d => [d, JSON.stringify(this.content(d))]));
+    const changes = files.map(d => ({ file: d, content: this.content(d) || null }));
+    this.saving = true; this.storeError = null; this.statusShowing('saves');
+    try {
+      const r = await this.store.saveAll(changes, { force });
+      for (const d of files) { if (JSON.stringify(this.content(d)) === sent.get(d)) this.dirty.delete(d); this.state.set(d, this.content(d)); }
+      this.latestSaved = clockTime(); this.latestCommit = r.short;
+      this.hint(r.unchanged ? 'Gespeichert (keine inhaltliche Änderung).' : `Gespeichert${auto ? ' (automatisch)' : ''} · Commit ${r.short} im Repository.`);
+    } catch (e) {
+      if (e.status === 409 && e.conflicts?.length) this.conflict(e.conflicts);
+      else { this.storeError = e.message; this.hint('Speichern fehlgeschlagen: ' + e.message); }
+    } finally {
+      this.saving = false;
+    }
+    this.drawMenu();
+    if (this.saveAgain) { this.saveAgain = false; this.persistCloud({ auto: true }); }
+    else this.planAutosave();
+  }
+  conflict(files) {
+    this.storeError = 'Konflikt beim Speichern';
+    openDialogue({
+      title: 'Jemand war schneller', icon: 'warning',
+      content: [el('p', {}, `Diese ${files.length === 1 ? 'Datei wurde' : 'Dateien wurden'} inzwischen von jemand anderem geändert:`),
+        el('ul', {}, ...files.map(f => el('li', {}, el('code', {}, f)))),
+        el('p', { class: 'ed-small' }, '„Neu laden“ holt den aktuellen Stand und verwirft deine ungespeicherten Änderungen. „Überschreiben“ speichert deinen Stand trotzdem, die Änderungen der anderen an diesen Dateien gehen dann verloren (im Git-Verlauf bleiben sie erhalten).')],
+      left: [el('button', { class: 'ed-button wide red', onclick: () => { document.querySelector('.ed-dialogue')?.remove(); this.persistCloud({ force: true }); } }, 'Überschreiben')],
+      main: { text: 'Neu laden', icon: 'restart', action: () => { this.dirty.clear(); location.reload(); } },
+    });
   }
   taste(e) {
     const t = e.target, writes = t.matches?.('input, textarea, select') && !(e.metaKey || e.ctrlKey);
@@ -97,7 +143,11 @@ export class Workshop {
     const n = this.dirty.size;
     if (n && !this.unsavedSince) this.unsavedSince = clockTime();
     if (!n) this.unsavedSince = null;
-    if (kind === 'saves') return ['isOpen', icon('save', 14), 'Speichere …', '', ''];
+    if (kind === 'saves') return ['isOpen', icon('save', 14), this.store?.kind === 'cloud' ? 'Schreibe ins Repository …' : 'Speichere …', '', ''];
+    if (this.store?.kind === 'cloud' && !this.storeError) {
+      if (n) return ['isOpen', el('i', { class: 'ed-status-point' }), 'Ungespeichert · seit ', this.unsavedSince, `Ungespeichert seit ${this.unsavedSince} · ${n} ${n === 1 ? 'Datei' : 'Dateien'} geändert · speichert automatisch nach ${AUTOSAVE_S < 60 ? AUTOSAVE_S + ' s' : Math.round(AUTOSAVE_S / 60) + ' Min.'} Ruhe · ⌘S speichert sofort`];
+      if (this.latestSaved) return ['ok', icon('check', 14), 'Gespeichert · ', this.latestSaved, `Gespeichert um ${this.latestSaved} als Commit ${this.latestCommit} in ${this.store.repo}`];
+    }
     return this.storeError ? ['error', icon('warning', 14), 'Fehler beim Speichern', '', this.storeError]
       : n ? ['isOpen', el('i', { class: 'ed-status-point' }), 'Ungespeichert · seit ', this.unsavedSince, `Ungespeichert seit ${this.unsavedSince} · ${n} ${n === 1 ? 'Datei' : 'Dateien'} geändert · ⌘S speichert`]
         : this.latestSaved ? ['ok', icon('check', 14), 'Gespeichert · ', this.latestSaved, `Gespeichert um ${this.latestSaved}`]
@@ -123,7 +173,9 @@ export class Workshop {
       el('button', { class: 'ed-button tk-checkButton' + (error ? ' red' : warn ? ' yellow' : ' green'), title: 'Prüfung (wie nt check)', onclick: () => this.go({ area: 'validation' }) },
         icon(error ? 'error' : warn ? 'warning' : 'verify', 16), error ? ` ${error} Fehler` : warn ? ` ${warn} Warnungen` : ' Alles stimmig'),
       el('span', { class: 'ed-grow' }),
-      this.state.size ? el('span', { class: 'ed-small tk-state', title: 'Gespeicherte Stände überdecken diese Repo-Dateien, bis Ava sie übernimmt: ' + [...this.state.keys()].join(', ') }, icon('info', 14), ` ${this.state.size} gespeicherte ${this.state.size === 1 ? 'Datei' : 'Dateien'}`) : null,
+      this.store.kind === 'cloud' ? el('span', { class: 'ed-small tk-user', title: `Angemeldet als ${this.store.user.email} · speichert direkt in ${this.store.repo}` }, icon('person', 14), ' ' + this.store.user.name) : null,
+      this.cloudError ? el('span', { class: 'ed-small tk-state', title: this.cloudError }, icon('warning', 14), ' Nur in diesem Browser') : null,
+      this.state.size && this.store.kind !== 'cloud' ? el('span', { class: 'ed-small tk-state', title: 'Gespeicherte Stände überdecken diese Repo-Dateien, bis Ava sie übernimmt: ' + [...this.state.keys()].join(', ') }, icon('info', 14), ` ${this.state.size} gespeicherte ${this.state.size === 1 ? 'Datei' : 'Dateien'}`) : null,
       el('button', { class: 'ed-button ed-theme', title: `Darstellung: ${THEMES[document.documentElement.dataset.theme] || 'Grau'}`, onclick: () => this.nextTheme() }, icon('contrast', 18)),
       el('button', { class: 'ed-button', title: 'Hilfe (?)', onclick: () => this.showHelp() }, icon('help', 18))].filter(Boolean));
     this.statusShowing();

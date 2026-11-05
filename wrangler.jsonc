@@ -1,8 +1,21 @@
-// Cloudflare: serves the workshop from dist/ (built by `npm run build:web`).
+// Cloudflare: Worker "nomadtactics" serves the web workshop.
+// - dist/ (built by `npm run build:web`) as static assets
+// - /api/* through worker/index.js: login check (Cloudflare Access) and saving as commits into the repository
+// Secret GITHUB_TOKEN is set in the Cloudflare dashboard (Settings › Variables and Secrets), never here.
 {
   "name": "nomadtactics",
+  "main": "worker/index.js",
   "compatibility_date": "2026-11-05",
   "assets": {
-    "directory": "./dist"
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*"]
+  },
+  "vars": {
+    "GITHUB_REPO": "dna20717/NomadTactics",
+    "BRANCH": "main",
+    "DATA_DIR": "projects/nomadtactics",
+    "TEAM_DOMAIN": "",
+    "POLICY_AUD": ""
   }
 }

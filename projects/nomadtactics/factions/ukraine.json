@@ -5,289 +5,126 @@
  "ui": {"mood": "workbench", "accent": "#e8b818"},
  "description": "Bewegliche Verteidigungsarmee. Billig, erfinderisch und schwer zu fassen. Kein Strom, dafür Tarnung, Tunnel und Schrott: Erbeutete Wracks fahren für die eigene Seite weiter, billige Drohnen jagen teure Panzer.",
  "playstyle": "Ausweichen, zermürben, zurückschlagen",
- "resources": [
-  "money",
-  "schrott",
-  "rank"
- ],
- "start": {
-  "money": 8000,
-  "schrott": 200,
-  "building": [
-   "kommandobunker"
-  ],
-  "units": [
-   "arbeiter",
-   "arbeiter",
-   "arbeiter"
-  ]
- },
+ "resources": ["money", "schrott", "rank"],
+ "start": {"money": 8000, "schrott": 200, "building": ["kommandobunker"], "units": ["arbeiter", "arbeiter", "arbeiter"]},
  "building": {
   "kommandobunker": {
    "name": "Kommandobunker",
    "function": "hq",
-   "cost": {
-    "money": 1500
-   },
+   "cost": {"money": 1500},
    "buildTime": 35,
    "health": 3500,
    "armor": "building",
-   "size": [
-    7,
-    7
-   ],
-   "produces": [
-    "arbeiter"
-   ],
-   "keywords": {
-    "stromlos": true,
-    "tunnel": true,
-    "tough": 10,
-    "abgeschirmt": true
-   },
-   "pos": [
-    0,
-    0
-   ]
+   "size": [7, 7],
+   "produces": ["arbeiter"],
+   "keywords": {"stromlos": true, "tunnel": true, "tough": 10, "abgeschirmt": true},
+   "pos": [0, 0]
   },
   "shelter": {
    "name": "Unterschlupf",
    "function": "production",
    "model": "kaserne",
-   "cost": {
-    "money": 400
-   },
+   "cost": {"money": 400},
    "buildTime": 8,
    "health": 1100,
    "armor": "building",
-   "size": [
-    5,
-    4
-   ],
-   "produces": [
-    "kaempfer",
-    "raketenschuetze"
-   ],
-   "requires": [
-    "kommandobunker"
-   ],
-   "keywords": {
-    "stromlos": true,
-    "garnison": 6,
-    "abgeschirmt": true
-   },
-   "pos": [
-    -1,
-    1
-   ]
+   "size": [5, 4],
+   "produces": ["kaempfer", "raketenschuetze"],
+   "requires": ["kommandobunker"],
+   "keywords": {"stromlos": true, "garnison": 6, "abgeschirmt": true},
+   "pos": [-1, 1]
   },
   "schrottplatz": {
    "name": "Schrottplatz",
    "function": "resource",
-   "cost": {
-    "money": 600
-   },
+   "cost": {"money": 600},
    "buildTime": 12,
    "health": 1300,
    "armor": "building",
-   "size": [
-    8,
-    6
-   ],
-   "produces": [
-    "sammler"
-   ],
-   "requires": [
-    "kommandobunker"
-   ],
-   "keywords": {
-    "stromlos": true,
-    "collects": 20,
-    "abgeschirmt": true
-   },
-   "pos": [
-    1,
-    1
-   ],
+   "size": [8, 6],
+   "produces": ["sammler"],
+   "requires": ["kommandobunker"],
+   "keywords": {"stromlos": true, "collects": 20, "abgeschirmt": true},
+   "pos": [1, 1],
    "description": "Zieht langsam Schrott aus dem Boden und nimmt Wracks an."
   },
   "workshop": {
    "name": "Hinterhof-Werkstatt",
    "function": "production",
-   "cost": {
-    "money": 1200,
-    "schrott": 200
-   },
+   "cost": {"money": 1200, "schrott": 200},
    "buildTime": 18,
    "health": 1600,
    "armor": "building",
-   "size": [
-    8,
-    7
-   ],
-   "produces": [
-    "pickup",
-    "schrottpanzer",
-    "raketenlaster",
-    "fpv_drohne"
-   ],
-   "requires": [
-    "shelter",
-    "schrottplatz"
-   ],
-   "keywords": {
-    "stromlos": true,
-    "abgeschirmt": true
-   },
-   "pos": [
-    0,
-    2
-   ]
+   "size": [8, 7],
+   "produces": ["pickup", "schrottpanzer", "raketenlaster", "fpv_drohne"],
+   "requires": ["shelter", "schrottplatz"],
+   "keywords": {"stromlos": true, "abgeschirmt": true},
+   "pos": [0, 2]
   },
   "tunnelnetz": {
    "name": "Tunnelnetz",
    "function": "movement",
-   "cost": {
-    "money": 800
-   },
+   "cost": {"money": 800},
    "buildTime": 12,
    "health": 1000,
    "armor": "building",
-   "size": [
-    3,
-    3
-   ],
-   "weapons": [
-    "sturmgewehr"
-   ],
-   "requires": [
-    "shelter"
-   ],
-   "keywords": {
-    "stromlos": true,
-    "tunnel": true,
-    "garnison": 10,
-    "abgeschirmt": true,
-    "tarnfeld": 15
-   },
-   "pos": [
-    -2,
-    2
-   ]
+   "size": [3, 3],
+   "weapons": ["sturmgewehr"],
+   "requires": ["shelter"],
+   "keywords": {"stromlos": true, "tunnel": true, "garnison": 10, "abgeschirmt": true, "tarnfeld": 15},
+   "pos": [-2, 2]
   },
   "stellung": {
    "name": "MG-Stellung",
    "function": "defense",
-   "cost": {
-    "money": 500
-   },
+   "cost": {"money": 500},
    "buildTime": 6,
    "health": 700,
    "armor": "building",
-   "size": [
-    2,
-    2
-   ],
-   "weapons": [
-    "mg"
-   ],
-   "requires": [
-    "shelter"
-   ],
-   "keywords": {
-    "stromlos": true,
-    "tarnung": true,
-    "abgeschirmt": true
-   },
-   "pos": [
-    -1,
-    2
-   ]
+   "size": [2, 2],
+   "weapons": ["mg"],
+   "requires": ["shelter"],
+   "keywords": {"stromlos": true, "tarnung": true, "abgeschirmt": true},
+   "pos": [-1, 2]
   },
   "flakstellung": {
    "name": "Flakstellung",
    "function": "defense",
-   "cost": {
-    "money": 600
-   },
+   "cost": {"money": 600},
    "buildTime": 8,
    "health": 700,
    "armor": "building",
-   "size": [
-    2,
-    2
-   ],
-   "weapons": [
-    "flak"
-   ],
-   "requires": [
-    "shelter"
-   ],
-   "keywords": {
-    "stromlos": true,
-    "abgeschirmt": true
-   },
-   "pos": [
-    -3,
-    2
-   ]
+   "size": [2, 2],
+   "weapons": ["flak"],
+   "requires": ["shelter"],
+   "keywords": {"stromlos": true, "abgeschirmt": true},
+   "pos": [-3, 2]
   },
   "schwarzmarkt": {
    "name": "Schwarzmarkt",
    "function": "research",
-   "cost": {
-    "money": 1500,
-    "schrott": 300
-   },
+   "cost": {"money": 1500, "schrott": 300},
    "buildTime": 20,
    "health": 1200,
    "armor": "building",
-   "size": [
-    6,
-    5
-   ],
-   "requires": [
-    "workshop"
-   ],
-   "keywords": {
-    "stromlos": true,
-    "collects": 15,
-    "abgeschirmt": true
-   },
-   "pos": [
-    1,
-    3
-   ],
+   "size": [6, 5],
+   "requires": ["workshop"],
+   "keywords": {"stromlos": true, "collects": 15, "abgeschirmt": true},
+   "pos": [1, 3],
    "description": "Erforscht Verbesserungen und tauscht ein wenig Geld pro Minute."
   },
   "raketensilo": {
    "name": "Raketenhagel-Silo",
    "function": "superweapon",
-   "cost": {
-    "money": 4000,
-    "schrott": 800
-   },
+   "cost": {"money": 4000, "schrott": 800},
    "buildTime": 55,
    "health": 3500,
    "armor": "building",
-   "size": [
-    6,
-    6
-   ],
-   "weapons": [
-    "raketenhagel"
-   ],
-   "requires": [
-    "schwarzmarkt"
-   ],
-   "keywords": {
-    "stromlos": true,
-    "abgeschirmt": true
-   },
-   "pos": [
-    1,
-    5
-   ],
+   "size": [6, 6],
+   "weapons": ["raketenhagel"],
+   "requires": ["schwarzmarkt"],
+   "keywords": {"stromlos": true, "abgeschirmt": true},
+   "pos": [1, 5],
    "description": "Einmal alle 4,5 Minuten: 30 Raketen auf ein Gebiet."
   }
  },
@@ -297,18 +134,13 @@
    "role": "Bauen",
    "class": "infantry",
    "model": "soldat",
-   "cost": {
-    "money": 200
-   },
+   "cost": {"money": 200},
    "buildTime": 5,
    "health": 80,
    "armor": "infantry",
    "speed": 3,
    "sight": 18,
-   "keywords": {
-    "builds": true,
-    "collects": 100
-   },
+   "keywords": {"builds": true, "collects": 100},
    "squad": 1
   },
   "sammler": {
@@ -316,313 +148,160 @@
    "role": "Sammeln",
    "class": "vehicle",
    "model": "dozer",
-   "cost": {
-    "money": 400
-   },
+   "cost": {"money": 400},
    "buildTime": 8,
    "health": 220,
    "armor": "leicht",
    "speed": 5,
    "sight": 18,
-   "keywords": {
-    "collects": 60,
-    "loot": true,
-    "wheel": true
-   }
+   "keywords": {"collects": 60, "loot": true, "wheel": true}
   },
   "kaempfer": {
    "name": "Kämpfer",
    "role": "Masse",
    "class": "infantry",
    "model": "soldat",
-   "cost": {
-    "money": 150
-   },
+   "cost": {"money": 150},
    "buildTime": 3,
    "health": 90,
    "armor": "infantry",
    "speed": 3,
    "sight": 22,
-   "weapons": [
-    "sturmgewehr"
-   ],
-   "keywords": {
-    "schwarm": true,
-    "nachtsicht": true
-   },
+   "weapons": ["sturmgewehr"],
+   "keywords": {"schwarm": true, "nachtsicht": true},
    "squad": 5,
-   "equipment": [
-    "mg_shooter",
-    "flammenwerfer_mann",
-    "panzerfaust_mann",
-    "anfuehrer",
-    "verstaerkung"
-   ]
+   "equipment": ["mg_shooter", "flammenwerfer_mann", "panzerfaust_mann", "anfuehrer", "verstaerkung"]
   },
   "raketenschuetze": {
    "name": "Raketenschütze",
    "role": "Panzerjäger",
    "class": "infantry",
    "model": "soldat",
-   "cost": {
-    "money": 300
-   },
+   "cost": {"money": 300},
    "buildTime": 5,
    "health": 90,
    "armor": "infantry",
    "speed": 2.8,
    "sight": 22,
-   "weapons": [
-    "panzerfaust"
-   ],
+   "weapons": ["panzerfaust"],
    "squad": 3,
-   "equipment": [
-    "tarnumhang",
-    "anfuehrer"
-   ],
-   "keywords": {
-    "eingraben": true
-   }
+   "equipment": ["tarnumhang", "anfuehrer"],
+   "keywords": {"eingraben": true}
   },
   "pickup": {
    "name": "Pickup mit MG",
    "role": "Überfall",
    "class": "vehicle",
    "model": "spaeher",
-   "cost": {
-    "money": 500
-   },
+   "cost": {"money": 500},
    "buildTime": 6,
    "health": 180,
    "armor": "leicht",
    "speed": 11,
    "sight": 26,
-   "weapons": [
-    "mg"
-   ],
-   "keywords": {
-    "schnell": true,
-    "loot": true,
-    "transport": 5,
-    "wheel": true,
-    "fahrtfeuer": true,
-    "schiessscharten": true,
-    "size": 3,
-    "abgeschirmt": true
-   },
-   "equipment": [
-    "raketenaufbau",
-    "flakaufbau",
-    "panzerplatten"
-   ]
+   "weapons": ["mg"],
+   "keywords": {"schnell": true, "loot": true, "transport": 5, "wheel": true, "fahrtfeuer": true, "schiessscharten": true, "size": 3, "abgeschirmt": true},
+   "equipment": ["raketenaufbau", "flakaufbau", "panzerplatten"]
   },
   "schrottpanzer": {
    "name": "Schrottpanzer",
    "role": "Linie",
    "class": "vehicle",
    "model": "daniel_tank",
-   "cost": {
-    "money": 600,
-    "schrott": 100
-   },
+   "cost": {"money": 600, "schrott": 100},
    "buildTime": 9,
    "health": 380,
    "armor": "schwer",
    "speed": 5,
    "sight": 22,
-   "weapons": [
-    "kanone_alt"
-   ],
-   "keywords": {
-    "loot": true,
-    "ueberrollt": true,
-    "track": true,
-    "abgeschirmt": true
-   },
-   "equipment": [
-    "zweites_rohr",
-    "panzerplatten"
-   ]
+   "weapons": ["kanone_alt"],
+   "keywords": {"loot": true, "ueberrollt": true, "track": true, "abgeschirmt": true},
+   "equipment": ["zweites_rohr", "panzerplatten"]
   },
   "raketenlaster": {
    "name": "Raketenlaster",
    "role": "Artillerie",
    "class": "vehicle",
    "model": "werfer",
-   "cost": {
-    "money": 900,
-    "schrott": 150
-   },
+   "cost": {"money": 900, "schrott": 150},
    "buildTime": 12,
    "health": 160,
    "armor": "leicht",
    "speed": 5.5,
    "sight": 22,
-   "weapons": [
-    "raketenbatterie"
-   ],
-   "equipment": [
-    "panzerplatten"
-   ],
-   "keywords": {
-    "wheel": true,
-    "aufbauen": 2,
-    "abgeschirmt": true
-   }
+   "weapons": ["raketenbatterie"],
+   "equipment": ["panzerplatten"],
+   "keywords": {"wheel": true, "aufbauen": 2, "abgeschirmt": true}
   },
   "fpv_drohne": {
    "name": "FPV-Drohne",
    "role": "Panzerjagd",
    "class": "air",
-   "cost": {
-    "money": 150,
-    "schrott": 20
-   },
+   "cost": {"money": 150, "schrott": 20},
    "buildTime": 4,
    "health": 30,
    "armor": "air",
    "speed": 18,
    "sight": 18,
-   "keywords": {
-    "flies": true,
-    "schnell": true,
-    "selbstzerstoerung": 250,
-    "hovers": true
-   },
+   "keywords": {"flies": true, "schnell": true, "selbstzerstoerung": 250, "hovers": true},
    "description": "Billig, schnell, fliegt ins Ziel. Ein Treffer reicht für leichte Fahrzeuge.",
-   "requires": [
-    "schwarzmarkt"
-   ]
+   "requires": ["schwarzmarkt"]
   }
  },
  "research": {
   "schrottpanzerung": {
    "name": "Schrottpanzerung",
    "symbol": "S",
-   "cost": {
-    "money": 800,
-    "schrott": 300
-   },
+   "cost": {"money": 800, "schrott": 300},
    "time": 25,
    "researchIn": "schwarzmarkt",
-   "requires": [
-    "schwarzmarkt"
-   ],
-   "pos": [
-    0,
-    4
-   ],
+   "requires": ["schwarzmarkt"],
+   "pos": [0, 4],
    "description": "Fahrzeuge mit Beute werden Zäh(3).",
-   "effect": [
-    {
-     "kind": "keyword",
-     "target": "keyword:loot",
-     "keyword": "tough",
-     "stat": 3
-    }
-   ]
+   "effect": [{"kind": "keyword", "target": "keyword:loot", "keyword": "tough", "stat": 3}]
   },
   "molotows": {
    "name": "Molotows",
    "symbol": "M",
-   "cost": {
-    "money": 600
-   },
+   "cost": {"money": 600},
    "time": 20,
    "researchIn": "schwarzmarkt",
-   "requires": [
-    "schwarzmarkt"
-   ],
-   "pos": [
-    -1,
-    4
-   ],
+   "requires": ["schwarzmarkt"],
+   "pos": [-1, 4],
    "description": "Kämpfer werfen Brandflaschen.",
-   "effect": [
-    {
-     "kind": "weapon",
-     "target": "unit:kaempfer",
-     "weapon": "molotow"
-    }
-   ]
+   "effect": [{"kind": "weapon", "target": "unit:kaempfer", "weapon": "molotow"}]
   },
   "tarnnetze": {
    "name": "Tarnnetze",
    "symbol": "T",
-   "cost": {
-    "money": 1000
-   },
+   "cost": {"money": 1000},
    "time": 25,
    "researchIn": "schwarzmarkt",
-   "requires": [
-    "molotows"
-   ],
-   "pos": [
-    -1,
-    5
-   ],
+   "requires": ["molotows"],
+   "pos": [-1, 5],
    "description": "Alle Abwehrstellungen sind getarnt.",
-   "effect": [
-    {
-     "kind": "keyword",
-     "target": "function:defense",
-     "keyword": "tarnung"
-    }
-   ]
+   "effect": [{"kind": "keyword", "target": "function:defense", "keyword": "tarnung"}]
   },
   "kampfgeist": {
    "name": "Kampfgeist",
    "symbol": "F",
-   "cost": {
-    "money": 900
-   },
+   "cost": {"money": 900},
    "time": 20,
    "researchIn": "shelter",
-   "requires": [
-    "shelter"
-   ],
-   "pos": [
-    -2,
-    3
-   ],
+   "requires": ["shelter"],
+   "pos": [-2, 3],
    "description": "Infanterie 20 % mehr Leben, Veteran.",
-   "effect": [
-    {
-     "kind": "stat",
-     "target": "class:infantry",
-     "field": "health",
-     "times": 1.2
-    },
-    {
-     "kind": "keyword",
-     "target": "class:infantry",
-     "keyword": "veteran"
-    }
-   ]
+   "effect": [{"kind": "stat", "target": "class:infantry", "field": "health", "times": 1.2},{"kind": "keyword", "target": "class:infantry", "keyword": "veteran"}]
   },
   "hinterhalt": {
    "name": "Hinterhalt",
    "symbol": "!",
-   "cost": {
-    "rank": 2
-   },
+   "cost": {"rank": 2},
    "time": 0,
-   "requires": [
-    "kommandobunker"
-   ],
-   "pos": [
-    2,
-    1
-   ],
+   "requires": ["kommandobunker"],
+   "pos": [2, 1],
    "description": "General-Fähigkeit: 10 Kämpfer tauchen aus dem Boden auf.",
-   "effect": [
-    {
-     "kind": "ability",
-     "name": "Hinterhalt",
-     "cooldown": 150,
-     "description": "10 getarnte Kämpfer an einem erkundeten Ort."
-    }
-   ]
+   "effect": [{"kind": "ability", "name": "Hinterhalt", "cooldown": 150, "description": "10 getarnte Kämpfer an einem erkundeten Ort."}]
   }
  },
  "generals": {
@@ -633,59 +312,29 @@
    "description": "Erbeutete schwere Panzer statt Drohnenschwärmen. Langsamer, teurer, aber kaum zu stoppen.",
    "modify": {
     "units": {
-     "schrottpanzer": {
-      "health": 520,
-      "cost": {
-       "money": 750,
-       "schrott": 120
-      }
-     },
+     "schrottpanzer": {"health": 520, "cost": {"money": 750, "schrott": 120}},
      "koloss": {
       "name": "Koloss",
       "role": "Durchbruch",
       "class": "vehicle",
       "model": "tank",
-      "cost": {
-       "money": 2200,
-       "schrott": 400
-      },
+      "cost": {"money": 2200, "schrott": 400},
       "buildTime": 25,
       "health": 1400,
       "armor": "schwer",
       "speed": 3.5,
       "sight": 22,
-      "weapons": [
-       "doppelkanone"
-      ],
-      "keywords": {
-       "tough": 8,
-       "ueberrollt": true,
-       "selfRepair": 5,
-       "track": true,
-       "size": 8
-      },
-      "requires": [
-       "schrottpanzerung"
-      ],
-      "equipment": [
-       "panzerplatten"
-      ]
+      "weapons": ["doppelkanone"],
+      "keywords": {"tough": 8, "ueberrollt": true, "selfRepair": 5, "track": true, "size": 8},
+      "requires": ["schrottpanzerung"],
+      "equipment": ["panzerplatten"]
      }
     },
     "building": {
-     "workshop": {
-      "produces": [
-       "pickup",
-       "schrottpanzer",
-       "raketenlaster",
-       "koloss"
-      ]
-     }
+     "workshop": {"produces": ["pickup", "schrottpanzer", "raketenlaster", "koloss"]}
     }
    },
-   "without": [
-    "fpv_drohne"
-   ]
+   "without": ["fpv_drohne"]
   },
   "sela": {
    "name": "Kommandantin Sela",
@@ -694,70 +343,32 @@
    "description": "Alles getarnt, alles unter der Erde. Billige Tunnel, Saboteure, kaum Panzer.",
    "modify": {
     "units": {
-     "kaempfer": {
-      "keywords": {
-       "schwarm": true,
-       "tarnung": true
-      }
-     },
-     "raketenschuetze": {
-      "keywords": {
-       "tarnung": true
-      }
-     },
+     "kaempfer": {"keywords": {"schwarm": true, "tarnung": true}},
+     "raketenschuetze": {"keywords": {"tarnung": true}},
      "saboteur": {
       "name": "Saboteurin",
       "role": "Sabotage",
       "class": "infantry",
       "model": "soldat",
-      "cost": {
-       "money": 800
-      },
+      "cost": {"money": 800},
       "buildTime": 12,
       "health": 80,
       "armor": "infantry",
       "speed": 4,
       "sight": 26,
-      "keywords": {
-       "tarnung": true,
-       "scout": true
-      },
+      "keywords": {"tarnung": true, "scout": true},
       "description": "Schleicht in Gebäude und legt sie für 30 s lahm."
      }
     },
     "building": {
-     "tunnelnetz": {
-      "cost": {
-       "money": 480
-      },
-      "buildTime": 8,
-      "keywords": {
-       "stromlos": true,
-       "tunnel": true,
-       "garnison": 10,
-       "abgeschirmt": true,
-       "tarnfeld": 30
-      }
-     },
-     "shelter": {
-      "produces": [
-       "kaempfer",
-       "raketenschuetze",
-       "saboteur"
-      ]
-     }
+     "tunnelnetz": {"cost": {"money": 480}, "buildTime": 8, "keywords": {"stromlos": true, "tunnel": true, "garnison": 10, "abgeschirmt": true, "tarnfeld": 30}},
+     "shelter": {"produces": ["kaempfer", "raketenschuetze", "saboteur"]}
     },
     "equipment": {
-     "tarnumhang": {
-      "cost": {
-       "money": 60
-      }
-     }
+     "tarnumhang": {"cost": {"money": 60}}
     }
    },
-   "without": [
-    "schrottpanzer"
-   ]
+   "without": ["schrottpanzer"]
   }
  },
  "equipment": {
@@ -765,182 +376,94 @@
    "name": "MG-Schütze",
    "symbol": "M",
    "slot": "schwere_waffe",
-   "cost": {
-    "money": 150
-   },
+   "cost": {"money": 150},
    "time": 6,
    "description": "Ein Kämpfer bekommt ein schweres MG.",
-   "effect": [
-    {
-     "kind": "weapon",
-     "weapon": "mg"
-    }
-   ]
+   "effect": [{"kind": "weapon", "weapon": "mg"}]
   },
   "flammenwerfer_mann": {
    "name": "Flammenwerfer",
    "symbol": "F",
    "slot": "schwere_waffe",
-   "cost": {
-    "money": 120
-   },
+   "cost": {"money": 120},
    "time": 6,
-   "requires": [
-    "molotows"
-   ],
+   "requires": ["molotows"],
    "description": "Räumt Gebäude und Gräben.",
-   "effect": [
-    {
-     "kind": "weapon",
-     "weapon": "flammenwerfer"
-    }
-   ]
+   "effect": [{"kind": "weapon", "weapon": "flammenwerfer"}]
   },
   "panzerfaust_mann": {
    "name": "Panzerfaust",
    "symbol": "P",
    "slot": "schwere_waffe",
-   "cost": {
-    "money": 150
-   },
+   "cost": {"money": 150},
    "time": 6,
    "description": "Ein Mann gegen Panzer.",
-   "effect": [
-    {
-     "kind": "weapon",
-     "weapon": "panzerfaust"
-    }
-   ]
+   "effect": [{"kind": "weapon", "weapon": "panzerfaust"}]
   },
   "anfuehrer": {
    "name": "Anführer",
    "symbol": "A",
    "slot": "anfuehrer",
-   "cost": {
-    "money": 100
-   },
+   "cost": {"money": 100},
    "time": 5,
    "description": "Mehr Leben, steigt schneller im Rang.",
-   "effect": [
-    {
-     "kind": "stat",
-     "field": "health",
-     "plus": 40
-    },
-    {
-     "kind": "keyword",
-     "keyword": "veteran"
-    }
-   ]
+   "effect": [{"kind": "stat", "field": "health", "plus": 40},{"kind": "keyword", "keyword": "veteran"}]
   },
   "verstaerkung": {
    "name": "Verstärkung",
    "symbol": "+",
    "slot": "verstaerkung",
-   "cost": {
-    "money": 60
-   },
+   "cost": {"money": 60},
    "time": 4,
    "multiple": 3,
    "description": "Ein Kämpfer mehr (bis zu 3×).",
-   "effect": [
-    {
-     "kind": "stat",
-     "field": "squad",
-     "plus": 1
-    }
-   ]
+   "effect": [{"kind": "stat", "field": "squad", "plus": 1}]
   },
   "tarnumhang": {
    "name": "Tarnumhänge",
    "symbol": "T",
    "slot": "tarnung",
-   "cost": {
-    "money": 120
-   },
+   "cost": {"money": 120},
    "time": 6,
    "description": "Der Trupp ist getarnt.",
-   "effect": [
-    {
-     "kind": "keyword",
-     "keyword": "tarnung"
-    }
-   ]
+   "effect": [{"kind": "keyword", "keyword": "tarnung"}]
   },
   "raketenaufbau": {
    "name": "Raketenaufbau",
    "symbol": "R",
    "slot": "aufbau",
-   "cost": {
-    "money": 300,
-    "schrott": 50
-   },
+   "cost": {"money": 300, "schrott": 50},
    "time": 10,
    "description": "Raketenbatterie statt MG.",
-   "effect": [
-    {
-     "kind": "weapon",
-     "weapon": "raketenbatterie",
-     "replaced": "mg"
-    }
-   ]
+   "effect": [{"kind": "weapon", "weapon": "raketenbatterie", "replaced": "mg"}]
   },
   "flakaufbau": {
    "name": "Flakaufbau",
    "symbol": "F",
    "slot": "aufbau",
-   "cost": {
-    "money": 200
-   },
+   "cost": {"money": 200},
    "time": 8,
    "description": "Flak statt MG.",
-   "effect": [
-    {
-     "kind": "weapon",
-     "weapon": "flak",
-     "replaced": "mg"
-    }
-   ]
+   "effect": [{"kind": "weapon", "weapon": "flak", "replaced": "mg"}]
   },
   "zweites_rohr": {
    "name": "Zweites Rohr",
    "symbol": "2",
    "slot": "aufbau",
-   "cost": {
-    "money": 200,
-    "schrott": 100
-   },
+   "cost": {"money": 200, "schrott": 100},
    "time": 12,
    "onlyAt": "workshop",
    "description": "Noch eine alte Kanone aufs Dach geschweißt.",
-   "effect": [
-    {
-     "kind": "weapon",
-     "weapon": "kanone_alt"
-    }
-   ]
+   "effect": [{"kind": "weapon", "weapon": "kanone_alt"}]
   },
   "panzerplatten": {
    "name": "Schrottplatten",
    "symbol": "S",
    "slot": "panzerung",
-   "cost": {
-    "schrott": 80
-   },
+   "cost": {"schrott": 80},
    "time": 8,
    "description": "Mehr Leben, etwas langsamer.",
-   "effect": [
-    {
-     "kind": "stat",
-     "field": "health",
-     "plus": 80
-    },
-    {
-     "kind": "stat",
-     "field": "speed",
-     "times": 0.9
-    }
-   ]
+   "effect": [{"kind": "stat", "field": "health", "plus": 80},{"kind": "stat", "field": "speed", "times": 0.9}]
   }
  }
 }

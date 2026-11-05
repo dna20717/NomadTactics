@@ -29,7 +29,8 @@ Einstieg, Entscheidungen und Fahrplan stehen im claude.ai-Projekt „NOMADTactic
 npm install
 ln -s "$(npm root -g)/playwright" node_modules/playwright          # für nt image, Tests im Browser
 (cd prototypes/nomadtactics && npm install && ln -s "$(npm root -g)/playwright" node_modules/playwright)
-npm test                       # 34 Tests (tactics, world, experience, net)
+npm test                       # 39 Tests (tactics, world, experience, net, cloud)
+npm run web:test               # Web-Werkstatt mit Worker, falschem GitHub und Login
 node tools/nt.js check         # Spieldaten prüfen
 npm run party:test             # Party-Server mit echten Browsern
 python3 -m http.server 8790 & node tools/workshop_test.mjs   # Werkstatt bedienen
@@ -61,8 +62,12 @@ output/             Bilder von nt image (nicht im Git)
 - Werkstatt: https://claude.ai/artifact/SqVmkapcUQSKpH4nTVTwLm (Slug `d139e608-ecfe-4695-bb07-cb3aa67bc0e2`)
 - Härtetest: https://claude.ai/artifact/FU6vGfNr7KpgPGqDHPu9j4 (Slug `7528ab9f-9035-43ea-ae65-110b26171e27`)
 - Spielwiese: https://claude.ai/artifact/RJZ64hUco8UkK9mPN5t8vj (Slug `c4cebf16-5907-49dc-a808-cae400e2c000`)
-- **Cloudflare (seit 05.11.):** Worker `nomadtactics` (Workers Builds, mit GitHub verbunden) baut bei jedem Push auf `main` mit `npm run build:web` → `dist/` und liefert die Werkstatt unter `nomadtactics.<konto>.workers.dev` aus (`wrangler.jsonc`). Speichern dort vorerst nur im Browser (localStorage). Ava sieht den Worker über den Connector „Cloudflare Developer Platform“ (nur lesen/Speicher anlegen; Deploy geht nicht, die Cloudflare-API ist aus der Arbeitsumgebung gesperrt).
-- Geplant (Gespräch 05.11.): Werkstatt als Web-App auf Cloudflare (Pages + Worker + Durable Object, Login per E-Mail-Code über Cloudflare Access, jeder Speichervorgang wird ein Commit). Daniels Cloudflare-Konto ist mit GitHub verbunden. Details: Projekt-Doc `claude/nomadtactics-umzug.md`.
+- **Web-Werkstatt auf Cloudflare (seit 05.11.):** Worker `nomadtactics` (Workers Builds, mit GitHub verbunden) baut bei jedem Push auf `main` mit `npm run build:web` → `dist/` und liefert die Werkstatt unter `nomadtactics.<konto>.workers.dev` aus (`wrangler.jsonc`). Ava sieht den Worker über den Connector „Cloudflare Developer Platform“ (lesen, Speicher anlegen, Doku; Deploy geht nicht, die Cloudflare-API ist aus der Arbeitsumgebung gesperrt). Prüfen der Konfiguration: `npx wrangler deploy --dry-run --outdir /tmp/wout`.
+  - **Speichern = Commit** (Daniel, 05.11.): `worker/index.js` beantwortet `/api/*` (`run_worker_first`): `GET /api/session` (Person aus Cloudflare Access), `GET /api/files` (alle JSON unter `DATA_DIR` vom aktuellen `main`, mit Blob-sha), `POST /api/commit` `{ base: {datei: sha|null}, changes: [{file, content|null}], force? }` → ein Commit über die Git-Data-API (Autor = angemeldete Person, Nachricht „Werkstatt: … (Name)“), Dateien mit `pretty()` formatiert. Abweichende Basis → 409 mit `conflicts`; Wettlauf am Ref → neu lesen und bis zu 3× versuchen; gleicher Inhalt → kein leerer Commit.
+  - **Login:** Cloudflare Access (E-Mail-Code) vor dem workers.dev-Weg; der Worker prüft das JWT selbst (RS256 gegen `TEAM_DOMAIN/cdn-cgi/access/certs`, `aud` = `POLICY_AUD`, `iss`, `exp`). Ohne `TEAM_DOMAIN`/`POLICY_AUD` antwortet `/api` mit 503, ohne Anmeldung mit 401. `GITHUB_TOKEN` (fein eingestellter Schlüssel nur für dieses Repo, Contents lesen/schreiben) ist ein **Geheimnis im Cloudflare-Dashboard**, nie im Repo.
+  - **Werkstatt:** `game/tactics/cloud_store.js` (`openCloudStore()`: findet den Worker über `/api/session`, sonst `null` → alter Speicher). Bei `kind: 'cloud'`: `persistCloud` schreibt alle geänderten Dateien als **einen** Commit, **automatisch nach 60 s Ruhe** (`?autosave=N` für Tests) oder sofort mit ⌘S. Status „Ungespeichert · seit …“ bzw. „Gespeichert · … “ (Tooltip mit Commit), Name der angemeldeten Person in der Menüleiste, Konflikt-Dialog „Jemand war schneller“ (Neu laden | Überschreiben). Kein „Übernimm“ mehr nötig: Ava holt sich vor der Arbeit einfach `git pull`.
+  - **Tests:** `test/cloud.test.js` (Worker gegen falsches GitHub + falsches Access aus `test/fake_cloud.js`), `npm run web:test` (`tools/workshop_cloud_test.mjs`: echte Werkstatt im Browser, Autospeichern, ⌘S, Konflikt, Neuladen).
+  - Alle Spieldaten sind seit 05.11. einheitlich mit `pretty()` formatiert (so bleiben Werkstatt-Commits klein).
 
 ## Oberflächen-Regeln (aus NomadHouse übernommen)
 

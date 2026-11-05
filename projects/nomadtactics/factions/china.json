@@ -4,303 +4,154 @@
  "color": "#d8473a",
  "description": "Volksarmee in Reih und Glied. Viele solide Einheiten, dicke Panzer und Propaganda, die die Truppe anfeuert. Atomstrom ist billig, aber gefährlich: Fliegt ein Kraftwerk in die Luft, leidet die eigene Basis.",
  "playstyle": "Walze: breit aufstellen, gemeinsam vorrücken",
- "resources": [
-  "money",
-  "power",
-  "rank"
- ],
- "start": {
-  "money": 10000,
-  "building": [
-   "kommandozentrale"
-  ],
-  "units": [
-   "bautrupp",
-   "bautrupp"
-  ]
- },
+ "resources": ["money", "power", "rank"],
+ "start": {"money": 10000, "building": ["kommandozentrale"], "units": ["bautrupp", "bautrupp"]},
  "building": {
   "kommandozentrale": {
    "name": "Kommandozentrale",
    "function": "hq",
-   "cost": {
-    "money": 2000
-   },
+   "cost": {"money": 2000},
    "buildTime": 40,
    "health": 3500,
    "armor": "building",
-   "size": [
-    8,
-    8
-   ],
-   "pos": [
-    0,
-    0
-   ],
+   "size": [8, 8],
+   "pos": [0, 0],
    "model": "kaserne",
    "power": 5,
-   "produces": [
-    "bautrupp"
-   ]
+   "produces": ["bautrupp"]
   },
   "atomkraftwerk": {
    "name": "Atomkraftwerk",
    "function": "power",
-   "cost": {
-    "money": 1000
-   },
+   "cost": {"money": 1000},
    "buildTime": 15,
    "health": 1400,
    "armor": "building",
-   "size": [
-    5,
-    5
-   ],
-   "pos": [
-    -2,
-    1
-   ],
+   "size": [5, 5],
+   "pos": [-2, 1],
    "power": 12,
-   "requires": [
-    "kommandozentrale"
-   ],
+   "requires": ["kommandozentrale"],
    "description": "Viel Strom für wenig Geld. Wird es zerstört, explodiert es und beschädigt alles im Umkreis."
   },
   "kaserne": {
    "name": "Kaserne",
    "function": "production",
-   "cost": {
-    "money": 500
-   },
+   "cost": {"money": 500},
    "buildTime": 10,
    "health": 1500,
    "armor": "building",
-   "size": [
-    5,
-    4
-   ],
-   "pos": [
-    -1,
-    1
-   ],
+   "size": [5, 4],
+   "pos": [-1, 1],
    "model": "kaserne",
    "power": -1,
-   "produces": [
-    "rekrut",
-    "panzerjaeger",
-    "hacker"
-   ],
-   "requires": [
-    "kommandozentrale"
-   ],
-   "keywords": {
-    "garnison": 8
-   }
+   "produces": ["rekrut", "panzerjaeger", "hacker"],
+   "requires": ["kommandozentrale"],
+   "keywords": {"garnison": 8}
   },
   "nachschublager": {
    "name": "Nachschublager",
    "function": "resource",
-   "cost": {
-    "money": 1500
-   },
+   "cost": {"money": 1500},
    "buildTime": 15,
    "health": 1600,
    "armor": "building",
-   "size": [
-    6,
-    6
-   ],
-   "pos": [
-    1,
-    1
-   ],
+   "size": [6, 6],
+   "pos": [1, 1],
    "power": -1,
-   "produces": [
-    "versorger"
-   ],
-   "requires": [
-    "kommandozentrale"
-   ]
+   "produces": ["versorger"],
+   "requires": ["kommandozentrale"]
   },
   "panzerfabrik": {
    "name": "Panzerfabrik",
    "function": "production",
-   "cost": {
-    "money": 2000
-   },
+   "cost": {"money": 2000},
    "buildTime": 20,
    "health": 2600,
    "armor": "building",
-   "size": [
-    8,
-    8
-   ],
-   "pos": [
-    0,
-    2
-   ],
+   "size": [8, 8],
+   "pos": [0, 2],
    "power": -3,
-   "produces": [
-    "kampfpanzer",
-    "raketenwerfer",
-    "gatlingpanzer",
-    "overlord"
-   ],
-   "requires": [
-    "kaserne",
-    "nachschublager"
-   ]
+   "produces": ["kampfpanzer", "raketenwerfer", "gatlingpanzer", "overlord"],
+   "requires": ["kaserne", "nachschublager"]
   },
   "flugplatz": {
    "name": "Flugplatz",
    "function": "production",
-   "cost": {
-    "money": 1600
-   },
+   "cost": {"money": 1600},
    "buildTime": 18,
    "health": 1800,
    "armor": "building",
-   "size": [
-    8,
-    6
-   ],
-   "pos": [
-    1,
-    3
-   ],
+   "size": [8, 6],
+   "pos": [1, 3],
    "power": -3,
-   "produces": [
-    "jagdflugzeug"
-   ],
-   "requires": [
-    "panzerfabrik"
-   ]
+   "produces": ["jagdflugzeug"],
+   "requires": ["panzerfabrik"]
   },
   "propagandazentrum": {
    "name": "Propagandazentrum",
    "function": "research",
-   "cost": {
-    "money": 1500
-   },
+   "cost": {"money": 1500},
    "buildTime": 20,
    "health": 1600,
    "armor": "building",
-   "size": [
-    6,
-    5
-   ],
-   "pos": [
-    -1,
-    3
-   ],
+   "size": [6, 5],
+   "pos": [-1, 3],
    "power": -2,
-   "requires": [
-    "panzerfabrik"
-   ],
+   "requires": ["panzerfabrik"],
    "description": "Forschung und Lautsprecher-Netz."
   },
   "bunker": {
    "name": "Bunker",
    "function": "defense",
-   "cost": {
-    "money": 500
-   },
+   "cost": {"money": 500},
    "buildTime": 8,
    "health": 1200,
    "armor": "building",
-   "size": [
-    3,
-    3
-   ],
-   "pos": [
-    -2,
-    2
-   ],
+   "size": [3, 3],
+   "pos": [-2, 2],
    "power": 0,
-   "requires": [
-    "kaserne"
-   ],
-   "keywords": {
-    "garnison": 5,
-    "tough": 4
-   }
+   "requires": ["kaserne"],
+   "keywords": {"garnison": 5, "tough": 4}
   },
   "gatlingturm": {
    "name": "Gatling-Turm",
    "function": "defense",
-   "cost": {
-    "money": 800
-   },
+   "cost": {"money": 800},
    "buildTime": 10,
    "health": 1000,
    "armor": "building",
-   "size": [
-    2,
-    2
-   ],
-   "pos": [
-    -3,
-    2
-   ],
+   "size": [2, 2],
+   "pos": [-3, 2],
    "power": -2,
-   "weapons": [
-    "gatling"
-   ],
-   "requires": [
-    "kaserne"
-   ]
+   "weapons": ["gatling"],
+   "requires": ["kaserne"]
   },
   "propagandaturm": {
    "name": "Propagandaturm",
    "function": "misc",
-   "cost": {
-    "money": 600
-   },
+   "cost": {"money": 600},
    "buildTime": 8,
    "health": 600,
    "armor": "building",
-   "size": [
-    2,
-    2
-   ],
-   "pos": [
-    -3,
-    3
-   ],
+   "size": [2, 2],
+   "pos": [-3, 3],
    "power": -1,
-   "requires": [
-    "propagandazentrum"
-   ],
+   "requires": ["propagandazentrum"],
    "description": "Eigene Einheiten in der Nähe heilen langsam und schießen schneller.",
-   "keywords": {
-    "repaired": 2
-   }
+   "keywords": {"repaired": 2}
   },
   "atomraketensilo": {
    "name": "Atomraketensilo",
    "function": "superweapon",
-   "cost": {
-    "money": 5000
-   },
+   "cost": {"money": 5000},
    "buildTime": 60,
    "health": 4000,
    "armor": "building",
-   "size": [
-    6,
-    6
-   ],
-   "pos": [
-    0,
-    5
-   ],
+   "size": [6, 6],
+   "pos": [0, 5],
    "power": -10,
-   "weapons": [
-    "atomrakete"
-   ],
-   "requires": [
-    "propagandazentrum",
-    "uranreaktor"
-   ],
+   "weapons": ["atomrakete"],
+   "requires": ["propagandazentrum", "uranreaktor"],
    "description": "Einmal alle 6 Minuten. Riesige Fläche, verseucht den Boden eine Weile."
   }
  },
@@ -310,332 +161,195 @@
    "role": "Bauen",
    "class": "vehicle",
    "model": "dozer",
-   "cost": {
-    "money": 1000
-   },
+   "cost": {"money": 1000},
    "buildTime": 10,
    "health": 300,
    "armor": "leicht",
    "speed": 4.5,
    "sight": 24,
    "weapons": [],
-   "keywords": {
-    "builds": true,
-    "track": true
-   }
+   "keywords": {"builds": true, "track": true}
   },
   "versorger": {
    "name": "Versorgungslaster",
    "role": "Sammeln",
    "class": "vehicle",
    "model": "spaeher",
-   "cost": {
-    "money": 600
-   },
+   "cost": {"money": 600},
    "buildTime": 10,
    "health": 240,
    "armor": "leicht",
    "speed": 5.5,
    "sight": 24,
    "weapons": [],
-   "keywords": {
-    "collects": 300,
-    "wheel": true
-   }
+   "keywords": {"collects": 300, "wheel": true}
   },
   "rekrut": {
    "name": "Rotgardisten",
    "role": "Masse",
    "class": "infantry",
    "model": "soldat",
-   "cost": {
-    "money": 300
-   },
+   "cost": {"money": 300},
    "buildTime": 5,
    "health": 100,
    "armor": "infantry",
    "speed": 3,
    "sight": 22,
-   "weapons": [
-    "sturmgewehr"
-   ],
+   "weapons": ["sturmgewehr"],
    "squad": 6,
-   "keywords": {
-    "schwarm": true,
-    "eingraben": true
-   },
-   "equipment": [
-    "fahnentraeger",
-    "verstaerkung_cn"
-   ]
+   "keywords": {"schwarm": true, "eingraben": true},
+   "equipment": ["fahnentraeger", "verstaerkung_cn"]
   },
   "panzerjaeger": {
    "name": "Panzerjäger",
    "role": "Panzerjagd",
    "class": "infantry",
    "model": "soldat",
-   "cost": {
-    "money": 300
-   },
+   "cost": {"money": 300},
    "buildTime": 5,
    "health": 90,
    "armor": "infantry",
    "speed": 3,
    "sight": 22,
-   "weapons": [
-    "panzerfaust"
-   ],
+   "weapons": ["panzerfaust"],
    "squad": 3,
-   "equipment": [
-    "fahnentraeger"
-   ],
-   "keywords": {
-    "eingraben": true
-   }
+   "equipment": ["fahnentraeger"],
+   "keywords": {"eingraben": true}
   },
   "hacker": {
    "name": "Hacker",
    "role": "Geld",
    "class": "infantry",
    "model": "soldat",
-   "cost": {
-    "money": 600
-   },
+   "cost": {"money": 600},
    "buildTime": 10,
    "health": 70,
    "armor": "infantry",
    "speed": 3,
    "sight": 22,
-   "weapons": [
-    "stoersender"
-   ],
+   "weapons": ["stoersender"],
    "description": "Zapft aus sicherer Entfernung Geld ab oder legt ein Gebäude kurz lahm.",
-   "keywords": {
-    "tarnung": true
-   }
+   "keywords": {"tarnung": true}
   },
   "kampfpanzer": {
    "name": "Kampfpanzer",
    "role": "Linie",
    "class": "vehicle",
    "model": "tank",
-   "cost": {
-    "money": 800
-   },
+   "cost": {"money": 800},
    "buildTime": 12,
    "health": 450,
    "armor": "schwer",
    "speed": 5,
    "sight": 24,
-   "weapons": [
-    "kanone_120"
-   ],
-   "keywords": {
-    "tough": 2,
-    "track": true,
-    "rauchwand": 8
-   },
-   "equipment": [
-    "loudspeaker",
-    "uranmunition"
-   ]
+   "weapons": ["kanone_120"],
+   "keywords": {"tough": 2, "track": true, "rauchwand": 8},
+   "equipment": ["loudspeaker", "uranmunition"]
   },
   "raketenwerfer": {
    "name": "Mehrfachraketenwerfer",
    "role": "Artillerie",
    "class": "vehicle",
    "model": "werfer",
-   "cost": {
-    "money": 1000
-   },
+   "cost": {"money": 1000},
    "buildTime": 12,
    "health": 200,
    "armor": "leicht",
    "speed": 4.5,
    "sight": 24,
-   "weapons": [
-    "raketenbatterie"
-   ],
-   "equipment": [
-    "loudspeaker"
-   ],
-   "keywords": {
-    "wheel": true,
-    "aufbauen": 3
-   }
+   "weapons": ["raketenbatterie"],
+   "equipment": ["loudspeaker"],
+   "keywords": {"wheel": true, "aufbauen": 3}
   },
   "gatlingpanzer": {
    "name": "Gatlingpanzer",
    "role": "Infanterie und Luft",
    "class": "vehicle",
    "model": "spaeher",
-   "cost": {
-    "money": 800
-   },
+   "cost": {"money": 800},
    "buildTime": 12,
    "health": 320,
    "armor": "leicht",
    "speed": 6,
    "sight": 24,
-   "weapons": [
-    "gatling"
-   ],
-   "equipment": [
-    "loudspeaker"
-   ],
-   "keywords": {
-    "track": true,
-    "fahrtfeuer": true
-   }
+   "weapons": ["gatling"],
+   "equipment": ["loudspeaker"],
+   "keywords": {"track": true, "fahrtfeuer": true}
   },
   "overlord": {
    "name": "Overlord",
    "role": "Durchbruch",
    "class": "vehicle",
    "model": "tank",
-   "cost": {
-    "money": 2000
-   },
+   "cost": {"money": 2000},
    "buildTime": 25,
    "health": 1500,
    "armor": "schwer",
    "speed": 3,
    "sight": 24,
-   "weapons": [
-    "doppelkanone"
-   ],
-   "requires": [
-    "propagandazentrum"
-   ],
-   "keywords": {
-    "tough": 8,
-    "ueberrollt": true,
-    "track": true,
-    "size": 8,
-    "abgeschirmt": true
-   },
-   "equipment": [
-    "gatlingaufbau",
-    "propagandaaufbau",
-    "bunkeraufbau",
-    "uranmunition"
-   ],
+   "weapons": ["doppelkanone"],
+   "requires": ["propagandazentrum"],
+   "keywords": {"tough": 8, "ueberrollt": true, "track": true, "size": 8, "abgeschirmt": true},
+   "equipment": ["gatlingaufbau", "propagandaaufbau", "bunkeraufbau", "uranmunition"],
    "description": "Ein Turm, drei Aufbauten zur Wahl."
   },
   "jagdflugzeug": {
    "name": "Jagdflugzeug",
    "role": "Luftschlag",
    "class": "air",
-   "cost": {
-    "money": 1200
-   },
+   "cost": {"money": 1200},
    "buildTime": 14,
    "health": 220,
    "armor": "air",
    "speed": 22,
    "sight": 30,
-   "weapons": [
-    "air_ground"
-   ],
-   "keywords": {
-    "flies": true,
-    "jet": true,
-    "munition": 2
-   }
+   "weapons": ["air_ground"],
+   "keywords": {"flies": true, "jet": true, "munition": 2}
   }
  },
  "research": {
   "nationalstolz": {
    "name": "Kampfmoral",
    "symbol": "K",
-   "cost": {
-    "money": 800
-   },
+   "cost": {"money": 800},
    "time": 20,
    "researchIn": "propagandazentrum",
-   "requires": [
-    "propagandazentrum"
-   ],
-   "pos": [
-    -1.5,
-    4
-   ],
+   "requires": ["propagandazentrum"],
+   "pos": [-1.5, 4],
    "description": "Trupps bekommen einen Mann mehr.",
-   "effect": [
-    {
-     "kind": "stat",
-     "target": "class:infantry",
-     "field": "squad",
-     "plus": 1
-    }
-   ]
+   "effect": [{"kind": "stat", "target": "class:infantry", "field": "squad", "plus": 1}]
   },
   "urangeschosse": {
    "name": "Uranmunition",
    "symbol": "U",
-   "cost": {
-    "money": 1500
-   },
+   "cost": {"money": 1500},
    "time": 30,
    "researchIn": "propagandazentrum",
-   "requires": [
-    "propagandazentrum"
-   ],
-   "pos": [
-    -0.5,
-    4
-   ],
+   "requires": ["propagandazentrum"],
+   "pos": [-0.5, 4],
    "description": "Voraussetzung für Uranmunition an Panzern.",
    "effect": []
   },
   "uranreaktor": {
    "name": "Uranreaktor",
    "symbol": "☢",
-   "cost": {
-    "money": 2000
-   },
+   "cost": {"money": 2000},
    "time": 40,
    "researchIn": "propagandazentrum",
-   "requires": [
-    "propagandazentrum"
-   ],
-   "pos": [
-    0.5,
-    4
-   ],
+   "requires": ["propagandazentrum"],
+   "pos": [0.5, 4],
    "description": "Atomkraftwerke liefern 50 % mehr Strom. Voraussetzung fürs Atomraketensilo.",
-   "effect": [
-    {
-     "kind": "stat",
-     "target": "building:atomkraftwerk",
-     "field": "power",
-     "times": 1.5
-    }
-   ]
+   "effect": [{"kind": "stat", "target": "building:atomkraftwerk", "field": "power", "times": 1.5}]
   },
   "artilleriesperrfeuer": {
    "name": "Artilleriesperrfeuer",
    "symbol": "✦",
-   "cost": {
-    "rank": 3
-   },
+   "cost": {"rank": 3},
    "time": 0,
-   "requires": [
-    "kommandozentrale"
-   ],
-   "pos": [
-    1.5,
-    1
-   ],
+   "requires": ["kommandozentrale"],
+   "pos": [1.5, 1],
    "description": "General-Fähigkeit: Granatenhagel auf ein Gebiet.",
-   "effect": [
-    {
-     "kind": "ability",
-     "name": "Artilleriesperrfeuer",
-     "cooldown": 180,
-     "description": "20 Granaten in 10 s, Fläche 12 m."
-    }
-   ]
+   "effect": [{"kind": "ability", "name": "Artilleriesperrfeuer", "cooldown": 180, "description": "20 Granaten in 10 s, Fläche 12 m."}]
   }
  },
  "equipment": {
@@ -643,126 +357,66 @@
    "name": "Fahnenträger",
    "symbol": "F",
    "slot": "anfuehrer",
-   "cost": {
-    "money": 100
-   },
+   "cost": {"money": 100},
    "time": 5,
    "description": "Der Trupp steigt schneller im Rang.",
-   "effect": [
-    {
-     "kind": "keyword",
-     "keyword": "veteran"
-    }
-   ]
+   "effect": [{"kind": "keyword", "keyword": "veteran"}]
   },
   "verstaerkung_cn": {
    "name": "Verstärkung",
    "symbol": "+",
    "slot": "verstaerkung",
-   "cost": {
-    "money": 50
-   },
+   "cost": {"money": 50},
    "time": 3,
    "multiple": 2,
    "description": "Ein Rotgardist mehr (bis zu 2×).",
-   "effect": [
-    {
-     "kind": "stat",
-     "field": "squad",
-     "plus": 1
-    }
-   ]
+   "effect": [{"kind": "stat", "field": "squad", "plus": 1}]
   },
   "loudspeaker": {
    "name": "Lautsprecher",
    "symbol": "L",
    "slot": "aufbau",
-   "cost": {
-    "money": 150
-   },
+   "cost": {"money": 150},
    "time": 6,
    "description": "Feuert Einheiten in der Nähe an.",
-   "effect": [
-    {
-     "kind": "keyword",
-     "keyword": "repaired",
-     "stat": 1
-    }
-   ]
+   "effect": [{"kind": "keyword", "keyword": "repaired", "stat": 1}]
   },
   "uranmunition": {
    "name": "Uranmunition",
    "symbol": "U",
    "slot": "schwere_waffe",
-   "cost": {
-    "money": 200
-   },
+   "cost": {"money": 200},
    "time": 8,
-   "requires": [
-    "urangeschosse"
-   ],
+   "requires": ["urangeschosse"],
    "description": "25 % mehr Schaden.",
-   "effect": [
-    {
-     "kind": "stat",
-     "field": "damage",
-     "times": 1.25
-    }
-   ]
+   "effect": [{"kind": "stat", "field": "damage", "times": 1.25}]
   },
   "gatlingaufbau": {
    "name": "Gatling-Aufbau",
    "symbol": "G",
    "slot": "aufbau",
-   "cost": {
-    "money": 400
-   },
+   "cost": {"money": 400},
    "time": 10,
    "description": "Holt Infanterie und Flieger runter.",
-   "effect": [
-    {
-     "kind": "weapon",
-     "weapon": "gatling"
-    }
-   ]
+   "effect": [{"kind": "weapon", "weapon": "gatling"}]
   },
   "propagandaaufbau": {
    "name": "Propaganda-Aufbau",
    "symbol": "P",
    "slot": "aufbau",
-   "cost": {
-    "money": 400
-   },
+   "cost": {"money": 400},
    "time": 10,
    "description": "Heilt und feuert Einheiten in der Nähe an.",
-   "effect": [
-    {
-     "kind": "keyword",
-     "keyword": "repaired",
-     "stat": 3
-    }
-   ]
+   "effect": [{"kind": "keyword", "keyword": "repaired", "stat": 3}]
   },
   "bunkeraufbau": {
    "name": "Bunker-Aufbau",
    "symbol": "B",
    "slot": "aufbau",
-   "cost": {
-    "money": 400
-   },
+   "cost": {"money": 400},
    "time": 10,
    "description": "Fünf Soldaten fahren mit und schießen heraus.",
-   "effect": [
-    {
-     "kind": "keyword",
-     "keyword": "transport",
-     "stat": 5
-    },
-    {
-     "kind": "keyword",
-     "keyword": "schiessscharten"
-    }
-   ]
+   "effect": [{"kind": "keyword", "keyword": "transport", "stat": 5},{"kind": "keyword", "keyword": "schiessscharten"}]
   }
  },
  "generals": {}

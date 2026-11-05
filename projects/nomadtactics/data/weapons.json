@@ -1,84 +1,11 @@
 {
- "sturmgewehr": {
-  "name": "Sturmgewehr",
-  "damageType": "kleinkaliber",
-  "damage": 6,
-  "range": 15,
-  "reload": 0.8,
-  "projectile": "gewehr",
-  "targets": [
-   "ground"
-  ]
- },
- "scharfschuetzengewehr": {
-  "name": "Scharfschützengewehr",
-  "damageType": "kleinkaliber",
-  "damage": 60,
-  "range": 30,
-  "reload": 3,
-  "projectile": "gewehr",
-  "targets": [
-   "ground"
-  ]
- },
- "mg": {
-  "name": "Schweres MG",
-  "damageType": "kleinkaliber",
-  "damage": 3,
-  "range": 18,
-  "reload": 0.14,
-  "projectile": "mg",
-  "targets": [
-   "ground",
-   "air"
-  ]
- },
- "kanone_120": {
-  "name": "120-mm-Kanone",
-  "damageType": "panzerbrechend",
-  "damage": 45,
-  "range": 26,
-  "reload": 2.4,
-  "projectile": "granate",
-  "targets": [
-   "ground"
-  ]
- },
- "kanone_alt": {
-  "name": "Alte Panzerkanone",
-  "damageType": "panzerbrechend",
-  "damage": 30,
-  "range": 22,
-  "reload": 2.8,
-  "projectile": "granate",
-  "targets": [
-   "ground"
-  ]
- },
- "doppelkanone": {
-  "name": "Doppelrohr",
-  "damageType": "panzerbrechend",
-  "damage": 40,
-  "range": 24,
-  "reload": 2,
-  "salvo": 2,
-  "projectile": "granate",
-  "targets": [
-   "ground"
-  ]
- },
- "panzerfaust": {
-  "name": "Panzerfaust",
-  "damageType": "panzerbrechend",
-  "damage": 35,
-  "range": 16,
-  "reload": 3,
-  "projectile": "rakete",
-  "targets": [
-   "ground",
-   "air"
-  ]
- },
+ "sturmgewehr": {"name": "Sturmgewehr", "damageType": "kleinkaliber", "damage": 6, "range": 15, "reload": 0.8, "projectile": "gewehr", "targets": ["ground"]},
+ "scharfschuetzengewehr": {"name": "Scharfschützengewehr", "damageType": "kleinkaliber", "damage": 60, "range": 30, "reload": 3, "projectile": "gewehr", "targets": ["ground"]},
+ "mg": {"name": "Schweres MG", "damageType": "kleinkaliber", "damage": 3, "range": 18, "reload": 0.14, "projectile": "mg", "targets": ["ground", "air"]},
+ "kanone_120": {"name": "120-mm-Kanone", "damageType": "panzerbrechend", "damage": 45, "range": 26, "reload": 2.4, "projectile": "granate", "targets": ["ground"]},
+ "kanone_alt": {"name": "Alte Panzerkanone", "damageType": "panzerbrechend", "damage": 30, "range": 22, "reload": 2.8, "projectile": "granate", "targets": ["ground"]},
+ "doppelkanone": {"name": "Doppelrohr", "damageType": "panzerbrechend", "damage": 40, "range": 24, "reload": 2, "salvo": 2, "projectile": "granate", "targets": ["ground"]},
+ "panzerfaust": {"name": "Panzerfaust", "damageType": "panzerbrechend", "damage": 35, "range": 16, "reload": 3, "projectile": "rakete", "targets": ["ground", "air"]},
  "lenkrakete": {
   "name": "Lenkraketen",
   "damageType": "explosiv",
@@ -87,14 +14,8 @@
   "reload": 7,
   "salvo": 4,
   "projectile": "rakete",
-  "targets": [
-   "ground"
-  ],
-  "keywords": {
-   "indirekt": true,
-   "surface": 3,
-   "mindestreichweite": 6
-  }
+  "targets": ["ground"],
+  "keywords": {"indirekt": true, "surface": 3, "mindestreichweite": 6}
  },
  "raketenbatterie": {
   "name": "Raketenbatterie",
@@ -104,140 +25,19 @@
   "reload": 9,
   "salvo": 12,
   "projectile": "rakete",
-  "targets": [
-   "ground"
-  ],
-  "keywords": {
-   "indirekt": true,
-   "surface": 4,
-   "mindestreichweite": 10
-  }
+  "targets": ["ground"],
+  "keywords": {"indirekt": true, "surface": 4, "mindestreichweite": 10}
  },
- "bordkanone": {
-  "name": "Bordkanone",
-  "damageType": "panzerbrechend",
-  "damage": 20,
-  "range": 20,
-  "reload": 0.5,
-  "projectile": "mg",
-  "targets": [
-   "ground"
-  ]
- },
- "air_ground": {
-  "name": "Luft-Boden-Raketen",
-  "damageType": "explosiv",
-  "damage": 70,
-  "range": 22,
-  "reload": 6,
-  "salvo": 2,
-  "projectile": "rakete",
-  "targets": [
-   "ground"
-  ]
- },
- "abfangrakete": {
-  "name": "Abfangrakete",
-  "damageType": "flugabwehr",
-  "damage": 40,
-  "range": 40,
-  "reload": 2,
-  "salvo": 2,
-  "projectile": "rakete",
-  "targets": [
-   "air"
-  ]
- },
- "flak": {
-  "name": "Flak",
-  "damageType": "flugabwehr",
-  "damage": 8,
-  "range": 30,
-  "reload": 0.3,
-  "projectile": "mg",
-  "targets": [
-   "air"
-  ]
- },
- "laser": {
-  "name": "Laser",
-  "damageType": "energy",
-  "damage": 25,
-  "range": 28,
-  "reload": 1.2,
-  "projectile": "laser",
-  "targets": [
-   "ground",
-   "air"
-  ]
- },
- "laserkanone": {
-  "name": "Laserkanone",
-  "damageType": "energy",
-  "damage": 50,
-  "range": 28,
-  "reload": 2.2,
-  "projectile": "laser",
-  "targets": [
-   "ground"
-  ]
- },
- "flammenwerfer": {
-  "name": "Flammenwerfer",
-  "damageType": "fire",
-  "damage": 12,
-  "range": 9,
-  "reload": 0.25,
-  "projectile": "flame",
-  "targets": [
-   "ground"
-  ],
-  "keywords": {
-   "surface": 2
-  }
- },
- "molotow": {
-  "name": "Molotow",
-  "damageType": "fire",
-  "damage": 20,
-  "range": 12,
-  "reload": 4,
-  "projectile": "granate",
-  "targets": [
-   "ground"
-  ],
-  "keywords": {
-   "surface": 2
-  }
- },
- "bomb": {
-  "name": "Bombenschacht",
-  "damageType": "explosiv",
-  "damage": 220,
-  "range": 2,
-  "reload": 20,
-  "projectile": "bomb",
-  "targets": [
-   "ground"
-  ],
-  "keywords": {
-   "surface": 6
-  }
- },
- "ionenstrahl": {
-  "name": "Ionenstrahl",
-  "damageType": "energy",
-  "damage": 2500,
-  "range": 9999,
-  "reload": 300,
-  "projectile": "laser",
-  "targets": [
-   "ground"
-  ],
-  "keywords": {
-   "surface": 14
-  }
- },
+ "bordkanone": {"name": "Bordkanone", "damageType": "panzerbrechend", "damage": 20, "range": 20, "reload": 0.5, "projectile": "mg", "targets": ["ground"]},
+ "air_ground": {"name": "Luft-Boden-Raketen", "damageType": "explosiv", "damage": 70, "range": 22, "reload": 6, "salvo": 2, "projectile": "rakete", "targets": ["ground"]},
+ "abfangrakete": {"name": "Abfangrakete", "damageType": "flugabwehr", "damage": 40, "range": 40, "reload": 2, "salvo": 2, "projectile": "rakete", "targets": ["air"]},
+ "flak": {"name": "Flak", "damageType": "flugabwehr", "damage": 8, "range": 30, "reload": 0.3, "projectile": "mg", "targets": ["air"]},
+ "laser": {"name": "Laser", "damageType": "energy", "damage": 25, "range": 28, "reload": 1.2, "projectile": "laser", "targets": ["ground", "air"]},
+ "laserkanone": {"name": "Laserkanone", "damageType": "energy", "damage": 50, "range": 28, "reload": 2.2, "projectile": "laser", "targets": ["ground"]},
+ "flammenwerfer": {"name": "Flammenwerfer", "damageType": "fire", "damage": 12, "range": 9, "reload": 0.25, "projectile": "flame", "targets": ["ground"], "keywords": {"surface": 2}},
+ "molotow": {"name": "Molotow", "damageType": "fire", "damage": 20, "range": 12, "reload": 4, "projectile": "granate", "targets": ["ground"], "keywords": {"surface": 2}},
+ "bomb": {"name": "Bombenschacht", "damageType": "explosiv", "damage": 220, "range": 2, "reload": 20, "projectile": "bomb", "targets": ["ground"], "keywords": {"surface": 6}},
+ "ionenstrahl": {"name": "Ionenstrahl", "damageType": "energy", "damage": 2500, "range": 9999, "reload": 300, "projectile": "laser", "targets": ["ground"], "keywords": {"surface": 14}},
  "raketenhagel": {
   "name": "Raketenhagel",
   "damageType": "explosiv",
@@ -246,37 +46,11 @@
   "reload": 280,
   "salvo": 30,
   "projectile": "rakete",
-  "targets": [
-   "ground"
-  ],
-  "keywords": {
-   "surface": 5,
-   "indirekt": true
-  }
+  "targets": ["ground"],
+  "keywords": {"surface": 5, "indirekt": true}
  },
- "drohnenrakete": {
-  "name": "Drohnenrakete",
-  "damageType": "explosiv",
-  "damage": 40,
-  "range": 20,
-  "reload": 4,
-  "projectile": "rakete",
-  "targets": [
-   "ground"
-  ]
- },
- "gatling": {
-  "name": "Gatling",
-  "damageType": "kleinkaliber",
-  "damage": 4,
-  "range": 20,
-  "reload": 0.25,
-  "projectile": "mg",
-  "targets": [
-   "ground",
-   "air"
-  ]
- },
+ "drohnenrakete": {"name": "Drohnenrakete", "damageType": "explosiv", "damage": 40, "range": 20, "reload": 4, "projectile": "rakete", "targets": ["ground"]},
+ "gatling": {"name": "Gatling", "damageType": "kleinkaliber", "damage": 4, "range": 20, "reload": 0.25, "projectile": "mg", "targets": ["ground", "air"]},
  "haubitze": {
   "name": "Haubitze",
   "damageType": "explosiv",
@@ -284,29 +58,10 @@
   "range": 60,
   "reload": 5,
   "projectile": "granate",
-  "targets": [
-   "ground"
-  ],
-  "keywords": {
-   "indirekt": true,
-   "surface": 3,
-   "mindestreichweite": 12
-  }
+  "targets": ["ground"],
+  "keywords": {"indirekt": true, "surface": 3, "mindestreichweite": 12}
  },
- "atomrakete": {
-  "name": "Atomrakete",
-  "damageType": "explosiv",
-  "damage": 3000,
-  "range": 9999,
-  "reload": 360,
-  "projectile": "rakete",
-  "targets": [
-   "ground"
-  ],
-  "keywords": {
-   "surface": 18
-  }
- },
+ "atomrakete": {"name": "Atomrakete", "damageType": "explosiv", "damage": 3000, "range": 9999, "reload": 360, "projectile": "rakete", "targets": ["ground"], "keywords": {"surface": 18}},
  "stoersender": {
   "name": "Störsender",
   "damageType": "energy",
@@ -314,28 +69,8 @@
   "range": 25,
   "reload": 20,
   "projectile": "laser",
-  "targets": [
-   "ground",
-   "air"
-  ],
-  "keywords": {
-   "paralyzes": 10,
-   "surface": 6
-  }
+  "targets": ["ground", "air"],
+  "keywords": {"paralyzes": 10, "surface": 6}
  },
- "emp_bombe": {
-  "name": "EMP-Bombe",
-  "damageType": "energy",
-  "damage": 20,
-  "range": 4,
-  "reload": 30,
-  "projectile": "bomb",
-  "targets": [
-   "ground"
-  ],
-  "keywords": {
-   "paralyzes": 15,
-   "surface": 10
-  }
- }
+ "emp_bombe": {"name": "EMP-Bombe", "damageType": "energy", "damage": 20, "range": 4, "reload": 30, "projectile": "bomb", "targets": ["ground"], "keywords": {"paralyzes": 15, "surface": 10}}
 }
