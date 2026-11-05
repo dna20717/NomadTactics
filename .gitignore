@@ -5,3 +5,5 @@ __MACOSX/
 __pycache__/
 /tmp/
 /output/
+/dist/
+/.wrangler/

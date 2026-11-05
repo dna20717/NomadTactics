@@ -5,13 +5,16 @@
   "type": "module",
   "private": true,
   "license": "GPL-3.0-or-later",
-  "bin": { "nt": "tools/nt.js" },
+  "bin": {
+    "nt": "tools/nt.js"
+  },
   "scripts": {
     "test": "node --test test/*.test.js",
     "nt": "node tools/nt.js",
     "serve": "python3 -m http.server 8765",
     "party": "node tools/party/server.js",
-    "party:test": "node tools/party/party_test.mjs"
+    "party:test": "node tools/party/party_test.mjs",
+    "build:web": "node tools/build_web.mjs"
   },
   "dependencies": {
     "pngjs": "7.0.0"
