@@ -29,7 +29,7 @@ Einstieg, Entscheidungen und Fahrplan stehen im claude.ai-Projekt „NOMADTactic
 npm install
 ln -s "$(npm root -g)/playwright" node_modules/playwright          # für nt image, Tests im Browser
 (cd prototypes/nomadtactics && npm install && ln -s "$(npm root -g)/playwright" node_modules/playwright)
-npm test                       # 39 Tests (tactics, world, experience, net, cloud)
+npm test                       # 40 Tests (tactics, world, experience, net, cloud)
 npm run web:test               # Web-Werkstatt mit Worker, falschem GitHub und Login
 node tools/nt.js check         # Spieldaten prüfen
 npm run party:test             # Party-Server mit echten Browsern
@@ -101,7 +101,7 @@ Echtzeit-Strategiespiel mit Basisbau als Hommage an C&C Generals / Zero Hour. Er
 - **Seite:** `tactics.html` (Wurzel) → `game/tactics/workshop.js` (Gerüst: Laden, Undo, Speichern, Menüleiste; `Overlay` erbt von `engine/tactics/overlay.js`) + `game/tactics/pages.js` (alle Seiten) + `game/tactics/workshop.css`. Lokal: `npm run serve`, dann http://localhost:8765/tactics.html.
 - **Gemeinsamer Kern mit Cosy:** `game/basis.css` (Grundstile, aus `index.html` gelöst, Reihenfolge unverändert), `game/ui.css`, `ui.js`, `icons.js`, `store.js` (`openStore({ project, withoutAssets })`: eigener localStorage-Bereich `nomadtactics-drafts:`), `game/tree_canvas.js` (Graph für Cosy-Bäume und Techbaum; `DataEditor.treeSurface` nutzt ihn). Oberflächen-Regeln wie bei Cosy.
 - **Veröffentlicht** als privates Artifact „NomadTactics – Werkstatt“: https://claude.ai/artifact/SqVmkapcUQSKpH4nTVTwLm (Slug `d139e608-ecfe-4695-bb07-cb3aa67bc0e2`, Fähigkeit `db`). Dateien: `tactics.html` als `index.html`, dazu die importierten Module aus `game/` und `engine/`, `game/font/*.woff2` und `projects/nomadtactics/**/*.json`. Version im `<title>` und Artifact-Titel gleich halten (jetzt „Werkstatt 1.0“), bei jeder Veröffentlichung +0.1.
-- **Übernimm** geht wie bei Cosy: `db_list` auf das Werkstatt-Artifact (Sammlung `drafts`), dann `node tools/adopt.js /tmp/drafts.json --project projects/nomadtactics`, `node tools/nt.js check`, `npm test`, committen, Stände löschen.
+- **Übernimm** (nur noch für das alte Artifact; die Web-Werkstatt committet selbst) geht wie bei Cosy: `db_list` auf das Werkstatt-Artifact (Sammlung `drafts`), dann `node tools/adopt.js /tmp/drafts.json --project projects/nomadtactics`, `node tools/nt.js check`, `npm test`, committen, Stände löschen.
 - Bedien-Test kopflos: `python3 -m http.server 8790` und `node tools/workshop_test.mjs`.
 - **Ava bedient die Werkstatt über `nt`** (gleiche Logik wie die Oberfläche, siehe unten). Ansehen wie Daniel: `node tools/nt.js image ukraine/units/kaempfer [--general g] [--bottom] [--probe a,b]` → `output/workshop_*.png` (Ziele: `<faction>/<overview|units|building|techTree|equipment|generals>/<id>`, `weapons/<id>`, `keywords`, `slots`, `combat/table`, `validation`). Im Browser: `window.workshop.go({ area, faction, sub, choice, general })`.
 
