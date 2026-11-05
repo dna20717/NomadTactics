@@ -14,6 +14,7 @@
     "serve": "python3 -m http.server 8765",
     "party": "node tools/party/server.js",
     "party:test": "node tools/party/party_test.mjs",
+    "view:test": "node tools/party/view3d_test.mjs",
     "build:web": "node tools/build_web.mjs",
     "web:test": "node tools/workshop_cloud_test.mjs"
   },

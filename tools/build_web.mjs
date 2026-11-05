@@ -12,7 +12,7 @@ fs.rmSync(out, { recursive: true, force: true });
 fs.mkdirSync(out, { recursive: true });
 fs.copyFileSync(path.join(repo, 'tactics.html'), path.join(out, 'index.html'));
 fs.copyFileSync(path.join(repo, 'party.html'), path.join(out, 'party.html'));
-for (const dir of ['game', 'engine', 'projects/nomadtactics']) fs.cpSync(path.join(repo, dir), path.join(out, dir), { recursive: true });
+for (const dir of ['game', 'engine', 'projects/nomadtactics', 'prototypes/nomadtactics/models']) fs.cpSync(path.join(repo, dir), path.join(out, dir), { recursive: true });
 let count = 0;
 const walk = d => { for (const e of fs.readdirSync(d, { withFileTypes: true })) e.isDirectory() ? walk(path.join(d, e.name)) : count++; };
 walk(out);

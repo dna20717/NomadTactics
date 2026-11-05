@@ -14,9 +14,9 @@ import { Room } from '../../engine/net/room.js';
 import { PROTOCOL } from '../../engine/net/protocol.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const RELEASED = ['party.html', 'host.html', 'game/', 'engine/', 'projects/nomadtactics/'];
+const RELEASED = ['party.html', 'host.html', 'game/', 'engine/', 'projects/nomadtactics/', 'prototypes/nomadtactics/models/'];
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
-  '.json': 'application/json; charset=utf-8', '.woff2': 'font/woff2', '.png': 'image/png', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.txt': 'text/plain; charset=utf-8' };
+  '.json': 'application/json; charset=utf-8', '.vox': 'application/octet-stream', '.woff2': 'font/woff2', '.png': 'image/png', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.txt': 'text/plain; charset=utf-8' };
 
 // ANSI colors (Windows 11 Terminal and console support this)
 function color(text, ...codes) { return process.stdout.isTTY ? `\x1b[${codes.join(';')}m${text}\x1b[0m` : text; }

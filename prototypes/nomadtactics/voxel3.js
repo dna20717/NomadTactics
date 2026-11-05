@@ -75,8 +75,8 @@ export function mesh(W, { V = 0.4, team = 0x2f6fd6, pal = PAL } = {}) {
 export function voxelMaterial() {
   const m = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.92, metalness: 0 });
   m.onBeforeCompile = sh => {
-    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute vec2 kante;\nvarying vec2 vKante;')
-      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvKante = kante;');
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute vec2 edge;\nvarying vec2 vKante;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvKante = edge;');
     sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec2 vKante;')
       .replace('#include <color_fragment>', `#include <color_fragment>
         vec2 kk = min(vKante, 1.0 - vKante);

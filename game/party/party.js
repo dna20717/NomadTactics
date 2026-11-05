@@ -8,6 +8,8 @@ import { probeRun } from '../../engine/tactics/probe.js';
 import { Battle, TICKS_PER_SECOND } from '../../engine/tactics/battle.js';
 import { loadSkirmish, battleRun } from '../../engine/tactics/skirmish.js';
 import { battleView } from './battle_view.js';
+import { battleView3d } from './battle_3d.js';
+import { battleInput } from './battle_input.js';
 import { icon } from '../icons.js';
 
 const q = new URLSearchParams(location.search);
@@ -101,10 +103,10 @@ function join(name) {
     const fresh = !app.ls || app.ls.seed !== m.seed;
     if (!app.ls) app.ls = new Lockstep(newSim, { reportSync: reportSync });
     app.ls.match(m);
-    if (fresh) { app.selection.clear(); view.reset(); app.overSeen = false; }
+    if (fresh) { app.selection.clear(); for (const v of Object.values(views)) v.reset(); input.reset(); app.overSeen = false; }
     app.view = 'game'; app.before = null;
     drawUi();
-    if (fresh) setTimeout(() => view.home(), 0);
+    if (fresh) setTimeout(() => { views['3d']?.home(); views['2d'].centreOn(...ownPad()); }, 0);
   });
   l.on('round', (m) => { if (!app.ls) return; app.ls.round(m); if (app.ls.gap) { app.ls.gap = false; l.cut(); } });
   l.on('lobby', () => { app.ls = null; app.view = 'lobby'; app.overSeen = false; drawUi(); });
@@ -141,7 +143,7 @@ function drawUi() {
   else if (a === 'game') {
     ui.append(bar()); const b = banner(); if (b) ui.append(b);
     ui.append(el('div', { class: 'pt-tap' }, app.spectator ? 'Du schaust zu. In der Lobby rückst du auf einen freien Platz.'
-      : [selectionText() || 'Antippen wählt · Ziehen wählt mehrere · Tippen ins Feld fährt hin, auf Feinde greift an', el('span', { class: 'keys' }, ' · Strg+A alle · H Halt · Leertaste Landeplatz · Rad/Rechts-Ziehen Kamera')]));
+      : [selectionText() || 'Antippen wählt · Ziehen wählt mehrere · Tippen ins Feld fährt hin, auf Feinde greift an', el('span', { class: 'keys' }, ' · Strg+A alle · H Halt · Leertaste Landeplatz · Rad/Rechts-Ziehen Kamera · Q/E drehen · V Ansicht')]));
   }
 }
 
@@ -227,6 +229,7 @@ function bar() {
   return el('div', { class: 'pt-bar' }, chips, zs, el('span', { class: 'pt-air' }),
     el('span', { class: 'pt-measurement', id: 'pt-measurement' }, messText()),
     button(paused ? 'Weiter' : 'Pause', () => send({ t: paused ? 'next' : 'pause' }), 'small', paused ? 'play' : 'pause', { id: 'pt-pause', disabled: !!z?.pause && !paused }),
+    views['3d'] ? button(active.kind === '3d' ? '2D' : '3D', () => app.toggleView(), 'small', active.kind === '3d' ? 'map' : 'cube', { id: 'pt-view', title: 'Ansicht wechseln (V)' }) : null,
     button('Lobby', () => send({ t: 'new' }), 'small', 'restart'));
 }
 
@@ -271,6 +274,11 @@ function banner() {
   return null;
 }
 
+function ownPad() {
+  const sim = app.ls?.sim; const p = sim?.units.find((u) => u.seat === meSeat() && sim.types[u.type].building);
+  return p ? [p.x, p.y] : [128000, 128000];
+}
+
 function selectionText() {
   const sim = app.ls?.sim; if (!sim || !app.selection.size) return '';
   const count = {};
@@ -290,7 +298,32 @@ setInterval(() => {
 }, 200);
 
 // ---------- Feld ----------
-const view = battleView({ cv, app, send, meSeat, playerList });
+const toastBox = document.getElementById('toasts');
+function toast(text) {
+  const d = document.createElement('div'); d.textContent = text; toastBox.append(d);
+  while (toastBox.children.length > 4) toastBox.firstChild.remove();
+  setTimeout(() => { d.style.opacity = '0'; setTimeout(() => d.remove(), 500); }, 3000);
+}
+app.toast = toast;
+const VIEW_KEY = 'nomadtactics-view';
+const views = { '2d': battleView({ cv, app, meSeat, playerList, toast }) };
+try {
+  views['3d'] = battleView3d({ host: document.body, overlay: cv, app, meSeat, playerList, toast, modelsBase: new URL(DATA, location.href).href });
+} catch (e) { console.warn('3D nicht verfügbar', e); }
+let active = views[lies(VIEW_KEY) === '2d' || !views['3d'] ? '2d' : '3d'];
+active.show(true);
+app.views = views;
+app.activeView = () => active;
+app.toggleView = () => {
+  if (!views['3d']) return;
+  active.show(false);
+  active = active === views['3d'] ? views['2d'] : views['3d'];
+  active.show(true);
+  remember(VIEW_KEY, active.kind);
+  drawUi();
+};
+app.setupReady.then((s) => { if (s && views['3d']) views['3d'].setModels(s.models); });
+const input = battleInput({ el: cv, app, send, meSeat, view: () => active });
 
 function compute() {
   const ls = app.ls;
@@ -299,13 +332,17 @@ function compute() {
   if (isOpen <= 0) return;
   const pos = new Map(ls.sim.units.map((e) => [e.id, [e.x, e.y]]));
   const n = ls.progress(isOpen > 3 ? 400 : 1);   // normal: round by round, fast when catching up
-  view.drain(ls.sim, n > 1);
+  active.drain(ls.sim, n > 1);
   app.before = n === 1 ? pos : null;
   app.beforeTime = performance.now();
   if (ls.sim.over && !app.overSeen) { app.overSeen = true; drawUi(); }
 }
 
-function loop() { compute(); view.draw(app.before, app.beforeTime); requestAnimationFrame(loop); }
+let lastFrame = performance.now();
+function loop() {
+  const now = performance.now(); input.step(Math.min(0.1, (now - lastFrame) / 1000)); lastFrame = now;
+  compute(); active.draw(app.before, app.beforeTime); requestAnimationFrame(loop);
+}
 requestAnimationFrame(loop);
 
 // iPad: after waking up check immediately whether the connection is still alive

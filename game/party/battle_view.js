@@ -1,6 +1,6 @@
-// NomadTactics – Party: top-down view of the battle (milestone 1, rough and quick).
-// Draws only, never touches the simulation: reads units/projectiles/events and sends commands.
-// The 3D diorama comes later on top of the same simulation.
+// NomadTactics – Party: top-down 2D view of the battle (quick overview; the voxel diorama is battle_3d.js).
+// Draws only, never touches the simulation: reads units/projectiles/events. Input lives in battle_input.js
+// and talks to the view through project/unproject/pan/zoom/centreOn.
 
 import { ROUND_MS } from '../../engine/net/protocol.js';
 
@@ -9,14 +9,12 @@ const toRad = (a) => (a / 256) * TAU;
 // body sizes in metres (length, width)
 const BODY = { tank: [7.2, 3.6], spaeher: [5.2, 2.6], werfer: [6.4, 2.9], dozer: [6, 3.4] };
 
-export function battleView({ cv, app, send, meSeat, playerList }) {
+export function battleView({ cv, app, meSeat, playerList, toast }) {
   const g = cv.getContext('2d');
   const cam = { zoom: 1, cx: null, cy: null };
-  const keys = new Set();
   let mapCanvas = null, mapFor = null;
-  let effects = [], wrecks = [], toasts = [];
-  const groups = {};
-  app.cam = cam;
+  let effects = [], wrecks = [];
+  let shown = true;
 
   // ---------- camera ----------
   function frame() {
@@ -27,7 +25,7 @@ export function battleView({ cv, app, send, meSeat, playerList }) {
     const s = fit * cam.zoom;
     return { s, ox: w / 2 - cam.cx * s, oy: top + (h - top - bottom) / 2 - cam.cy * s, w, h, size };
   }
-  const toWorld = (px, py) => { const { s, ox, oy } = frame(); return [Math.round((px - ox) / s), Math.round((py - oy) / s)]; };
+  const toWorld = (px, py) => { const { s, ox, oy } = frame(); return [(px - ox) / s, (py - oy) / s]; };
   function clampCam() {
     const size = app.ls?.sim?.map.size || 256000;
     cam.zoom = Math.max(1, Math.min(6, cam.zoom));
@@ -102,8 +100,6 @@ export function battleView({ cv, app, send, meSeat, playerList }) {
     if (effects.length > 500) effects = effects.slice(-500);
     wrecks = wrecks.filter((w) => now - w.t0 < 25000);
   }
-  function toast(text) { toasts.push({ text, t0: performance.now() }); if (toasts.length > 4) toasts.shift(); }
-  app.toast = toast;
 
   // ---------- draw ----------
   function draw(before, beforeTime) {
@@ -113,8 +109,7 @@ export function battleView({ cv, app, send, meSeat, playerList }) {
     g.setTransform(d, 0, 0, d, 0, 0);
     g.fillStyle = css('--ui-canvas', '#0e0e10'); g.fillRect(0, 0, cv.clientWidth, cv.clientHeight);
     const sim = app.ls?.sim;
-    if (app.view !== 'game' || !sim) return;
-    panKeys();
+    if (app.view !== 'game' || !sim || !shown) return;
     const { s, ox, oy, size } = frame();
     const now = performance.now();
     const t = Math.min(1, (now - beforeTime) / ROUND_MS);
@@ -218,17 +213,6 @@ export function battleView({ cv, app, send, meSeat, playerList }) {
       g.fillRect(z.x0, z.y0, z.x - z.x0, z.y - z.y0); g.strokeRect(z.x0 + .5, z.y0 + .5, z.x - z.x0, z.y - z.y0);
     }
 
-    // toasts
-    toasts = toasts.filter((x) => now - x.t0 < 3500);
-    g.font = '600 14px Inter, system-ui, sans-serif'; g.textAlign = 'center';
-    toasts.forEach((x, i) => {
-      const a = Math.min(1, (3500 - (now - x.t0)) / 500);
-      const ty = 84 + i * 30, tw = g.measureText(x.text).width + 24;
-      g.globalAlpha = a; g.fillStyle = 'rgba(14,14,16,.82)'; rr(cv.clientWidth / 2 - tw / 2, ty - 17, tw, 26, 8); g.fill();
-      g.fillStyle = '#f2f2f2'; g.fillText(x.text, cv.clientWidth / 2, ty); g.globalAlpha = 1;
-    });
-    g.textAlign = 'start';
-
     function body(cx, cy, h, model, col, dark, sc, aim) {
       const [len, wid] = BODY[model] || [5.5, 3];
       const a = toRad(h);
@@ -264,146 +248,22 @@ export function battleView({ cv, app, send, meSeat, playerList }) {
   function line(a, b, c, d) { g.beginPath(); g.moveTo(a, b); g.lineTo(c, d); g.stroke(); }
   function rr(x, y, w, h, r) { g.beginPath(); g.roundRect ? g.roundRect(x, y, w, h, r) : g.rect(x, y, w, h); }
 
-  // ---------- input ----------
-  const own = () => { const sim = app.ls?.sim; const me = meSeat(); return sim ? sim.units.filter((u) => u.seat === me && !sim.types[u.type].building) : []; };
-  function hitUnit(wx, wy, pred) {
-    const sim = app.ls?.sim; if (!sim) return null;
-    const { s } = frame();
-    let best = null, bd = Infinity;
-    for (const u of sim.units) {
-      if (!pred(u)) continue;
-      const r = Math.max(sim.types[u.type].radius + 800, 9 / s);
-      const d = Math.hypot(u.x - wx, u.y - wy);
-      if (d < r && d < bd) { best = u; bd = d; }
-    }
-    return best;
-  }
-  function order(x, y, ids, target = null) {
-    if (!ids.length) return;
-    app.pending = { x, y, time: performance.now(), attack: !!target };
-    if (target) send({ t: 'command', b: { kind: 'attack', ids, target: target.id } });
-    else send({ t: 'command', b: { kind: 'drive', ids, x, y } });
-  }
-  app.command = (x, y, ids) => order(x, y, ids);
-  app.ownItems = own;
-
-  cv.addEventListener('contextmenu', (e) => e.preventDefault());
-  cv.addEventListener('pointerdown', (e) => {
-    if (app.view !== 'game') return;
-    cv.setPointerCapture(e.pointerId);
-    app.drag = { x0: e.offsetX, y0: e.offsetY, x: e.offsetX, y: e.offsetY, frame: false, pan: false, right: e.button === 2, middle: e.button === 1, shift: e.shiftKey, cx: cam.cx, cy: cam.cy };
-  });
-  cv.addEventListener('pointermove', (e) => {
-    const z = app.drag;
-    if (!z) { hover(e); return; }
-    z.x = e.offsetX; z.y = e.offsetY;
-    const far = Math.hypot(z.x - z.x0, z.y - z.y0) > 8;
-    if ((z.right || z.middle) && far) z.pan = true;
-    else if (!z.right && !z.middle && far) z.frame = true;
-    if (z.pan) { const { s } = frame(); cam.cx = z.cx - (z.x - z.x0) / s; cam.cy = z.cy - (z.y - z.y0) / s; clampCam(); }
-  });
-  cv.addEventListener('pointerup', (e) => {
-    const z = app.drag; app.drag = null;
-    const sim = app.ls?.sim;
-    if (!z || !sim || z.pan || z.middle || app.spectator) return;
-    const me = meSeat();
-    if (z.frame) {
-      const [ax, ay] = toWorld(Math.min(z.x0, z.x), Math.min(z.y0, z.y));
-      const [bx, by] = toWorld(Math.max(z.x0, z.x), Math.max(z.y0, z.y));
-      if (!z.shift) app.selection.clear();
-      for (const u of own()) if (u.x >= ax && u.x <= bx && u.y >= ay && u.y <= by) app.selection.add(u.id);
-      return;
-    }
-    const [wx, wy] = toWorld(z.x, z.y);
-    const mine = hitUnit(wx, wy, (u) => u.seat === me && !sim.types[u.type].building);
-    if (!z.right && mine) {
-      if (z.shift) { app.selection.has(mine.id) ? app.selection.delete(mine.id) : app.selection.add(mine.id); }
-      else { app.selection.clear(); app.selection.add(mine.id); }
-      return;
-    }
-    if (!app.selection.size) return;
-    const enemy = hitUnit(wx, wy, (u) => u.seat !== me);
-    const size = sim.map.size;
-    order(Math.max(0, Math.min(size - 1, wx)), Math.max(0, Math.min(size - 1, wy)), [...app.selection], enemy);
-  });
-  cv.addEventListener('dblclick', (e) => {
-    const sim = app.ls?.sim; if (!sim) return;
-    const [wx, wy] = toWorld(e.offsetX, e.offsetY);
-    const me = meSeat();
-    const u = hitUnit(wx, wy, (x) => x.seat === me && !sim.types[x.type].building);
-    if (!u) return;
-    const { s, ox, oy, w, h } = frame();
-    for (const x of own()) if (x.type === u.type) {
-      const px = ox + x.x * s, py = oy + x.y * s;
-      if (px >= 0 && py >= 0 && px <= w && py <= h) app.selection.add(x.id);
-    }
-  });
-  function hover(e) {
-    const sim = app.ls?.sim; if (!sim || !app.selection.size) { cv.style.cursor = ''; return; }
-    const [wx, wy] = toWorld(e.offsetX, e.offsetY);
-    cv.style.cursor = hitUnit(wx, wy, (u) => u.seat !== meSeat()) ? 'crosshair' : '';
-  }
-  cv.addEventListener('wheel', (e) => {
-    if (app.view !== 'game') return;
-    e.preventDefault();
-    const [wx, wy] = toWorld(e.offsetX, e.offsetY);
-    cam.zoom *= Math.exp(-e.deltaY * 0.0015);
-    clampCam();
-    // keep the point under the cursor in place
+  // ---------- camera interface for battle_input.js ----------
+  function project(x, y) { const { s, ox, oy } = frame(); return [ox + x * s, oy + y * s]; }
+  function pixelsPerMm() { return frame().s; }
+  function pan(dx, dy) { const { s } = frame(); cam.cx -= dx / s; cam.cy -= dy / s; clampCam(); }
+  function zoom(f, px, py) {
+    const [wx, wy] = toWorld(px, py);
+    cam.zoom *= f; clampCam();
     const { s, ox, oy } = frame();
-    cam.cx += wx - (e.offsetX - ox) / s; cam.cy += wy - (e.offsetY - oy) / s;
-    clampCam();
-  }, { passive: false });
+    cam.cx += wx - (px - ox) / s; cam.cy += wy - (py - oy) / s; clampCam();
+  }
+  function centreOn(x, y) { cam.cx = x; cam.cy = y; if (cam.zoom < 2) cam.zoom = 2; clampCam(); }
+  function reset() { cam.zoom = 1; cam.cx = null; cam.cy = null; effects = []; wrecks = []; }
+  function show(on) { shown = on; }
 
-  window.addEventListener('keydown', (e) => {
-    if (app.view !== 'game' || e.target instanceof HTMLInputElement) return;
-    const k = e.key.toLowerCase();
-    if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(k) && !e.ctrlKey && !e.metaKey) keys.add(k);
-    if ((e.ctrlKey || e.metaKey) && k === 'a') { e.preventDefault(); app.selection = new Set(own().map((u) => u.id)); }
-    else if (k === 'escape') app.selection.clear();
-    else if (k === 'h') { const ids = [...app.selection]; if (ids.length) send({ t: 'command', b: { kind: 'halt', ids } }); }
-    else if (k === 'p') send({ t: app.state?.pause?.reason === 'manual' ? 'next' : 'pause' });
-    else if (k === ' ' || k === 'home') { e.preventDefault(); home(); }
-    else if (k === '+' || k === '=') { cam.zoom *= 1.25; clampCam(); }
-    else if (k === '-') { cam.zoom /= 1.25; clampCam(); }
-    else if (/^[1-9]$/.test(k)) {
-      if (e.ctrlKey || e.metaKey) { e.preventDefault(); groups[k] = [...app.selection]; app.toast?.(`Gruppe ${k} gespeichert`); }
-      else if (groups[k]) {
-        const again = app.lastGroup === k && performance.now() - app.lastGroupTime < 400;
-        app.selection = new Set(e.shiftKey ? [...app.selection, ...groups[k]] : groups[k]);
-        app.lastGroup = k; app.lastGroupTime = performance.now();
-        if (again) centreOn([...app.selection]);
-      }
-    }
-  });
-  window.addEventListener('keyup', (e) => keys.delete(e.key.toLowerCase()));
-  window.addEventListener('blur', () => keys.clear());
-  function panKeys() {
-    if (!keys.size) return;
-    const { s } = frame();
-    const v = 9 / s;
-    if (keys.has('a') || keys.has('arrowleft')) cam.cx -= v;
-    if (keys.has('d') || keys.has('arrowright')) cam.cx += v;
-    if (keys.has('w') || keys.has('arrowup')) cam.cy -= v;
-    if (keys.has('s') || keys.has('arrowdown')) cam.cy += v;
-    clampCam();
-  }
-  function centreOn(ids) {
-    const sim = app.ls?.sim; if (!sim) return;
-    const us = ids.map((id) => sim.byId.get(id)).filter(Boolean);
-    if (!us.length) return;
-    cam.cx = us.reduce((a, u) => a + u.x, 0) / us.length; cam.cy = us.reduce((a, u) => a + u.y, 0) / us.length;
-    if (cam.zoom < 2) cam.zoom = 2;
-    clampCam();
-  }
-  function home() {
-    const sim = app.ls?.sim; if (!sim) return;
-    const p = sim.units.find((u) => u.seat === meSeat() && sim.types[u.type].building);
-    if (p) centreOn([p.id]);
-  }
-  function reset() { cam.zoom = 1; cam.cx = null; cam.cy = null; effects = []; wrecks = []; toasts = []; for (const k in groups) delete groups[k]; }
+  return { draw, drain, reset, project, unproject: toWorld, pixelsPerMm, pan, zoom, centreOn, show, kind: '2d' };
 
-  return { draw, drain, reset, home };
 }
 
 function rank(sim, u) { const t = sim.types[u.type]; return t.building ? 0 : t.cls === 'infantry' ? 1 : 2; }

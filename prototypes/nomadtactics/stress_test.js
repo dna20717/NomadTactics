@@ -227,10 +227,10 @@ function vehicleMaterial() {
   const m = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.6, metalness: 0, envMap: environment, envMapIntensity: 0.28 });
   m.onBeforeCompile = sh => {
     sh.vertexShader = sh.vertexShader.replace('#include <common>', `#include <common>
-      attribute vec2 kante; attribute float mat; attribute vec4 aussen;
+      attribute vec2 edge; attribute float mat; attribute vec4 outer;
       varying vec2 vKante; varying float vMat; varying vec4 vRand; varying vec3 vLok;`)
       .replace('#include <begin_vertex>', `#include <begin_vertex>
-      vKante = kante; vMat = mat; vRand = aussen; vLok = position - normal * 0.05;`);
+      vKante = edge; vMat = mat; vRand = outer; vLok = position - normal * 0.05;`);
     sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
       varying vec2 vKante; varying float vMat; varying vec4 vRand; varying vec3 vLok;
       float h31(vec3 p) { p = fract(p * 0.3183099 + 0.1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
@@ -1852,10 +1852,10 @@ function precipitation(n, lines) {
     if (lines) { pos.set([x, y, z, x, y, z], i * 6); end[i * 2 + 1] = 1; }
     else pos.set([x, y, z], i * 3);
   }
-  g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('end', new THREE.BufferAttribute(end, 1));
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('endShare', new THREE.BufferAttribute(end, 1));
   const m = new THREE.ShaderMaterial({ transparent: true, depthWrite: false,
     uniforms: { time: { value: 0 }, center: { value: new THREE.Vector3() }, size: { value: 80 }, speed: { value: lines ? 26 : 2.6 }, wind: { value: new THREE.Vector2() }, strength: { value: 0 }, pr: { value: 1 } },
-    vertexShader: `attribute float ende; uniform float zeit, groesse, tempo, pr; uniform vec3 mitte; uniform vec2 wind; varying float vA;
+    vertexShader: `attribute float endShare; uniform float zeit, groesse, tempo, pr; uniform vec3 mitte; uniform vec2 wind; varying float vA;
       void main(){
         vec3 S = vec3(groesse, groesse * 0.55, groesse);
         vec3 v = vec3(wind.x, -tempo, wind.y);
@@ -1863,7 +1863,7 @@ function precipitation(n, lines) {
         ${lines ? '' : 'q.x += sin(zeit * 1.3 + position.y * 40.0) * 0.8; q.z += cos(zeit * 1.1 + position.x * 37.0) * 0.8;'}
         vec3 lo = mitte - vec3(S.x * 0.5, 0.0, S.z * 0.5);
         vec3 w = lo + mod(q - lo, S);
-        ${lines ? 'w -= normalize(v) * ende * 1.0;' : ''}
+        ${lines ? 'w -= normalize(v) * endShare * 1.0;' : ''}
         vec4 mv = viewMatrix * vec4(w, 1.0);
         gl_Position = projectionMatrix * mv;
         float d = -mv.z;

@@ -48,6 +48,9 @@ function nodeClient(name, test = {}) {
 }
 
 const browser = await chromium.launch();
+// This test is about the network: the light 2D view keeps software rendering out of the way (3D: tools/party/view3d_test.mjs)
+const origNewContext = browser.newContext.bind(browser);
+browser.newContext = async (o) => { const c = await origNewContext(o); await c.addInitScript(() => { try { localStorage.setItem('nomadtactics-view', '2d'); } catch {} }); return c; };
 const context = await browser.newContext({ viewport: { width: 1280, height: 760 } });
 const pageA = await context.newPage();
 const pageB = await (await browser.newContext({ viewport: { width: 1180, height: 820 } })).newPage(); // „iPad“

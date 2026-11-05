@@ -13,6 +13,8 @@ export async function loadSkirmish(json, choice = SKIRMISH) {
     json('data/world.json'), json(`maps/${choice.map}.json`), json('data/modes.json'),
   ]);
   const setup = { faction, weapons, combat, world, mapDef, mode: modes[choice.mode] || {} };
+  // models are only for the view (not part of the data fingerprint)
+  try { setup.models = await json('data/models.json'); } catch { setup.models = {}; }
   setup.map = buildMap(mapDef, world);
   setup.version = dataVersion(setup);
   return setup;
