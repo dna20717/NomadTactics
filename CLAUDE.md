@@ -29,11 +29,11 @@ Einstieg, Entscheidungen und Fahrplan stehen im claude.ai-Projekt „NOMADTactic
 npm install
 ln -s "$(npm root -g)/playwright" node_modules/playwright          # für nt image, Tests im Browser
 (cd prototypes/nomadtactics && npm install && ln -s "$(npm root -g)/playwright" node_modules/playwright)
-npm test                       # 48 Tests (tactics, world, experience, battle, net, cloud)
+npm test                       # 50 Tests (tactics, world, experience, battle, net, cloud)
 npm run web:test               # Web-Werkstatt mit Worker, falschem GitHub und Login
 node tools/nt.js check         # Spieldaten prüfen
 npm run party:test             # Party-Server mit echten Browsern
-npm run view:test              # Diorama-Ansicht des Gefechts (WebGL per SwiftShader)
+npm run view:test              # Diorama-Ansicht + HUD des Gefechts (WebGL per SwiftShader)
 python3 -m http.server 8790 & node tools/workshop_test.mjs   # Werkstatt bedienen
 cd prototypes/nomadtactics && npm run build:stress && npm run build   # Härtetest und Spielwiese bauen
 ```
@@ -172,6 +172,9 @@ Besprochen mit Daniel am 5.11.: **USA gegen USA, nur Einheiten, kleine Handkarte
   - **Eingabe** gemeinsam für beide Ansichten in `game/party/battle_input.js` (arbeitet im Bildschirmraum über `project`/`unproject`/`pixelsPerMm`/`pan`/`zoom`/`rotate`/`centreOn` der aktiven Ansicht). Funk-Meldungen als DOM-Toasts (`#toasts`).
   - Test `npm run view:test` (zwei Browser mit SwiftShader: Szene zeichnet, Klick trifft die Platte, `.vox` lädt, Umschalten, gleiche Prüfsumme). `party:test` stellt die Ansicht auf 2D, damit Software-Rendering die Netzprüfung nicht ausbremst.
   - Behoben nebenbei: Beim Englisch-Umbau hießen im Härtetest drei Shader-Attribute noch `kante`/`aussen`/`ende`, die Geometrie aber `edge`/`outer`/`end` → Tarnflecken, Abrieb und Fugen fehlten seit 4.11. abends (jetzt `edge`/`outer`/`endShare`).
+- **Allein spielen** (Daniel, 5.11.): Der Raum startet schon mit einem Spieler (Knopf „Allein üben“). Dann stellt `Battle` einen **Übungsgegner** dazu (`PRACTICE_SEAT` 9, `PRACTICE` Name/Farbe grau, `battle.practice`): eigener Landeplatz, bekommt Wellen wie ein Spieler, nimmt keine Befehle an, wehrt sich nur gegen alles in Sichtweite. Fällt er, hast du gewonnen. `playerList()` in `party.js` hängt ihn an.
+- **Spiel-HUD im Gefecht** (Daniel, 5.11.: „Bau jetzt das richtige Interface ein“; Schalter 2D/3D bleibt): `game/party/hud_adapter.js` (`hudForBattle`) setzt das HUD aus `game/tactics/hud/` auf die Simulation. Stabile Stellvertreter-Objekte je Einheit (das HUD hält Einheiten in Sets), Positionen zwischen den Runden geglättet, Höhe/Drehung aus der 3D-Ansicht (`u.view`). Befehle: `drive` (Mittelpunkt der HUD-Formation; auf einen feindlichen Landeplatz = `attack`), `attack`, `halt`; Bauen, Sammelpunkt und Fähigkeiten gibt es im Modus noch nicht. Landeplätze sind HUD-Gebäude. Lage zeigt Zeit und **Wellen-Countdown** (ohne Geld/Strom: `state().money = null`), Funk meldet Wellen, Verluste, zerstörte Landeplätze und Ausscheiden (mit Funkstimme), Minikarte aus der Karte, General-Fenster ausgeblendet (keine Fähigkeiten). Auswahl mit **Live-Porträt**, Befehl W öffnet **Live-Fenster** (beide: Folgekamera rendert direkt ins Hauptbild an die Stelle des Fensters, dann Kopie per `drawImage`, wie im Härtetest; ohne `readPixels`). Die Partie-Leiste (Spieler, Ping, Pause, 2D/3D, Lobby) steckt im HUD-Fenster „Partie“. Das HUD nimmt Auswahl, Befehle und Buchstaben-Tasten; `battle_input.js` macht dann nur noch Kamera: Rechts-/Mitte-Ziehen, Rad, **Pfeiltasten** schieben, **Shift+Pfeile** drehen, zwei Finger, Leertaste, **Tab = 2D/3D**, P. HUD-Erweiterungen dafür (Härtetest bleibt verträglich): `A.project`/`A.flat` (2D-Ansicht), `state().wave`, ausgeblendete Wirtschaft, General-Fenster nur mit Fähigkeiten. Eigene Ringe/Balken/Marschlinien der Ansichten treten zurück, sobald `app.hud` da ist (Landeplatz-Balken bleiben).
+- Behoben: weitere Reste vom Englisch-Umbau im HUD: Markierungs-Shader (`aFarbe`/`zeit`/`dunkel` → `aColor`/`time`/`dark`, Auswahlmarken waren ohne Farbe), Funkstimme `u.long` → `u.lang` (auch in der Werkstatt-Vorschau), `e.oldKey` → `e.altKey`.
 - **Lokal testen wie auf Cloudflare:** `npm run build:web`, dann `npx wrangler dev --local --port 8787 --ip 127.0.0.1 --var LOCAL_TEST:1` und http://127.0.0.1:8787/party öffnen. `LOCAL_TEST` lässt den Login nur auf localhost aus (`accessUser`), `/api/files` antwortet lokal 503 (kein GitHub-Schlüssel) → Rückfall auf die Dateien.
 
 ### Party-Server (Multiplayer-MVP, seit 4.11.)

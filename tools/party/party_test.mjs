@@ -55,7 +55,7 @@ const context = await browser.newContext({ viewport: { width: 1280, height: 760 
 const pageA = await context.newPage();
 const pageB = await (await browser.newContext({ viewport: { width: 1180, height: 820 } })).newPage(); // „iPad“
 const terminal = [];
-for (const s of [pageA, pageB]) s.on('console', (m) => { if (m.type() === 'error') terminal.push(m.text()); }).on('pageerror', (e) => terminal.push(String(e)));
+for (const s of [pageA, pageB]) s.on('console', (m) => { if (m.type() === 'error' && !/ERR_TUNNEL|fonts\.g/.test(m.text())) terminal.push(m.text()); }).on('pageerror', (e) => terminal.push(String(e)));
 
 try {
   // 1) Device check in the browser = Node

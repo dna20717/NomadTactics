@@ -179,7 +179,7 @@ export class Room {
   start(p) {
     if (this.phase !== 'lobby') return;
     const da = this.active().filter((x) => x.online);
-    if (da.length < 2) return this.on(p, { t: 'error', text: 'Es braucht mindestens zwei Spieler.' });
+    if (da.length < 1) return this.on(p, { t: 'error', text: 'Es ist niemand da.' }); // alone is fine: the game adds a practice opponent
     // Different game data = guaranteed desync: everyone has to load the same version first
     if (new Set(da.map((x) => x.data ?? null)).size > 1) return this.on(p, { t: 'error', text: 'Nicht alle haben dieselben Spieldaten. Bitte alle die Seite neu laden.' });
     // Close gaps: whoever is offline is dropped from the lobby

@@ -20,12 +20,12 @@ export class Markers {
       const m = new THREE.ShaderMaterial({
         uniforms: this.uniforms, transparent: true, depthWrite: false, depthTest: !xray, toneMapped: false, fog: false,
         polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4, side: THREE.DoubleSide,
-        vertexShader: `attribute vec4 aForm; attribute vec4 aFarbe; attribute vec4 aGr;
+        vertexShader: `attribute vec4 aForm; attribute vec4 aColor; attribute vec4 aGr;
           varying vec2 vP; varying vec4 vForm; varying vec4 vFarbe; varying vec4 vGr;
-          void main(){ vP = position.xz * aGr.x; vForm = aForm; vFarbe = aFarbe; vGr = aGr;
+          void main(){ vP = position.xz * aGr.x; vForm = aForm; vFarbe = aColor; vGr = aGr;
             vec3 p = vec3(position.x * aGr.x, 0.0, position.z * aGr.x);
             gl_Position = projectionMatrix * modelViewMatrix * instanceMatrix * vec4(p, 1.0); }`,
-        fragmentShader: `uniform float zeit; uniform vec3 dunkel; varying vec2 vP; varying vec4 vForm; varying vec4 vFarbe; varying vec4 vGr;
+        fragmentShader: `uniform float time; uniform vec3 dark; varying vec2 vP; varying vec4 vForm; varying vec4 vFarbe; varying vec4 vGr;
           float segment(vec2 q, vec2 a, vec2 b){ vec2 pa = q - a, ba = b - a; float t = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0); return length(pa - ba * t); }
           void main(){
             ${xray ? 'if (vGr.z < 0.5) discard;' : ''}
@@ -42,10 +42,10 @@ export class Markers {
             float aA = 1.0 - smoothstep(aussen - wpp, aussen, d);
             float aI = 1.0 - smoothstep(innen - wpp, innen, d);
             if (aA < 0.01) discard;
-            vec3 c = mix(dunkel, vFarbe.rgb, aI);
+            vec3 c = mix(dark, vFarbe.rgb, aI);
             float a = aA * vFarbe.a * (1.0 + 0.6 * puls);
-            ${xray ? 'a *= step(0.45, fract(laufweg / (9.0 * wpp) - zeit * 0.6)) * 0.55;' : ''}
-            if (vGr.w > 0.5) a *= step(0.4, fract(laufweg / (7.0 * wpp) - zeit * 0.9));
+            ${xray ? 'a *= step(0.45, fract(laufweg / (9.0 * wpp) - time * 0.6)) * 0.55;' : ''}
+            if (vGr.w > 0.5) a *= step(0.4, fract(laufweg / (7.0 * wpp) - time * 0.9));
             gl_FragColor = vec4(c, min(a, 1.0));
           }`,
       });

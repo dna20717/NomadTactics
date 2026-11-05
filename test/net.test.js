@@ -103,12 +103,17 @@ test('Zwei Spieler: Lobby, Start, Befehle, gleiche Prüfsummen', () => {
   assert.ok(a.ls.sim.units[0].x > 20000);
 });
 
-test('Start braucht zwei, voller Raum macht Zuschauer, falsche Version fliegt raus', () => {
-  const w = world({ max: 2 });
+test('Allein starten geht (Übungsgegner kommt aus dem Spiel)', () => {
+  const w = world();
   const a = w.new('A').connect();
   a.send({ t: 'start' });
-  assert.equal(w.room.phase, 'lobby');
-  assert.equal(a.last('error').text.includes('zwei'), true);
+  assert.equal(w.room.phase, 'running');
+  assert.deepEqual(a.last('match').seats, [0]);
+});
+
+test('Voller Raum macht Zuschauer, falsche Version fliegt raus', () => {
+  const w = world({ max: 2 });
+  const a = w.new('A').connect();
   w.new('B').connect();
   const c = w.new('C').connect();
   assert.equal(c.last('welcome').spectator, true);

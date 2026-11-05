@@ -70,3 +70,18 @@ test('Gefecht: wer keine Einheiten und keinen Landeplatz mehr hat, verliert', ()
   assert.deepEqual(b.over, { winner: 0, tick: 2 });
   assert.ok(b.events.some((e) => e.kind === 'over'));
 });
+
+test('Allein: Übungsgegner mit eigenem Landeplatz, nimmt keine Befehle an, Sieg möglich', async () => {
+  const { PRACTICE_SEAT } = await import('../engine/tactics/battle.js');
+  const b = new Battle(11, [0], setup);
+  assert.deepEqual(b.seats, [0, PRACTICE_SEAT]);
+  b.step();
+  const bot = b.units.filter((u) => u.seat === PRACTICE_SEAT);
+  assert.ok(bot.length > 5, 'Übungsgegner hat eine Welle');
+  const before = b.sum();
+  b.command(PRACTICE_SEAT, { kind: 'drive', ids: bot.map((u) => u.id), x: 1000, y: 1000 });
+  assert.equal(b.sum(), before, 'Befehle für den Übungsgegner werden ignoriert');
+  for (const u of bot) u.hp = 0;
+  b.step();
+  assert.equal(b.over?.winner, 0);
+});

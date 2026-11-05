@@ -15,6 +15,9 @@
 //   steuerung: { springe(x, z), linksZiehen(an), blickfeld() → 4 Bodenpunkte, ziel() }
 //   welt: { min, max }, minimap(ebene) → canvas with base image, faehigkeiten: [{ id, name, symbol, cooldown, description }]
 //   portrait(el | null, e) → live image of a unit in el;  livePane(e);  testDesk?() (optional)
+//   optional: project(x, y, z) → { x, y } screen point (else the camera projects; lets a 2D view use the HUD too),
+//   flat() → true when the view has no perspective (no distance culling of gauges),
+//   state().money === null hides money and power (modes without economy), state().wave = text for the wave countdown
 import { chevronsSvg } from '../chevrons.js';
 import { PaneSystem } from './pane.js';
 import { applyMoodOn, token, loadFonts, setMoods, moods } from './moods.js';
@@ -95,6 +98,7 @@ class Hud {
     this.fInp = fs.new('settings', { title: 'Einstellungen', symbol: 'settings', dock: null, isOpen: false, closable: true, class: 'f-inp' });
     const inp = fs.all.get('settings'); if (!fs.layout.settings) { inp.x = innerWidth / 2 - 190; inp.y = 90; fs.inSight(inp); }
     this.constructResources(); this.constructAbilities(); this.constructMap(); this.constructSettings();
+    if (!(this.A.abilities || []).length) this.fs.show('abilities', false);
     this.tooltip = el('div', 'hud-tip'); this.root.appendChild(this.tooltip);
     this.circle = el('div', 'hud-circle'); this.root.appendChild(this.circle);
     this.targetHint = el('div', 'hud-targetHint'); this.root.appendChild(this.targetHint);
@@ -107,10 +111,11 @@ class Hud {
       <div class="res"><span class="res-i"></span><b data-w="rank">1</b></div>
       <div class="res"><span class="res-i" data-w="weatherI"></span><small data-w="weather"></small></div>
       <div class="res"><span class="res-i"></span><small data-w="time"></small></div>
+      <div class="res" data-opt="wave"><span class="res-i"></span><small data-w="wave"></small></div>
       <button class="idle" title="Produktion im Leerlauf – Klick springt reihum (Taste ,)"><span class="res-i"></span><b data-w="empty">0</b><small>im Leerlauf</small></button>
       <span class="res-air"></span>`;
     const is = c.querySelectorAll('.res-i');
-    is[0].appendChild(icon('coins', 15)); is[1].appendChild(icon('flash', 15)); is[2].appendChild(icon('star', 15)); is[4].appendChild(icon('clock', 15)); is[5].appendChild(icon('factory', 15));
+    is[0].appendChild(icon('coins', 15)); is[1].appendChild(icon('flash', 15)); is[2].appendChild(icon('star', 15)); is[4].appendChild(icon('clock', 15)); is[5].appendChild(icon('wave', 15)); is[6].appendChild(icon('factory', 15));
     c.querySelector('.idle').onclick = () => this.nextEmptyBuilding();
     const x = this.fRes.extra;
     if (this.A.testDesk) { const b = el('button', 'hud-k', ''); b.title = 'Testpult (alte Härtetest-Leisten)'; b.appendChild(icon('grip', 14)); b.onclick = () => this.A.testDesk(); x.appendChild(b); }
@@ -251,8 +256,8 @@ class Hud {
     if (S.speaking && now - (this.lastVoice || 0) < 1200) return;   // do not flood
     this.lastVoice = now;
     try {
-      const u = new SpeechSynthesisUtterance(text); u.long = 'de-DE'; u.rate = 1.12; u.pitch = 0.9; u.volume = 0.9;
-      const de = S.getVoices().find(v => v.long?.startsWith('de')); if (de) u.voice = de;
+      const u = new SpeechSynthesisUtterance(text); u.lang = 'de-DE'; u.rate = 1.12; u.pitch = 0.9; u.volume = 0.9;
+      const de = S.getVoices().find(v => v.lang?.startsWith('de')); if (de) u.voice = de;
       S.speak(u);
     } catch {}
   }
@@ -462,7 +467,7 @@ class Hud {
       return;
     }
     if ((e.ctrlKey || e.metaKey) && k === 'a') { e.preventDefault(); this.select(this.A.units().filter(u => u.alive && u.team === this.A.team && this.A.data(kind(u)).damage > 0)); return; }
-    if (e.ctrlKey || e.metaKey || e.oldKey) return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
     if (k === ',') { this.nextEmptyBuilding(); return; }
     if (k === '.') { this.nearestEmptyUnit(); return; }
     if (k === 'h') { const us = this.ownItemsSelection(); if (us.length) { this.A.command({ kind: 'halt', units: us }); this.acknowledge(us, this.radio('halt')); } return; }
@@ -513,6 +518,7 @@ class Hud {
 
   // ---------- Bildschirm-Helfer ----------
   image(x, y, z) {
+    if (this.A.project) return this.A.project(x, y, z);
     const v = this.v.set(x, y, z).project(this.A.camera);
     if (v.z > 1 || v.z < -1) return null;
     return { x: (v.x + 1) / 2 * innerWidth, y: (1 - v.y) / 2 * innerHeight };
@@ -666,6 +672,10 @@ class Hud {
 
   drawResources() {
     const s = this.A.state(), c = this.fRes.content, q = k => c.querySelector(`[data-w="${k}"]`);
+    const economy = s.money != null;
+    q('money').closest('.res').hidden = !economy; q('power').closest('.res').hidden = !economy;
+    c.querySelector('[data-opt=wave]').hidden = !s.wave; if (s.wave) q('wave').textContent = s.wave;
+    if (!economy) s.money = 0;
     q('money').textContent = Math.floor(s.money).toLocaleString('de-DE'); q('shop').textContent = `+${s.income}/s`;
     const [has, needs] = s.power; q('power').style.width = Math.min(100, needs / Math.max(1, has) * 100) + '%';
     q('power').classList.toggle('scarce', needs > has); q('powerText').textContent = `${needs}/${has}`;
@@ -758,7 +768,7 @@ class Hud {
       if (!u.alive) continue;
       const d = A.data(kind(u)), max = d.health * (u.mHealth || 1), s = sel.has(u), hurt = u.hp < max - 0.5;
       if (!s && !hurt) continue;
-      if (!s && Math.hypot(u.x - k.x, u.z - k.z) > far) continue;
+      if (!s && !A.flat?.() && Math.hypot(u.x - k.x, u.z - k.z) > far) continue;
       const p = this.image(u.x, u.y + d.height + 0.6, u.z); if (!p || p.x < -40 || p.y < -20 || p.x > innerWidth + 40 || p.y > innerHeight + 20) continue;
       const st = d.tiers || [], T = u.tier || 0, nearest = st[T], ahead = T ? st[T - 1].min : 0;
       const xp = (u.team === A.team || s) && (s || u.xp > 0) ? (nearest ? Math.min(1, (u.xp - ahead) / (nearest.min - ahead)) : 1) : null;

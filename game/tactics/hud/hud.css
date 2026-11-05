@@ -187,3 +187,4 @@
 .circle-k.off { opacity: 0.4; }
 
 @media (prefers-reduced-motion: reduce) { .nt-hud * { animation: none !important; transition: none !important; } }
+.f-res [hidden], .nt-hud [hidden] { display: none !important; }

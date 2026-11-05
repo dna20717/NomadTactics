@@ -17,6 +17,10 @@ import { FlowCache, FAR, NEIGHBOURS, nearestOpen } from './flowfield.js';
 import { movementTypes } from './world.js';
 
 export const TICKS_PER_SECOND = 20;
+// Alone in the room: a practice opponent with its own landing pad. It gets waves like a player,
+// never receives commands and only fights back what comes into sight.
+export const PRACTICE_SEAT = 9;
+export const PRACTICE = { name: 'Übungsgegner', color: '#9aa3ab' };
 const BUCKET = 8 * MM;                    // spatial buckets for neighbours and targets
 const MAX_IDS = 120;
 const RADIUS = { tank: 2600, werfer: 2400, spaeher: 2100, dozer: 2400, soldat: 450 };
@@ -90,7 +94,8 @@ export class Battle {
     this.types = c.types; this.typeOrder = c.order; this.table = c.table; this.padType = c.pad;
     this.flow = new FlowCache(this.map, this.world);
     this.random = new Random(seed);
-    this.seats = seats.slice();
+    this.seats = seats.length === 1 ? [seats[0], PRACTICE_SEAT] : seats.slice();
+    this.practice = seats.length === 1;
     this.tick = 0;
     this.nextId = 1;
     this.units = [];
@@ -111,7 +116,7 @@ export class Battle {
     }
     // landing pads on the start slots
     const slots = this.map.slots;
-    seats.forEach((seat, i) => {
+    this.seats.forEach((seat, i) => {
       const [x, y] = slots[i % slots.length] || [this.map.size >> 1, this.map.size >> 1];
       this.spawn(this.padType, seat, x, y, 0);
     });
@@ -147,7 +152,7 @@ export class Battle {
       this.wind = { x: r[0] * 120, y: r[1] * 120, rest: 3 * TICKS_PER_SECOND };
       return;
     }
-    if (!this.seats.includes(seat) || !Array.isArray(b.ids)) return;
+    if (!this.seats.includes(seat) || seat === PRACTICE_SEAT || !Array.isArray(b.ids)) return;
     const own = [];
     for (const id of b.ids.slice(0, MAX_IDS)) {
       const u = this.byId.get(id | 0);

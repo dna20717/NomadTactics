@@ -1,6 +1,9 @@
 // NomadTactics – Party: mouse, touch and keys for the battle. Shared by the 2D and the 3D view.
 // Works in screen space through the active view (project/unproject), so picking and frame selection
 // behave the same in both. Sends only commands; the simulation is never touched.
+// With the HUD (app.hud) the HUD owns selection, orders and its keys; this module then only moves the camera:
+// right/middle drag pans (left drag too when the HUD setting „Linksziehen: Kamera“ is on), wheel zooms,
+// arrows pan, Shift+arrows turn, two fingers pan/zoom/turn, Space = own landing pad, Tab = 2D/3D, P = pause.
 
 export function battleInput({ el, app, send, meSeat, view }) {
   const keys = new Set();
@@ -44,7 +47,9 @@ export function battleInput({ el, app, send, meSeat, view }) {
       if (touches.size === 2) { app.drag = null; gesture = startGesture(); return; }
       if (touches.size > 2) return;
     }
-    app.drag = { x0: e.offsetX, y0: e.offsetY, x: e.offsetX, y: e.offsetY, lx: e.offsetX, ly: e.offsetY, frame: false, pan: false, right: e.button === 2, middle: e.button === 1, shift: e.shiftKey };
+    const leftPans = app.hud && e.button === 0 && app.leftDragCamera;
+    if (app.hud && e.button === 0 && !leftPans && e.pointerType !== 'touch') return; // the HUD selects
+    app.drag = { x0: e.offsetX, y0: e.offsetY, x: e.offsetX, y: e.offsetY, lx: e.offsetX, ly: e.offsetY, frame: false, pan: false, right: e.button === 2, middle: e.button === 1 || leftPans, shift: e.shiftKey };
   });
   el.addEventListener('pointermove', (e) => {
     if (e.pointerType === 'touch' && touches.has(e.pointerId)) {
@@ -56,7 +61,7 @@ export function battleInput({ el, app, send, meSeat, view }) {
     z.x = e.offsetX; z.y = e.offsetY;
     const far = Math.hypot(z.x - z.x0, z.y - z.y0) > 8;
     if ((z.right || z.middle) && far) z.pan = true;
-    else if (!z.right && !z.middle && far) z.frame = true;
+    else if (!z.right && !z.middle && far) { if (app.hud) z.pan = true; else z.frame = true; }
     if (z.pan) { view().pan(z.x - z.lx, z.y - z.ly); }
     z.lx = z.x; z.ly = z.y;
   });
@@ -64,7 +69,7 @@ export function battleInput({ el, app, send, meSeat, view }) {
     if (e.pointerType === 'touch') { touches.delete(e.pointerId); if (gesture) { if (touches.size === 0) gesture = null; app.drag = null; return; } }
     const z = app.drag; app.drag = null;
     const s = sim();
-    if (!z || !s || z.pan || z.middle || app.spectator) return;
+    if (!z || !s || z.pan || z.middle || app.spectator || app.hud) return;
     const me = meSeat();
     if (z.frame) {
       const x0 = Math.min(z.x0, z.x), x1 = Math.max(z.x0, z.x), y0 = Math.min(z.y0, z.y), y1 = Math.max(z.y0, z.y);
@@ -102,7 +107,7 @@ export function battleInput({ el, app, send, meSeat, view }) {
   }
 
   el.addEventListener('dblclick', (e) => {
-    const s = sim(); if (!s) return;
+    const s = sim(); if (!s || app.hud) return;
     const me = meSeat();
     const u = hitUnit(e.offsetX, e.offsetY, (x) => x.seat === me && !s.types[x.type].building);
     if (!u) return;
@@ -113,7 +118,7 @@ export function battleInput({ el, app, send, meSeat, view }) {
     }
   });
   function hover(e) {
-    if (!sim() || !app.selection.size) { el.style.cursor = ''; return; }
+    if (!sim() || !app.selection.size || app.hud) { el.style.cursor = ''; return; }
     el.style.cursor = hitUnit(e.offsetX, e.offsetY, (u) => u.seat !== meSeat()) ? 'crosshair' : '';
   }
   el.addEventListener('wheel', (e) => {
@@ -125,6 +130,15 @@ export function battleInput({ el, app, send, meSeat, view }) {
   window.addEventListener('keydown', (e) => {
     if (app.view !== 'game' || e.target instanceof HTMLInputElement) return;
     const k = e.key.toLowerCase();
+    if (app.hud) {   // the HUD has the letter keys (QWER/ASDF/ZXCV, H, digits, Esc …)
+      if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(k)) { keys.add(k); keys.turn = e.shiftKey; e.preventDefault(); }
+      else if (k === 'tab') { e.preventDefault(); app.toggleView?.(); }
+      else if (k === ' ' || k === 'home') { e.preventDefault(); home(); }
+      else if (k === 'p') send({ t: app.state?.pause?.reason === 'manual' ? 'next' : 'pause' });
+      else if (k === '+' || k === '=') view().zoom(1.25, el.clientWidth / 2, el.clientHeight / 2);
+      else if (k === '-') view().zoom(0.8, el.clientWidth / 2, el.clientHeight / 2);
+      return;
+    }
     if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'q', 'e'].includes(k) && !e.ctrlKey && !e.metaKey) keys.add(k);
     if ((e.ctrlKey || e.metaKey) && k === 'a') { e.preventDefault(); app.selection = new Set(own().map((u) => u.id)); }
     else if (k === 'escape') app.selection.clear();
@@ -144,14 +158,25 @@ export function battleInput({ el, app, send, meSeat, view }) {
       }
     }
   });
-  window.addEventListener('keyup', (e) => keys.delete(e.key.toLowerCase()));
+  window.addEventListener('keyup', (e) => { keys.delete(e.key.toLowerCase()); if (e.key === 'Shift') keys.turn = false; });
   window.addEventListener('blur', () => keys.clear());
 
   // called every frame by the page
   function step(dt) {
     if (!keys.size || app.view !== 'game') return;
+    if (app.hud && document.activeElement?.closest?.('input, textarea')) return;
     const v = view(), p = 700 * dt;
     let dx = 0, dy = 0;
+    if (app.hud) {   // arrows only; with Shift they turn the 3D camera
+      const turn = keys.turn && (keys.has('arrowleft') || keys.has('arrowright'));
+      if (turn) { if (keys.has('arrowleft')) v.rotate?.(-1.6 * dt); if (keys.has('arrowright')) v.rotate?.(1.6 * dt); }
+      if (!turn && keys.has('arrowleft')) dx += p;
+      if (!turn && keys.has('arrowright')) dx -= p;
+      if (keys.has('arrowup')) dy += p;
+      if (keys.has('arrowdown')) dy -= p;
+      if (dx || dy) v.pan(dx, dy);
+      return;
+    }
     if (keys.has('a') || keys.has('arrowleft')) dx += p;
     if (keys.has('d') || keys.has('arrowright')) dx -= p;
     if (keys.has('w') || keys.has('arrowup')) dy += p;

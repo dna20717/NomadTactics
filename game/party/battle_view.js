@@ -141,7 +141,7 @@ export function battleView({ cv, app, meSeat, playerList, toast }) {
     // order lines of the own selection
     g.lineWidth = 1.2; g.setLineDash([5, 5]); g.lineDashOffset = -now / 40;
     for (const u of sim.units) {
-      if (!sel.has(u.id) || u.seat !== me) continue;
+      if (app.hud || !sel.has(u.id) || u.seat !== me) continue;
       const [x, y] = pos(u);
       if (u.order === 1) { g.strokeStyle = 'rgba(255,255,255,.45)'; line(X(x), Y(y), X(u.gx), Y(u.gy)); }
       else if (u.order === 2) { const e = sim.byId.get(u.tgt); if (e) { g.strokeStyle = 'rgba(255,90,80,.6)'; const [ex, ey] = pos(e); line(X(x), Y(y), X(ex), Y(ey)); } }
@@ -169,7 +169,7 @@ export function battleView({ cv, app, meSeat, playerList, toast }) {
         g.strokeStyle = '#fff'; g.lineWidth = 1.5;
         g.beginPath(); g.arc(X(x), Y(y), Math.max(5, L(ty.radius + 600)), 0, TAU); g.stroke();
       }
-      if (u.hp < ty.hp || sel.has(u.id) || ty.building) bar(X(x), Y(y) - Math.max(7, L(ty.radius + 1200)), Math.max(14, L(ty.radius * 2)), u.hp / ty.hp);
+      if (ty.building || (!app.hud && (u.hp < ty.hp || sel.has(u.id)))) bar(X(x), Y(y) - Math.max(7, L(ty.radius + 1200)), Math.max(14, L(ty.radius * 2)), u.hp / ty.hp);
     }
 
     // projectiles and effects
@@ -199,7 +199,7 @@ export function battleView({ cv, app, meSeat, playerList, toast }) {
 
     // local feedback right away (before the round with the command arrives)
     const p = app.pending;
-    if (p && now - p.time < 700) {
+    if (p && now - p.time < 700 && !app.hud) {
       const a = 1 - (now - p.time) / 700;
       g.strokeStyle = p.attack ? `rgba(255,90,80,${a})` : `rgba(242,193,78,${a})`; g.lineWidth = 2;
       g.beginPath(); g.arc(X(p.x), Y(p.y), 6 + (1 - a) * 16, 0, TAU); g.stroke();
@@ -258,11 +258,13 @@ export function battleView({ cv, app, meSeat, playerList, toast }) {
     const { s, ox, oy } = frame();
     cam.cx += wx - (px - ox) / s; cam.cy += wy - (py - oy) / s; clampCam();
   }
-  function centreOn(x, y) { cam.cx = x; cam.cy = y; if (cam.zoom < 2) cam.zoom = 2; clampCam(); }
+  function centreOn(x, y, keepZoom = false) { cam.cx = x; cam.cy = y; if (!keepZoom && cam.zoom < 2) cam.zoom = 2; clampCam(); }
+  // world point in metres → screen (height lifts a little so labels sit above the unit)
+  function projectWorld(x, y, z) { const [px, py] = project(x * 1000, z * 1000); return { x: px, y: py - Math.min(14, Math.max(0, y) * 4) }; }
   function reset() { cam.zoom = 1; cam.cx = null; cam.cy = null; effects = []; wrecks = []; }
   function show(on) { shown = on; }
 
-  return { draw, drain, reset, project, unproject: toWorld, pixelsPerMm, pan, zoom, centreOn, show, kind: '2d' };
+  return { draw, drain, reset, project, unproject: toWorld, pixelsPerMm, pan, zoom, centreOn, show, kind: '2d', projectWorld };
 
 }
 

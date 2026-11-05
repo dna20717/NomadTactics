@@ -407,7 +407,7 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
     cam.tx += (ax - bx) * M; cam.tz += (ay - by) * M; clampCam();
   }
   function rotate(d) { cam.yaw += d; }
-  function centreOn(x, y) { cam.tx = x * M; cam.tz = y * M; if (cam.dist > 120) cam.dist = 95; clampCam(); }
+  function centreOn(x, y, keepZoom = false) { cam.tx = x * M; cam.tz = y * M; if (!keepZoom && cam.dist > 120) cam.dist = 95; clampCam(); }
   // behind the own landing pad, looking towards the middle of the map
   function home() {
     const sim = app.ls?.sim; if (!sim) return;
@@ -419,6 +419,58 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
     cam.dist = 120;
   }
 
+  // world point in metres (y = height) → screen; null behind the camera
+  function projectWorld(x, y, z) {
+    vec.set(x, y, z).project(camera);
+    if (vec.z > 1 || vec.z < -1) return null;
+    return { x: (vec.x + 1) / 2 * overlay.clientWidth, y: (1 - vec.y) / 2 * overlay.clientHeight };
+  }
+  const targetV = new THREE.Vector3();
+  function target() { return targetV.set(cam.tx, groundAt(cam.tx, cam.tz), cam.tz); }
+
+  // ---------- small live pictures (portrait in the selection, live windows) ----------
+  // Like the stress test: right after the main image, the follow camera renders into the main canvas exactly where
+  // the slot sits on screen (the HUD window covers that spot anyway), and the pixels are copied into the slot canvas
+  // in the same task. No readPixels, so the GPU does not stall.
+  const insetList = new Map(); // key → { canvas, id, last }
+  const insetCam = new THREE.PerspectiveCamera(40, 1.6, 0.5, 600);
+  function inset(key, canvas, unitId) {
+    if (!canvas) { insetList.delete(key); return; }
+    const o = insetList.get(key);
+    if (o) { o.canvas = canvas; o.id = unitId; } else insetList.set(key, { canvas, id: unitId, last: 0 });
+  }
+  function insets(sim, now) {
+    if (!insetList.size) return;
+    const pr = renderer.getPixelRatio(), W = overlay.clientWidth, H = overlay.clientHeight;
+    let used = false;
+    for (const [key, o] of insetList) {
+      const cv = o.canvas;
+      if (!cv.isConnected) { insetList.delete(key); continue; }
+      if (now - o.last < 90) continue;
+      o.last = now;
+      const u = sim.byId.get(o.id);
+      cv.classList.toggle('lost', !u);
+      if (!u) continue;
+      const r = cv.getBoundingClientRect();
+      const x = Math.max(0, Math.floor(r.left)), y = Math.max(0, Math.floor(r.top));
+      const w = Math.min(W - x, Math.floor(r.width)), h = Math.min(H - y, Math.floor(r.height));
+      if (w < 16 || h < 12 || cv.closest('[hidden]')) continue;
+      const cw = Math.round(w * pr), ch = Math.round(h * pr);
+      if (cv.width !== cw || cv.height !== ch) { cv.width = cw; cv.height = ch; }
+      const sm = smooth.get(u.id), ty = sim.types[u.type];
+      const ux = u.x * M, uz = u.y * M, uy = sm ? sm.y : groundAt(ux, uz), yaw = sm ? sm.yaw : yawOf(u.h);
+      const back = ty.cls === 'infantry' ? 6 : 13, up = ty.cls === 'infantry' ? 3.5 : 6;
+      insetCam.position.set(ux - Math.sin(yaw) * back, uy + up, uz - Math.cos(yaw) * back);
+      insetCam.lookAt(ux + Math.sin(yaw) * 4, uy + 1, uz + Math.cos(yaw) * 4);
+      insetCam.aspect = w / h; insetCam.updateProjectionMatrix();
+      renderer.setScissorTest(true);
+      renderer.setViewport(x, H - y - h, w, h); renderer.setScissor(x, H - y - h, w, h);
+      renderer.render(scene, insetCam);
+      used = true;
+      try { cv.getContext('2d').drawImage(renderer.domElement, x * pr, y * pr, cw, ch, 0, 0, cw, ch); } catch { /* canvas not ready */ }
+    }
+    if (used) { renderer.setScissorTest(false); renderer.setViewport(0, 0, W, H); }
+  }
   // ---------- draw ----------
   let last = performance.now();
   function draw(before, beforeTime) {
@@ -467,11 +519,12 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
         const cs = Math.cos(s.yaw), sn = Math.sin(s.yaw);
         put(part(key, 'turret', colour), wx + px * cs + pz * sn, s.y + py, wz - px * sn + pz * cs, s.tyaw);
       }
-      if (sel.has(u.id) && ringN < 256) {
+      if (sel.has(u.id) && ringN < 256 && !app.hud) {
         o3.position.set(wx, s.y + 0.12, wz); o3.rotation.set(0, 0, 0); const r = (ty.radius + 500) * M; o3.scale.set(r, 1, r); o3.updateMatrix();
         rings.setMatrixAt(ringN++, o3.matrix);
       }
-      if (u.hp < ty.hp || sel.has(u.id) || ty.building) bars.push([u, ty, wx, s.y, wz]);
+      if (ty.building || (!app.hud && (u.hp < ty.hp || sel.has(u.id)))) bars.push([u, ty, wx, s.y, wz]);
+      u.view = s; // for the HUD adapter: smoothed height and heading
     }
     for (const id of smooth.keys()) if (!seen.has(id)) smooth.delete(id);
     rings.count = ringN; rings.instanceMatrix.needsUpdate = true;
@@ -489,7 +542,7 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
     let on = 0;
     const me = meSeat();
     for (const u of sim.units) {
-      if (!sel.has(u.id) || u.seat !== me || on >= orderMax) continue;
+      if (app.hud || !sel.has(u.id) || u.seat !== me || on >= orderMax) continue;
       const s = smooth.get(u.id); if (!s) continue;
       const [x, y] = pos(u);
       let gx, gy, col;
@@ -503,7 +556,7 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
 
     // pending command marker (instant local feedback)
     const p = app.pending;
-    if (p && now - p.time < 700) {
+    if (p && now - p.time < 700 && !app.hud) {
       const a = (now - p.time) / 700;
       mark.visible = true; markMat.color.setHex(p.attack ? 0xff5a50 : 0xf2c14e); markMat.opacity = 1 - a;
       mark.position.set(p.x * M, groundAt(p.x * M, p.y * M) + 0.2, p.y * M); const r = 1.2 + a * 2.5; mark.scale.set(r, 1, r);
@@ -567,6 +620,7 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
     for (const f of flashes) { const a = (now - f.t0) / 500; f.l.intensity = a < 1 ? (1 - a) * 260 * (f.s || 1) : 0; }
 
     renderer.render(scene, camera);
+    insets(sim, now);
 
     // overlay: health bars, selection frame
     for (const [u, ty, wx, wy, wz] of bars) {
@@ -594,5 +648,6 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
   function setModels(src) { modelSource = src || {}; models = {}; for (const im of parts.values()) scene.remove(im); parts.clear(); geoCache.clear(); }
   function show(on) { shown = on; if (!on) canvas.style.display = 'none'; }
 
-  return { draw, drain, reset, project, unproject, pixelsPerMm, pan, zoom, rotate, centreOn, home, show, setModels, kind: '3d', renderer };
+  return { draw, drain, reset, project, unproject, pixelsPerMm, pan, zoom, rotate, centreOn, home, show, setModels, kind: '3d', renderer,
+    scene, camera, projectWorld, target, groundAt, inset, yawOf };
 }

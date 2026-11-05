@@ -115,7 +115,7 @@ export const UI_PAGES = {
       el('h4', {}, 'Quittungen beim Befehl (eine je Zeile, zufällig)'),
       (() => { const t = el('textarea', { class: 'ed-field', rows: 5 }, (F.acks || []).join('\n')); t.addEventListener('change', () => w.change(file, () => { F.acks = t.value.split('\n').map(x => x.trim()).filter(Boolean); })); return t; })());
     insp.append(el('h3', {}, 'Probe'), ...Object.entries(RADIO_TEXTS).map(([k, [name, std]]) => el('p', { class: 'ed-small' }, el('b', {}, name + ': '), String(F[k] || std).replace('{name}', 'Kampfpanzer').replace('{stufe}', 'Elite').replace('{gebaeude}', 'Waffenfabrik'))),
-      el('button', { class: 'ed-button wide', onclick: () => { try { const u = new SpeechSynthesisUtterance(String(F.ready || RADIO_TEXTS.ready[1]).replace('{name}', 'Kampfpanzer')); u.long = 'de-DE'; speechSynthesis.speak(u); } catch { w.hint('Sprachausgabe gibt es hier nicht.'); } } }, icon('loudspeaker', 16), ' Anhören'));
+      el('button', { class: 'ed-button wide', onclick: () => { try { const u = new SpeechSynthesisUtterance(String(F.ready || RADIO_TEXTS.ready[1]).replace('{name}', 'Kampfpanzer')); u.lang = 'de-DE'; speechSynthesis.speak(u); } catch { w.hint('Sprachausgabe gibt es hier nicht.'); } } }, icon('loudspeaker', 16), ' Anhören'));
   },
 };
 

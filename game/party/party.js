@@ -10,6 +10,8 @@ import { loadSkirmish, battleRun } from '../../engine/tactics/skirmish.js';
 import { battleView } from './battle_view.js';
 import { battleView3d } from './battle_3d.js';
 import { battleInput } from './battle_input.js';
+import { hudForBattle } from './hud_adapter.js';
+import { PRACTICE_SEAT, PRACTICE } from '../../engine/tactics/battle.js';
 import { icon } from '../icons.js';
 
 const q = new URLSearchParams(location.search);
@@ -103,7 +105,11 @@ function join(name) {
     const fresh = !app.ls || app.ls.seed !== m.seed;
     if (!app.ls) app.ls = new Lockstep(newSim, { reportSync: reportSync });
     app.ls.match(m);
-    if (fresh) { app.selection.clear(); for (const v of Object.values(views)) v.reset(); input.reset(); app.overSeen = false; }
+    if (!app.hudAdapter && app.setup) {
+      try { app.hudAdapter = hudForBattle({ app, views, send, meSeat, playerList, canvas: cv }); app.hud = app.hudAdapter.hud; window.hud = app.hud; }
+      catch (e) { console.warn('HUD nicht verfügbar', e); }
+    }
+    if (fresh) { app.selection.clear(); for (const v of Object.values(views)) v.reset(); input.reset(); app.hudAdapter?.reset(); app.overSeen = false; }
     app.view = 'game'; app.before = null;
     drawUi();
     if (fresh) setTimeout(() => { views['3d']?.home(); views['2d'].centreOn(...ownPad()); }, 0);
@@ -126,7 +132,10 @@ function send(m) { app.connection?.send(m); }
 
 // ---------- UI ----------
 function meSeat() { return app.connection?.seat; }
-function playerList() { return app.state?.player || []; }
+function playerList() {
+  const l = app.state?.player || [];
+  return app.ls?.sim?.practice ? [...l, { seat: PRACTICE_SEAT, name: PRACTICE.name, color: PRACTICE.color, online: true, practice: true }] : l;
+}
 function serverNow() { return Date.now() + app.timeOffset; }
 
 function drawUi() {
@@ -140,6 +149,10 @@ function drawUi() {
       ? button(app.superseded === 'out' ? 'Wieder beitreten' : 'Hier weiterspielen', () => join(lies(NAME_KEY)), 'main', 'play')
       : button('Nochmal', () => { app.view = 'start'; drawUi(); }, 'main', 'restart'))));
   else if (a === 'lobby') ui.append(lobbyMap());
+  else if (a === 'game' && app.hud) {
+    app.hud.partyPane.content.replaceChildren(bar());
+    const b = banner(); if (b) ui.append(b);
+  }
   else if (a === 'game') {
     ui.append(bar()); const b = banner(); if (b) ui.append(b);
     ui.append(el('div', { class: 'pt-tap' }, app.spectator ? 'Du schaust zu. In der Lobby rückst du auf einen freien Platz.'
@@ -201,7 +214,8 @@ function lobbyMap() {
   const spectator = z?.spectator || [];
   return el('div', { class: 'pt-map' },
     el('div', { class: 'pt-kind' }, 'NomadTactics · Lobby'),
-    el('div', { class: 'pt-title' }, app.spectator ? 'Du schaust zu' : online < 2 ? 'Warte auf Mitspieler …' : `${online} Spieler bereit`),
+    el('div', { class: 'pt-title' }, app.spectator ? 'Du schaust zu' : online < 2 ? 'Bereit zum Üben' : `${online} Spieler bereit`),
+    online < 2 && !app.spectator ? el('div', { class: 'pt-small' }, 'Allein startest du gegen einen Übungsgegner. Mitspieler können vorher noch dazukommen.') : null,
     el('ul', { class: 'pt-player' }, rows),
     colorChoice(list.find((x) => x.seat === me)),
     new Set(list.filter((x) => x.online).map((x) => x.data)).size > 1
@@ -214,7 +228,7 @@ function lobbyMap() {
     el('div', { class: 'pt-bottom' },
       button('Verlassen', () => { app.connection?.stop(); store?.write(null); app.view = 'start'; app.state = null; drawUi(); }, '', 'arrow_left'),
       app.spectator ? el('span', { class: 'pt-small' }, 'Alle Plätze sind belegt.')
-        : button('Partie starten', () => send({ t: 'start' }), 'main', 'play', { id: 'pt-start', disabled: online < 2 })));
+        : button(online < 2 ? 'Allein üben' : 'Partie starten', () => send({ t: 'start' }), 'main', 'play', { id: 'pt-start', disabled: online < 1 })));
 }
 
 function bar() {
@@ -229,7 +243,7 @@ function bar() {
   return el('div', { class: 'pt-bar' }, chips, zs, el('span', { class: 'pt-air' }),
     el('span', { class: 'pt-measurement', id: 'pt-measurement' }, messText()),
     button(paused ? 'Weiter' : 'Pause', () => send({ t: paused ? 'next' : 'pause' }), 'small', paused ? 'play' : 'pause', { id: 'pt-pause', disabled: !!z?.pause && !paused }),
-    views['3d'] ? button(active.kind === '3d' ? '2D' : '3D', () => app.toggleView(), 'small', active.kind === '3d' ? 'map' : 'cube', { id: 'pt-view', title: 'Ansicht wechseln (V)' }) : null,
+    views['3d'] ? button(active.kind === '3d' ? '2D' : '3D', () => app.toggleView(), 'small', active.kind === '3d' ? 'map' : 'cube', { id: 'pt-view', title: 'Ansicht wechseln (Tab)' }) : null,
     button('Lobby', () => send({ t: 'new' }), 'small', 'restart'));
 }
 
@@ -300,6 +314,7 @@ setInterval(() => {
 // ---------- Feld ----------
 const toastBox = document.getElementById('toasts');
 function toast(text) {
+  if (app.hud) return; // with the HUD the radio window reports (see hud_adapter.js)
   const d = document.createElement('div'); d.textContent = text; toastBox.append(d);
   while (toastBox.children.length > 4) toastBox.firstChild.remove();
   setTimeout(() => { d.style.opacity = '0'; setTimeout(() => d.remove(), 500); }, 3000);
@@ -332,6 +347,7 @@ function compute() {
   if (isOpen <= 0) return;
   const pos = new Map(ls.sim.units.map((e) => [e.id, [e.x, e.y]]));
   const n = ls.progress(isOpen > 3 ? 400 : 1);   // normal: round by round, fast when catching up
+  if (n === 1) app.hudAdapter?.events(ls.sim.events);
   active.drain(ls.sim, n > 1);
   app.before = n === 1 ? pos : null;
   app.beforeTime = performance.now();
@@ -341,7 +357,10 @@ function compute() {
 let lastFrame = performance.now();
 function loop() {
   const now = performance.now(); input.step(Math.min(0.1, (now - lastFrame) / 1000)); lastFrame = now;
-  compute(); active.draw(app.before, app.beforeTime); requestAnimationFrame(loop);
+  const dt = Math.min(0.1, (now - (app.lastHud || now)) / 1000); app.lastHud = now;
+  compute(); active.draw(app.before, app.beforeTime);
+  if (app.hudAdapter) { const on = app.view === 'game' && !!app.ls?.sim; app.hudAdapter.show(on); if (on) app.hudAdapter.step(dt); }
+  requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);
 
