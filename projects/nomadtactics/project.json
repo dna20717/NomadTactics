@@ -11,7 +11,7 @@
  "factions": [
   "factions/usa.json",
   "factions/china.json",
-  "factions/korea.json",
+  "factions/europa.json",
   "factions/ukraine.json"
  ],
  "slots": "data/slots.json",

@@ -10,7 +10,7 @@ test('Bewegungsarten kommen aus Klasse und Stichwörtern', async () => {
   const p = await load(), W = p.data.world;
   assert.deepEqual(movementTypes(W, p.factions.get('usa').units.soldat), ['infantry']);
   assert.deepEqual(movementTypes(W, p.factions.get('usa').units.spaeher), ['wheel']);
-  assert.deepEqual(movementTypes(W, p.factions.get('korea').units.schuetzenpanzer), ['track', 'schwimmt']);
+  assert.deepEqual(movementTypes(W, p.factions.get('china').units.zbl08), ['wheel', 'schwimmt']);
 });
 
 test('Tempo je Boden: Tabelle, beste Bewegungsart, Wetter', async () => {

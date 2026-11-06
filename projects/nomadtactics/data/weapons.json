@@ -100,5 +100,17 @@
   "projectile": "granate",
   "targets": ["ground"],
   "keywords": {"indirekt": true, "surface": 2, "mindestreichweite": 10}
+ },
+ "kanone_120_lader": {"name": "120-mm-Kanone mit Ladeautomat", "damageType": "panzerbrechend", "damage": 40, "range": 25, "reload": 1.7, "projectile": "granate", "targets": ["ground"]},
+ "haubitze_l52": {
+  "name": "155-mm-Haubitze L52",
+  "damageType": "explosiv",
+  "damage": 55,
+  "range": 64,
+  "reload": 3,
+  "salvo": 3,
+  "projectile": "granate",
+  "targets": ["ground"],
+  "keywords": {"indirekt": true, "surface": 3, "mindestreichweite": 12}
  }
 }
