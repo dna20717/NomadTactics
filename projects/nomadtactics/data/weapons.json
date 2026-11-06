@@ -77,5 +77,17 @@
  "panzerabwehrrakete": {"name": "Panzerabwehr-Lenkrakete", "damageType": "panzerbrechend", "damage": 55, "range": 26, "reload": 4, "salvo": 2, "projectile": "rakete", "targets": ["ground"]},
  "luft_luft": {"name": "Luft-Luft-Raketen", "damageType": "flugabwehr", "damage": 60, "range": 32, "reload": 5, "salvo": 2, "projectile": "rakete", "targets": ["air"]},
  "sprengladung": {"name": "Sprengladung", "damageType": "explosiv", "damage": 220, "range": 2, "reload": 15, "projectile": "bomb", "targets": ["ground"], "keywords": {"surface": 3}},
- "granatwerfer": {"name": "Granatwerfer", "damageType": "explosiv", "damage": 22, "range": 20, "reload": 3, "projectile": "granate", "targets": ["ground"], "keywords": {"surface": 2}}
+ "granatwerfer": {"name": "Granatwerfer", "damageType": "explosiv", "damage": 22, "range": 20, "reload": 3, "projectile": "granate", "targets": ["ground"], "keywords": {"surface": 2}},
+ "kanone_125": {"name": "125-mm-Kanone", "damageType": "panzerbrechend", "damage": 38, "range": 24, "reload": 2.5, "projectile": "granate", "targets": ["ground"]},
+ "marschflugkoerper": {
+  "name": "Marschflugkörper",
+  "damageType": "explosiv",
+  "damage": 160,
+  "range": 60,
+  "reload": 30,
+  "salvo": 2,
+  "projectile": "rakete",
+  "targets": ["ground"],
+  "keywords": {"surface": 4}
+ }
 }
