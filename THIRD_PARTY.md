@@ -12,4 +12,4 @@
 | Black Ops One, Share Tech Mono, Special Elite, Archivo Narrow | vom HUD zur Laufzeit über Google Fonts geladen, nicht im Repo | SIL Open Font License 1.1 |
 | Musik „On Patrol“ von Section 31 – Tech (s31tech.org) | `game/audio/on_patrol.ogg` (Original) und `on_patrol.m4a` (für Safari umgewandelt, AAC 128 kbit/s) | Public Domain laut Datei („There is no copyrights on this … It's in the public domain … please credit (s31tech.org)“), von Daniel am 06.11.2026 als CC0 bereitgestellt. Nennung im Launcher (Optionen) und in der „Läuft gerade“-Anzeige. |
 
-Alle Modelle, Bilder und Daten im Repo sind selbst gebaut (die Musik oben ausgenommen) (Voxel Max, Code oder Renders der Prototypen).
+Alle Modelle, Bilder und Daten im Repo sind selbst gebaut (Voxel Max, Code oder Renders der Prototypen); fremd ist nur die Musik oben.
