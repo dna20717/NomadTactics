@@ -11,6 +11,7 @@ import { V, PROTOTYPES, landingPad, tree } from '../tactics/voxel/models.js';
 import { voxelGeometry, voxelMaterial, vehicleMaterial } from '../tactics/voxel/mesh.js';
 import { readVox } from '../tactics/voxel/vox.js';
 import { createTowers } from './towers.js';
+import { createTerrainFx, SURFACES, surfaceOf } from './terrain_fx.js';
 import { ROUND_MS } from '../../engine/net/protocol.js';
 import { lifeOf, stageAt } from '../../engine/tactics/life.js';
 import { bounds, muzzleOf, damagedModel, sootAt, spring, recoilCurve, DEG } from './unit_life.js';
@@ -130,6 +131,8 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
   const towers = createTowers(THREE, scene, { groundAt, puff, chip, jolt, light,
     onCrush: (x, z, r, pct) => api3d.onCrush?.(x, z, r, pct), onEvent: (t, what) => api3d.onTower?.(t, what) });
   const api3d = {};   // hooks the launcher sets (onCrush, onTower, onStrike)
+  // lively ground (Fidelity step 3): tracks, scattered objects, water, ground shader (terrain_fx.js)
+  const tfx = createTerrainFx(THREE, scene);
   let towersOf = null, dayNow = 1;
   // a rocket strike from beyond the board (launcher show): arcs in, explodes, hurts towers
   let strikes = [];
@@ -146,6 +149,7 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
     for (let i = 0; i < Math.round(16 * size); i++) chip(x, y + 0.5, z, i % 2 ? 0x5a4a36 : 0x6f6a60, 1.6);
     light(x, y + 4, z, 5 * size);
     jolt(x, z, 0.7 * size);
+    tfx.scorch(x, z, 3.2 * size);
   }
   function jolt(x, z, amount) {
     if (boom <= 1) return;
@@ -309,6 +313,7 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
     const ratio = q === 'fast' ? 1 : q === 'beautiful' ? 2 : 1.5;
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, ratio));
     lifeQ = q === 'fast' ? 0.35 : q === 'beautiful' ? 1 : 0.75;
+    tfx.quality(q);
     sun.castShadow = q !== 'fast';
     const size = q === 'beautiful' ? 4096 : 2048;
     if (sun.shadow.mapSize.x !== size) { sun.shadow.mapSize.set(size, size); sun.shadow.map?.dispose(); sun.shadow.map = null; }
@@ -344,6 +349,8 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
     const tint = CLIMATE[atm.climate];
     const tinted = (id, hex) => { const f = tint ? (tint.share[id] ?? tint.share['*']) : 0; return f ? cA.setHex(hex).lerp(cB.setHex(tint.to), f).getHex() : hex; };
     const hexes = m.grounds.map((id) => tinted(id, parseInt((terrains[id]?.color || '#6f9a4a').slice(1), 16)));
+    // alpha of the ground texture = surface code for the ground shader (terrain_fx.js)
+    const surf = m.grounds.map((id) => Math.max(0, SURFACES.indexOf(surfaceOf(id, terrains[id]))) * 32 + 16);
     for (let q = 0; q < color.length; q++) color[q].setHex(hexes[q]);
     // top height per cell (m): levels, half step on ramps next to the higher level, water lowered
     const top = new Float32Array(n * n);
@@ -409,7 +416,7 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
       // the texture is sRGB: write the colour as authored, not three's linear working values
       const hx = hexes[gi], f = v * (1 + h * 0.02);
       const o = (y * tex + x) * 4;
-      data[o] = Math.min(255, ((hx >> 16) & 255) * f); data[o + 1] = Math.min(255, ((hx >> 8) & 255) * f); data[o + 2] = Math.min(255, (hx & 255) * f); data[o + 3] = 255;
+      data[o] = Math.min(255, ((hx >> 16) & 255) * f); data[o + 1] = Math.min(255, ((hx >> 8) & 255) * f); data[o + 2] = Math.min(255, (hx & 255) * f); data[o + 3] = surf[gi];
     }
     const map = new THREE.DataTexture(data, tex, tex);
     map.magFilter = THREE.NearestFilter; map.minFilter = THREE.LinearMipmapLinearFilter; map.generateMipmaps = true;
@@ -442,7 +449,9 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
     topGeo.setAttribute('normal', new THREE.Float32BufferAttribute(tn, 3));
     topGeo.setAttribute('uv', new THREE.Float32BufferAttribute(tu, 2));
     fixWinding(topGeo);
-    const tops = new THREE.Mesh(topGeo, new THREE.MeshStandardMaterial({ map, roughness: 0.95, metalness: 0 }));
+    const topsMat = new THREE.MeshStandardMaterial({ map, roughness: 0.95, metalness: 0 });
+    tfx.decorate(topsMat);
+    const tops = new THREE.Mesh(topGeo, topsMat);
     tops.receiveShadow = true; tops.castShadow = true;
     group.add(tops);
 
@@ -509,7 +518,8 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
     terrain.receiveShadow = true; terrain.castShadow = true;
     group.add(terrain);
 
-    // water surface over water cells
+    // water surface over water cells (the old flat plane; terrain_fx.js draws the new water when it is on)
+    let oldWater = null;
     const wp = [];
     for (let k = 0; k < n * n; k++) if (water[m.ground[k]]) {
       const i = k % n, j = (k - i) / n, y = -0.15;
@@ -519,7 +529,7 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
       const wg = new THREE.BufferGeometry(); wg.setAttribute('position', new THREE.Float32BufferAttribute(wp, 3)); wg.computeVertexNormals();
       const wm = new THREE.Mesh(wg, new THREE.MeshStandardMaterial({ color: 0x3f7fa6, transparent: true, opacity: 0.62, roughness: 0.15, metalness: 0.1 }));
       wm.receiveShadow = true;
-      group.add(wm);
+      group.add(wm); oldWater = wm;
     }
 
     // diorama plinth: wooden frame under the board
@@ -551,6 +561,7 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
     });
     scene.add(group);
     world = { map: sim.map, group, top, fine, n, cell, size, climate: atm.climate };
+    tfx.attach({ m, top, fine, groundAt, terrains, tex, cell, n, oldWater });
   }
 
   // flat-shaded quads were pushed in a fixed corner order; flip triangles whose winding disagrees with the normal
@@ -736,6 +747,7 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
         const fr = (big ? Math.max(1.6, e.splash * M * 0.8) : 0.35) * (boom > 1 ? 1.3 : 1);
         effects.push({ kind: 'flash', x, y: y + 0.4, z, r: fr, t0: now, dur: big ? 320 * Math.min(1.5, boom) : 120 });
         towers.hit(x, z, big ? 6 : 1, e.x * M, e.y * M);
+        if (big) tfx.scorch(x, z, Math.min(3.2, fr * 0.8));
         if (big) {
           for (let i = 0; i < Math.round(4 * boom); i++) puff(x, y + 0.5, z, 0.8 + Math.random() * 0.8 * boom, 0x6d665e);
           if (boom > 1) { for (let i = 0; i < 8; i++) chip(x, y + 0.3, z, Math.random() < 0.5 ? 0x5a4a36 : 0x6f5c42, 0.6); light(x, y + 2, z, 1.6); jolt(x, z, 0.25); }
@@ -753,7 +765,7 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
         effects.push({ kind: 'flash', x, y: y + 1, z, r: r * (boom > 1 && t?.cls !== 'infantry' ? 1.5 : 1), t0: now, dur: (t?.building ? 1100 : 600) * Math.min(1.6, boom), big: true });
         for (let i = 0; i < Math.round((t?.cls === 'infantry' ? 2 : 14) * boom); i++) puff(x + (Math.random() - 0.5) * r, y + 1, z + (Math.random() - 0.5) * r, 1.2 + Math.random() * 1.6 * boom, 0x3d3833);
         light(x, y + 3, z, (t?.building ? 6 : 3) * boom);
-        if (t?.cls !== 'infantry') { jolt(x, z, t?.building ? 1.2 : 0.6); towers.hit(x, z, t?.building ? 30 : 5); }
+        if (t?.cls !== 'infantry') { jolt(x, z, t?.building ? 1.2 : 0.6); towers.hit(x, z, t?.building ? 30 : 5); tfx.scorch(x, z, t?.building ? 7 : 2.6); }
         if (t && t.cls !== 'infantry') {
           const key = sourceOf(sim, e.type, e.seat);
           const seat = playerList().find((p) => p.seat === e.seat);
@@ -1067,6 +1079,7 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
     towers.update(dt, now, atm.on ? 1 - dayNow : 0);
     { const night = atm.on ? 1 - dayNow : 0, t2 = Math.max(0, Math.min(1, (night - 0.3) / 0.45)); lamps = t2 * t2 * (3 - 2 * t2); }
     unitMat.userData.night.value = lamps; beamMat.opacity = lamps * 0.26;
+    tfx.update(dt, now, { night: lamps, sky: now3.sky, wet: atm.on ? ({ rain: 1, storm: 1, snow: 0.25 }[atm.weather] || 0) : 0 });
     let beamN = 0;
     const t = Math.min(1, (now - beforeTime) / ROUND_MS);
     const pos = (u) => { const v = before?.get(u.id); return v ? [v[0] + (u.x - v[0]) * t, v[1] + (u.y - v[1]) * t] : [u.x, u.y]; };
@@ -1110,6 +1123,7 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
           put(part(key, 'turret', colour), wx + px * cs + pz * sn, s.y + py, wz - px * sn + pz * cs, s.tyaw);
         }
       }
+      if (!ty.building && !ty.air && e.ready) tfx.move(u.id, wx, wz, s.yaw, e.life?.drive || (ty.cls === 'infantry' ? 'walk' : 'track'), e.half, now);
       if (lamps > 0.02 && !ty.building && !ty.air && ty.cls !== 'infantry' && beamN < 320) {
         const f = (ty.body + ty.core) * M - 0.4;
         o3.position.set(wx + Math.sin(s.yaw) * f, s.y + 0.12, wz + Math.cos(s.yaw) * f); o3.rotation.set(0, s.yaw, 0, 'XYZ'); o3.scale.set(4.6, 1, 11);
@@ -1255,7 +1269,10 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
   }
   function lively_(on) { if (on != null && !!on !== lifeOn) { lifeOn = !!on; for (const im of parts.values()) scene.remove(im); parts.clear(); } return lifeOn; }
   function show(on) { shown = on; if (!on) canvas.style.display = 'none'; }
+  // switch old/new for the lively ground (Fidelity step 3); without argument: current state
+  function terrain(on) { if (on != null) { tfx.set(on); towers.surface(on); } return tfx.isOn(); }
 
   return { draw, drain, reset, project, unproject, pixelsPerMm, pan, zoom, rotate, centreOn, home, show, setModels, kind: '3d', renderer,
-    scene, camera, projectWorld, target, groundAt, inset, yawOf, atmosphere, quality, cam, excite, imageFx, towers, strike, hooks: api3d, life: lively_, lifeStats };
+    scene, camera, projectWorld, target, groundAt, inset, yawOf, atmosphere, quality, cam, excite, imageFx, towers, strike, hooks: api3d, life: lively_, lifeStats,
+    terrain, terrainStats: () => tfx.stats(), terrainFx: tfx };
 }

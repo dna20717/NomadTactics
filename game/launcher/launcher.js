@@ -42,6 +42,7 @@ const dials = { hour: saved.hour ?? 16.5, running: saved.running ?? true, weathe
 const remember = () => write(KEY, JSON.stringify(dials));
 // liveliness of units (Fidelity step 2): shared with the battle, standard on
 const LIFE_KEY = 'nomadtactics-life', lifeOn = () => read(LIFE_KEY) !== '0';
+const TERRAIN_KEY = 'nomadtactics-terrain', terrainOn = () => read(TERRAIN_KEY) !== '0';
 
 const app = { view: 'game', ls: null, selection: new Set(), drag: null, hud: true };   // hud: no rings or order lines
 // Daniel's own tank (Voxel Max, models.json › daniel_tank with its own voxel size) drives for the yellow side
@@ -126,7 +127,9 @@ function dialsCard() {
       el('button', { class: 'ln-mini' + (dials.fx ? ' on' : ''), id: 'ln-fx', title: dials.fx ? 'Effekte an (Leuchten, Schatten in Ecken, Farbstimmung) – tippen für den alten Look' : 'Effekte aus (alter Look) – tippen für Leuchten, Schatten in Ecken, Farbstimmung',
         onclick: () => { dials.fx = !dials.fx; view.imageFx(dials.fx); remember(); drawMenu(); } }, icon('star', 13)),
       el('button', { class: 'ln-mini' + (lifeOn() ? ' on' : ''), id: 'ln-life', title: lifeOn() ? 'Einheiten mit Leben (Federung, Rückstoß, Staub, Schaden) – tippen für den alten Look' : 'Einheiten ohne Leben (alter Look) – tippen für Federung, Rückstoß, Staub, Schaden',
-        onclick: () => { write(LIFE_KEY, lifeOn() ? '0' : '1'); view.life(lifeOn()); drawMenu(); } }, icon('vehicle', 13))),
+        onclick: () => { write(LIFE_KEY, lifeOn() ? '0' : '1'); view.life(lifeOn()); drawMenu(); } }, icon('vehicle', 13)),
+      el('button', { class: 'ln-mini' + (terrainOn() ? ' on' : ''), id: 'ln-terrain', title: terrainOn() ? 'Lebendiges Gelände (Spuren, Gras, Zäune, Laternen, Wasser, Bodenmuster) – tippen für den alten Look' : 'Gelände wie früher – tippen für Spuren, Gras, Zäune, Laternen, Wasser, Bodenmuster',
+        onclick: () => { write(TERRAIN_KEY, terrainOn() ? '0' : '1'); view.terrain(terrainOn()); drawMenu(); } }, icon('mountain', 13))),
     el('div', { class: 'ln-row ln-weather' }, WEATHER.map(([id, name, ic]) => el('button', { class: 'ln-mini' + (dials.weather === id ? ' on' : ''), 'data-w': id, title: name,
       onclick: () => { dials.weather = id; setAtmosphere(); remember(); drawMenu(); } }, icon(ic, 14)))),
     el('div', { class: 'ln-row ln-climate' }, CLIMATES.map(([id, name]) => el('button', { class: dials.climate === id ? 'on' : '', 'data-c': id,
@@ -143,6 +146,7 @@ const setAtmosphere = () => view.atmosphere({ hour: dials.hour, weather: dials.w
 setAtmosphere();
 view.imageFx(dials.fx);
 view.life(lifeOn());
+view.terrain(terrainOn());
 
 let setup = null, sim = null, before = null, beforeTime = 0, overAt = 0, round = 0;
 function newBattle() {

@@ -5,6 +5,11 @@
 export const TRIGGER = { impact: 'Einschlag', collapse: 'Einsturz', runOver: 'Überfahren', weather: 'Wetter' };
 export const SYMMETRY = { off: 'Aus', mirror_x: 'Spiegeln links/rechts', mirror_y: 'Spiegeln oben/unten', mirror_diagonal: 'Spiegeln diagonal', rotate_2: 'Drehen 2-fach', rotate_4: 'Drehen 4-fach' };
 export const WATER = { flat: 'flach (Furt)', deep: 'deep' };
+// optics only (Fidelity step 3, 06.11.): pattern of the ground shader and scattered objects per ground (terrain_fx.js)
+export const SURFACES = ['none', 'grass', 'asphalt', 'sand', 'mud', 'rubble', 'forest'];
+export const SURFACE_NAMES = { none: 'Glatt', grass: 'Gras', asphalt: 'Asphalt', sand: 'Sand', mud: 'Schlamm', rubble: 'Schutt', forest: 'Waldboden' };
+export const SCATTER = ['tufts', 'stones', 'fences', 'lamps', 'wrecks'];
+export const SCATTER_NAMES = { tufts: 'Grasbüschel', stones: 'Steine', fences: 'Zäune', lamps: 'Laternen', wrecks: 'Autowracks' };
 export const emptyWorld = () => ({ maps: { sizes: {} }, height: {}, movementTypes: {}, terrains: {}, transformations: {}, daytime: { phases: [] }, weather: {}, weatherSequence: {}, climates: {} });
 
 // ---------- Bewegung ----------
@@ -134,6 +139,8 @@ export function validateWorld(p, report, effective) {
     for (const [a, v] of Object.entries(bo.speed || {})) { if (!B[a]) report('error', place, `unbekannte Bewegungsart „${a}“`); else if (!whole(v, 0, 300)) report('warning', place, `Tempo ${a}: ganze Zahl 0–300 %`); }
     for (const [a, v] of Object.entries(bo.cover || {})) { if (!B[a]) report('error', place, `Deckung für unbekannte Bewegungsart „${a}“`); else if (!whole(v, 0, 90)) report('warning', place, `Deckung ${a}: ganze Zahl 0–90 %`); }
     if (bo.water && !WATER[bo.water]) report('warning', place, `unbekannte Wassertiefe „${bo.water}“`);
+    if (bo.surface && !SURFACES.includes(bo.surface)) report('warning', place, `unbekannte Oberfläche „${bo.surface}“`);
+    for (const [a, v] of Object.entries(bo.scatter || {})) { if (!SCATTER.includes(a)) report('warning', place, `unbekanntes Streuobjekt „${a}“`); else if (!whole(v, 0, 100)) report('warning', place, `Streuobjekt ${a}: ganze Zahl 0–100 %`); }
     const ground = Object.entries(B).filter(([, b]) => !b.ignoresGround);
     if (ground.length && ground.every(([a, b]) => (bo.speed?.[a] ?? b.standard ?? 100) === 0)) report('hint', place, 'kein Bodenfahrzeug kommt hier durch');
   }

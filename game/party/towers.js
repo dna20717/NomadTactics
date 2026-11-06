@@ -29,13 +29,32 @@ const isGlass = (c) => c === 2 || c === 6;
 
 export function createTowers(THREE, scene, { groundAt, puff, chip, jolt, light, onCrush = null, onEvent = null }) {
   // ---------- material: vertex colours, night windows through an extra attribute ----------
-  const night = { value: 0 };
+  const night = { value: 0 }, surface = { value: 1 };   // surface: dirt and worn edges (switch of the lively ground)
   const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8, metalness: 0.05 });
   mat.onBeforeCompile = (sh) => {
     sh.uniforms.uNight = night;
-    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute float aLit; varying float vLit;')
-      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvLit = aLit;');
-    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform float uNight; varying float vLit;')
+    sh.uniforms.uSurface = surface;
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute float aLit; varying float vLit; varying vec3 vObj; varying vec3 vWP; varying vec3 vN;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvLit = aLit; vObj = position; vN = normal; vWP = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+    // surface (Fidelity step 3, 06.11.): dirt from the ground up, rain streaks below the windows, worn voxel edges
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
+uniform float uNight, uSurface; varying float vLit; varying vec3 vObj; varying vec3 vWP; varying vec3 vN;
+float bH(vec2 p) { p = fract(p * vec2(0.1031, 0.1030)); p += dot(p, p.yx + 33.33); return fract((p.x + p.y) * p.x); }`)
+      .replace('#include <color_fragment>', `#include <color_fragment>
+if (uSurface > 0.5 && vLit < 0.5) {
+  vec3 q = vObj / ${VT.toFixed(2)} + 0.5;                  // voxel units, edges at whole numbers
+  vec3 an = abs(vN);
+  vec2 f = an.x > 0.5 ? q.zy : an.y > 0.5 ? q.xz : q.xy;
+  vec2 e = min(fract(f), 1.0 - fract(f));
+  float edge = 1.0 - smoothstep(0.0, 0.09, min(e.x, e.y));
+  float col = floor(an.x > 0.5 ? q.z : q.x);
+  float wall = 1.0 - an.y;
+  float dirt = (1.0 - smoothstep(0.0, 2.6, vWP.y)) * wall;
+  float streak = wall * step(0.55, bH(vec2(col, 3.0))) * (0.5 + 0.5 * bH(vec2(col, floor(q.y * 0.5)))) * 0.16;
+  diffuseColor.rgb *= 1.0 - dirt * 0.38 - streak;
+  diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * 1.22 + 0.02, edge * 0.55 * wall);
+  diffuseColor.rgb *= 0.95 + 0.08 * bH(floor(q.xz * 3.0) + floor(q.y * 3.0));
+}`)
       .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\ntotalEmissiveRadiance += vec3(1.0, 0.78, 0.45) * vLit * uNight * 1.6;');
   };
   const col = new THREE.Color();
@@ -446,6 +465,7 @@ export function createTowers(THREE, scene, { groundAt, puff, chip, jolt, light, 
 
   return {
     build, hit, hitAt, update, start,
+    surface(on) { surface.value = on ? 1 : 0; },
     get list() { return towers; },
     standing() { return towers.filter((t) => t.state === 'up'); },
     // a point on the facade (for strikes): side, height

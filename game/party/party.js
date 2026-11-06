@@ -334,6 +334,7 @@ app.toggleView = () => {
 app.setupReady.then((s) => { if (s && views['3d']) views['3d'].setModels(s.models, s.life); });
 views['3d']?.quality(lies('nomadtactics-quality') || 'medium');   // set in the launcher › Optionen
 views['3d']?.life(lies('nomadtactics-life') !== '0');   // units with life: switch in the launcher (standard on)
+views['3d']?.terrain(lies('nomadtactics-terrain') !== '0');   // lively ground: switch in the launcher (standard on)
 const input = battleInput({ el: cv, app, send, meSeat, view: () => active });
 app.input = input;
 

@@ -4,7 +4,7 @@ import { icon } from '../icons.js';
 import { el } from '../ui.js';
 import { catalog } from './pages.js';
 import { freeId } from './workshop.js';
-import { TRIGGER, WATER, movementTypes, cycleDuration, weatherPlan, phaseUm, renameWorld, effective } from '../../engine/tactics/index.js';
+import { TRIGGER, WATER, SURFACES, SURFACE_NAMES, SCATTER, SCATTER_NAMES, movementTypes, cycleDuration, weatherPlan, phaseUm, renameWorld, effective } from '../../engine/tactics/index.js';
 
 const SUB = [
   ['maps', 'Karten & Höhe', 'map'], ['movementTypes', 'Bewegungsarten', 'tracks'], ['terrains', 'Bodenarten', 'overlays'], ['transformations', 'Umwandlungen', 'restart'],
@@ -106,6 +106,10 @@ export const WORLD_PAGES = {
     w.field('Sichtblocker', bo, 'sightBlocker', 'checkbox', file), w.field('Spuren', bo, 'tracks', 'checkbox', file),
     el('h4', {}, 'Staub (nur Optik)'), el('p', { class: 'ed-small' }, 'Wie viel Staub Fahrzeuge hier aufwirbeln (Sand viel, Straße kaum). Ohne Staubfarbe nimmt der Staub die Bodenfarbe, aufgehellt. Wird mit der Staubfahne der Lebendigkeit multipliziert.'),
     w.field('Staub %', bo, 'dust', 'number', file), w.field('Staubfarbe', bo, 'dustColor', 'color', file),
+    el('h4', {}, 'Oberfläche und Streuobjekte (nur Optik)'),
+    el('p', { class: 'ed-small' }, 'Die Oberfläche bestimmt das feine Muster im Boden: Halme im Gras, Risse im Asphalt, Wellen im Sand, Pfützen im Schlamm. Streuobjekte stehen auf einem Teil der Zellen dieses Bodens (in %, 2-m-Zellen). Zäune entstehen nur am Straßenrand, Laternen nur auf dem Rand einer Straße. Panzer walzen Gras, Zäune, Laternen und Wracks platt. Die Simulation sieht nichts davon.'),
+    w.labeled('Oberfläche', w.selection(SURFACES.map((k) => [k, SURFACE_NAMES[k]]), bo.surface || 'none', v => w.change(file, () => setOrWay(bo, 'surface', v === 'none' ? null : v)))),
+    ...SCATTER.map((k) => w.input(SCATTER_NAMES[k] + ' %', bo.scatter?.[k], 'number', { set: v => w.change(file, () => { bo.scatter = bo.scatter || {}; setOrWay(bo.scatter, k, v); if (!n(bo.scatter)) delete bo.scatter; }) })),
     el('h4', {}, 'Deckung (%)'), el('p', { class: 'ed-small' }, 'So viel seltener wird getroffen, wer hier steht.'),
     ...amGround.map(([a, b]) => w.input(b.name, bo.cover?.[a], 'number', { set: v => w.change(file, () => { bo.cover = bo.cover || {}; setOrWay(bo.cover, a, v); if (!n(bo.cover)) delete bo.cover; }) })),
     w.field('Beschreibung', bo, 'description', 'textarea', file),
