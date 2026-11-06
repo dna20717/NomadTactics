@@ -214,3 +214,22 @@ body.tk { background: var(--ui-bg); color: var(--ui-text); font-family: var(--ui
 .tk-probe-table .ed-choice { max-width: 148px; }
 .tk-probe-table input.ed-field.small { width: 60px !important; padding-left: 6px; padding-right: 2px; }
 .tk-probe-table td, .tk-probe-table th { padding-left: 4px; padding-right: 4px; }
+
+/* 3D preview of a model (model_view.js) */
+.tk-model-view { position: relative; margin: 0 0 12px; border-radius: var(--ui-r-pane); overflow: hidden; border: 1px solid var(--ui-border);
+  background: radial-gradient(circle at 50% 35%, color-mix(in srgb, var(--ui-panel) 70%, #fff 30%), var(--ui-canvas)); touch-action: none; }
+.tk-model-view canvas { display: block; width: 100%; height: 100%; cursor: grab; }
+.tk-model-view canvas:active { cursor: grabbing; }
+.tk-mv-info { position: absolute; left: 10px; bottom: 8px; font-size: var(--ui-gr-xs); color: var(--ui-text2); pointer-events: none; }
+.tk-mv-bar { position: absolute; right: 8px; top: 8px; display: flex; gap: 4px; }
+.tk-mv-btn { width: 28px; height: 28px; display: grid; place-items: center; border-radius: var(--ui-r-chip); border: 1px solid var(--ui-border); background: var(--ui-panel); color: var(--ui-text2); cursor: pointer; }
+.tk-mv-btn.on { background: var(--ui-acc-soft); color: var(--ui-acc-line); border-color: var(--ui-acc-line); }
+.tk-model-view.mini { margin: 0; border: 0; border-radius: var(--ui-r-field); pointer-events: none; }
+.tk-model-view.mini .tk-mv-info { display: none; }
+.tk-gallery-mode .da-list { display: none; }
+.tk-gallery-switch { margin: 0 0 8px; }
+.tk-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; margin-top: 10px; }
+.tk-gallery-card { display: flex; flex-direction: column; gap: 4px; padding: 6px; border-radius: var(--ui-r-button); border: 1px solid var(--ui-border); background: var(--ui-panel); color: var(--ui-text); text-align: left; cursor: pointer; }
+.tk-gallery-card:hover { background: var(--ui-hover); }
+.tk-gallery-card.on { border-color: var(--ui-acc-line); background: var(--ui-acc-soft); }
+.tk-gallery-card small { color: var(--ui-text3); font-size: var(--ui-gr-xs); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

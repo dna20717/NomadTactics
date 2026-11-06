@@ -443,7 +443,8 @@
    "sight": 30,
    "weapons": ["panzerabwehrrakete", "bordkanone"],
    "keywords": {"flies": true, "hovers": true},
-   "description": "Kampfhubschrauber. Kontingent: Deutschland/Frankreich."
+   "description": "Kampfhubschrauber. Kontingent: Deutschland/Frankreich.",
+   "model": "tiger"
   },
   "nh90": {
    "name": "NH90",
@@ -457,7 +458,8 @@
    "sight": 24,
    "weapons": ["mg"],
    "keywords": {"flies": true, "hovers": true, "transport": 10, "lazarett": 5},
-   "description": "Transporthubschrauber, auch als fliegendes Lazarett. Kontingent: gemischt."
+   "description": "Transporthubschrauber, auch als fliegendes Lazarett. Kontingent: gemischt.",
+   "model": "nh90"
   },
   "chinook": {
    "name": "CH-47 Chinook",
@@ -470,7 +472,8 @@
    "speed": 11,
    "sight": 24,
    "keywords": {"flies": true, "hovers": true, "transport": 16, "collects": 300},
-   "description": "Schwerer Transport, holt Nachschub direkt vom Lager. Kontingent: Großbritannien/Niederlande."
+   "description": "Schwerer Transport, holt Nachschub direkt vom Lager. Kontingent: Großbritannien/Niederlande.",
+   "model": "chinook_eu"
   },
   "eurofighter": {
    "name": "Eurofighter Typhoon",
@@ -484,7 +487,8 @@
    "sight": 32,
    "weapons": ["luft_luft"],
    "keywords": {"flies": true, "jet": true, "munition": 4},
-   "description": "Jäger für die Luftüberlegenheit. Kontingent: DE/UK/IT/ES. Variante: Gripen (Schweden)."
+   "description": "Jäger für die Luftüberlegenheit. Kontingent: DE/UK/IT/ES. Variante: Gripen (Schweden).",
+   "model": "eurofighter"
   },
   "rafale": {
    "name": "Rafale",
@@ -499,7 +503,8 @@
    "weapons": ["luft_luft", "bomb"],
    "keywords": {"flies": true, "jet": true, "munition": 2},
    "requires": ["forschungszentrum"],
-   "description": "Mehrzweckjäger, bombt Gebäude. Kontingent: Frankreich."
+   "description": "Mehrzweckjäger, bombt Gebäude. Kontingent: Frankreich.",
+   "model": "rafale"
   },
   "eurodrone": {
    "name": "Eurodrone",
@@ -514,13 +519,14 @@
    "weapons": ["drohnenrakete"],
    "keywords": {"flies": true, "hovers": true, "scout": true},
    "requires": ["forschungszentrum"],
-   "description": "Kreist hoch über dem Feld, sieht weit, schießt Raketen. Kontingent: gemischt."
+   "description": "Kreist hoch über dem Feld, sieht weit, schießt Raketen. Kontingent: gemischt.",
+   "model": "eurodrone"
   },
   "drohne_luna": {
    "name": "Luna NG",
    "role": "Begleiter",
    "class": "air",
-   "model": "drone",
+   "model": "luna",
    "armor": "air",
    "cost": {},
    "health": 40,

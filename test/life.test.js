@@ -71,11 +71,13 @@ test('Fahrzeug-Baukasten: Listen stimmen, jedes Modell baut, Räder und Türme s
   assert.deepEqual([...FOOTPRINTS].sort(), [...FOOTPRINT_IDS].sort());
   const models = JSON.parse(fs.readFileSync(path.join(root, 'data/models.json'), 'utf8'));
   const kits = Object.entries(models).filter(([, m]) => m.source?.startsWith('kit:'));
-  assert.ok(kits.length >= 30);
+  assert.ok(kits.length >= 80);
   for (const [id, m] of kits) {
     const k = buildKit(m.source.slice(4), m.kit, m.paint);
     const soldier = m.source === 'kit:soldier';
-    assert.ok(k.hull.size > (soldier ? 200 : 500), id);
+    const type = m.source.slice(4), small = soldier || (type === 'uav');
+    assert.ok(k.hull.size > (small ? 60 : 500), id);
+    if (type === 'heli') assert.ok(k.rotors.length >= 2, `${id}: Rotoren`);
     if (soldier) { assert.equal(k.legs?.at.length, 2, `${id}: Beine`); assert.equal(k.scale, 0.1); }
     for (const kind of k.hull.values()) assert.ok(!['c', 'c1', 'hd', 'acc'].includes(kind), `${id}: unbemalter Würfel`);
     if (k.turret) assert.ok(k.pivot, id);

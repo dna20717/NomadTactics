@@ -389,7 +389,8 @@
    "sight": 24,
    "weapons": ["mg"],
    "keywords": {"flies": true, "hovers": true, "transport": 12},
-   "description": "Robuster Transporthubschrauber."
+   "description": "Robuster Transporthubschrauber.",
+   "model": "mi8"
   },
   "mi24": {
    "name": "Mi-24",
@@ -403,7 +404,8 @@
    "sight": 26,
    "weapons": ["panzerabwehrrakete", "mg"],
    "keywords": {"flies": true, "hovers": true, "transport": 6, "tough": 2},
-   "description": "Fliegender Schützenpanzer."
+   "description": "Fliegender Schützenpanzer.",
+   "model": "mi24"
   },
   "mig29": {
    "name": "MiG-29",
@@ -417,7 +419,8 @@
    "sight": 30,
    "weapons": ["luft_luft", "air_ground"],
    "keywords": {"flies": true, "jet": true, "munition": 2},
-   "description": "Jäger für Luftkampf und Bodenangriff. Variante: Su-27 (beim General)."
+   "description": "Jäger für Luftkampf und Bodenangriff. Variante: Su-27 (beim General).",
+   "model": "mig29"
   },
   "fpv_drohne": {
    "name": "FPV-Drohne",
@@ -431,7 +434,8 @@
    "sight": 18,
    "keywords": {"flies": true, "schnell": true, "selbstzerstoerung": 250, "hovers": true},
    "description": "Billig, schnell, fliegt ins Ziel. Kommt im Schwarm. Variante: Improvisierte Kampfdrohne.",
-   "requires": ["schwarzmarkt"]
+   "requires": ["schwarzmarkt"],
+   "model": "fpv"
   },
   "tb2": {
    "name": "Bayraktar TB2",
@@ -445,7 +449,8 @@
    "sight": 40,
    "weapons": ["drohnenrakete"],
    "keywords": {"flies": true, "hovers": true, "scout": true},
-   "description": "Kreist über dem Feld und schießt Lenkraketen."
+   "description": "Kreist über dem Feld und schießt Lenkraketen.",
+   "model": "tb2"
   },
   "langstreckendrohne": {
    "name": "Langstreckendrohne",
@@ -459,7 +464,8 @@
    "sight": 16,
    "keywords": {"flies": true, "jet": true, "selbstzerstoerung": 600},
    "requires": ["schwarzmarkt"],
-   "description": "Fliegt weit hinter die Front und schlägt in Gebäuden ein."
+   "description": "Fliegt weit hinter die Front und schlägt in Gebäuden ein.",
+   "model": "longrange"
   },
   "leopard2": {
    "name": "Leopard 2",
@@ -521,7 +527,8 @@
    "sight": 24,
    "weapons": ["mg"],
    "keywords": {"flies": true, "hovers": true, "transport": 8, "lieferung": true},
-   "description": "Westliche Lieferung."
+   "description": "Westliche Lieferung.",
+   "model": "uh60_ua"
   },
   "f16": {
    "name": "F-16",
@@ -535,13 +542,14 @@
    "sight": 32,
    "weapons": ["luft_luft", "air_ground"],
    "keywords": {"flies": true, "jet": true, "munition": 4, "lieferung": true},
-   "description": "Westliche Lieferung."
+   "description": "Westliche Lieferung.",
+   "model": "f16_ua"
   },
   "drohne_aufklaerung": {
    "name": "Aufklärungsdrohne",
    "role": "Begleiter",
    "class": "air",
-   "model": "drone",
+   "model": "quad_ua",
    "armor": "air",
    "cost": {},
    "health": 30,
@@ -631,7 +639,7 @@
       "name": "Koloss",
       "role": "Durchbruch",
       "class": "vehicle",
-      "model": "tank",
+      "model": "koloss",
       "cost": {"money": 2200, "schrott": 400},
       "buildTime": 25,
       "health": 1400,
@@ -663,7 +671,7 @@
       "name": "Saboteurin",
       "role": "Sabotage",
       "class": "infantry",
-      "model": "soldat",
+      "model": "ua_saboteur",
       "cost": {"money": 800},
       "buildTime": 12,
       "health": 80,

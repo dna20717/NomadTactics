@@ -425,7 +425,8 @@
    "sight": 28,
    "weapons": ["panzerabwehrrakete", "bordkanone"],
    "keywords": {"flies": true, "hovers": true},
-   "description": "Kampfhubschrauber gegen Panzer."
+   "description": "Kampfhubschrauber gegen Panzer.",
+   "model": "z10"
   },
   "z19": {
    "name": "Z-19",
@@ -439,7 +440,8 @@
    "sight": 34,
    "weapons": ["mg"],
    "keywords": {"flies": true, "hovers": true, "scout": true},
-   "description": "Leichter Aufklärungshubschrauber."
+   "description": "Leichter Aufklärungshubschrauber.",
+   "model": "z19"
   },
   "z20": {
    "name": "Z-20",
@@ -453,7 +455,8 @@
    "sight": 24,
    "weapons": ["mg"],
    "keywords": {"flies": true, "hovers": true, "transport": 10},
-   "description": "Transporthubschrauber."
+   "description": "Transporthubschrauber.",
+   "model": "z20"
   },
   "j10": {
    "name": "J-10",
@@ -467,7 +470,8 @@
    "sight": 32,
    "weapons": ["luft_luft"],
    "keywords": {"flies": true, "jet": true, "munition": 4},
-   "description": "Jäger. Ab Veteran: J-16."
+   "description": "Jäger. Ab Veteran: J-16.",
+   "model": "j10"
   },
   "j20": {
    "name": "J-20",
@@ -482,7 +486,8 @@
    "weapons": ["luft_luft", "air_ground"],
    "keywords": {"flies": true, "jet": true, "tarnung": true, "munition": 4},
    "requires": ["forschungszentrum"],
-   "description": "Tarnkappenjäger."
+   "description": "Tarnkappenjäger.",
+   "model": "j20"
   },
   "h6": {
    "name": "H-6",
@@ -497,7 +502,8 @@
    "weapons": ["marschflugkoerper"],
    "keywords": {"flies": true, "jet": true, "munition": 2, "tough": 2},
    "requires": ["raketenkomplex"],
-   "description": "Schwerer Bomber, feuert Marschflugkörper aus großer Entfernung."
+   "description": "Schwerer Bomber, feuert Marschflugkörper aus großer Entfernung.",
+   "model": "h6"
   },
   "wing_loong": {
    "name": "Wing Loong II",
@@ -511,7 +517,8 @@
    "sight": 40,
    "weapons": ["drohnenrakete"],
    "keywords": {"flies": true, "hovers": true, "scout": true},
-   "description": "Kreist über dem Feld, sieht weit, schießt Raketen. Variante: CH-4."
+   "description": "Kreist über dem Feld, sieht weit, schießt Raketen. Variante: CH-4.",
+   "model": "wing_loong"
   },
   "gj11": {
    "name": "GJ-11",
@@ -526,7 +533,8 @@
    "weapons": ["air_ground"],
    "keywords": {"flies": true, "jet": true, "tarnung": true, "munition": 2},
    "requires": ["forschungszentrum"],
-   "description": "Unbemannter Tarnkappen-Bomber."
+   "description": "Unbemannter Tarnkappen-Bomber.",
+   "model": "gj11"
   }
  },
  "research": {

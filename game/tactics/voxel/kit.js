@@ -24,6 +24,12 @@ export const PAINTS = {
   ukraine_u: { name: 'Ukraine Uniform (MM14)', camo: [0x6a6b48, 0x4d4f33, 0x8a7e58, 0x3a3524], pattern: 'pixel', second: 0x5c5a3e, dark: 0x302e25, accent: 0xd8c25a, fabric: true },
   europa_u: { name: 'Europa Uniform (Flecktarn)', camo: [0x5b6644, 0x3f4a30, 0x6e5a3e, 0x2a2b24, 0x7c855a], pattern: 'flecks', second: 0x55604a, dark: 0x2c2e28, accent: 0x2d4f9e, fabric: true },
 };
+// aircraft
+Object.assign(PAINTS, {
+  air_grey: { name: 'Luftwaffe (Grau)', camo: [0x8d949b, 0x858c93], pattern: 'mono', second: 0x6f767d, dark: 0x3a3e43, accent: 0x2a2d31, lacquer: true },
+  heli_olive: { name: 'Heeresflieger (Oliv)', camo: [0x4a5040, 0x454b3c], pattern: 'mono', second: 0x3c4135, dark: 0x2a2c27, accent: 0x1f201d },
+  ukraine_air: { name: 'Ukraine Luftwaffe (Pixel)', camo: [0x7d8a99, 0x5e6b7a, 0xa5afba], pattern: 'blotch', second: 0x6d7887, dark: 0x343a42, accent: 0xd8c25a, lacquer: true },
+});
 // skin tones for soldiers (one per figure, chosen per unit in the renderer)
 export const SKINS = [0xd9a37c, 0xb5835e, 0x7d5539];
 for (const [i, c] of SKINS.entries()) { PAL[`skin${i}`] = [c]; SURFACE[`skin${i}`] = 3; }
@@ -34,8 +40,8 @@ const registered = new Set();
 function register(id) {
   if (registered.has(id)) return; registered.add(id);
   const P = PAINTS[id] || PAINTS.usa;
-  P.camo.forEach((c, i) => { PAL[`${id}_c${i}`] = [c, shade(c, 0.96), shade(c, 1.03)]; SURFACE[`${id}_c${i}`] = P.fabric ? 3 : 0; });
-  PAL[`${id}_s`] = [P.second, shade(P.second, 0.95)]; SURFACE[`${id}_s`] = P.fabric ? 3 : 0;
+  P.camo.forEach((c, i) => { PAL[`${id}_c${i}`] = [c, shade(c, 0.96), shade(c, 1.03)]; SURFACE[`${id}_c${i}`] = P.fabric ? 3 : P.lacquer ? 5 : 0; });
+  PAL[`${id}_s`] = [P.second, shade(P.second, 0.95)]; SURFACE[`${id}_s`] = P.fabric ? 3 : P.lacquer ? 5 : 0;
   PAL[`${id}_d`] = [P.dark, shade(P.dark, 1.08)]; SURFACE[`${id}_d`] = 2;
   PAL[`${id}_a`] = [P.accent]; SURFACE[`${id}_a`] = 5;
 }
@@ -402,9 +408,160 @@ function soldierLeg() {
   return W;
 }
 
+// ---------- aircraft (0.2-m voxels): helicopters, jets, drones; rotors and propellers are their own parts ----------
+// Rotor model: flat blades in the x/z plane around the hub (spins about y); axis 'x'/'z' parts are turned by the viewer.
+function rotorModel(R, blades = 4, { thick = 1, kind = 'black' } = {}) {
+  const [W, s] = newModel();
+  const dirs = blades >= 4 ? [[1, 0], [-1, 0], [0, 1], [0, -1]] : blades === 3 ? [[1, 0], [-0.5, 0.87], [-0.5, -0.87]] : [[1, 0], [-1, 0]];
+  for (const [dx, dz] of dirs) for (let i = 1; i <= R; i++) for (let t = 0; t < thick; t++) s(Math.round(dx * i), 0, Math.round(dz * i) + t * (dx ? 1 : 0), kind);
+  s(0, 0, 0, 'hd'); s(0, 1, 0, 'hd');
+  return W;
+}
+// Helicopter. style: attack (tandem cockpit, stub wings with pods, chin gun) | gunship (attack + cabin, Mi-24) |
+// transport (wide cabin, Black Hawk / NH90 / Mi-8) | tandem (Chinook: two rotors, no tail rotor) | scout (small attack)
+function heliHull(p) {
+  const [W, s] = newModel();
+  const L = p.length, hw = p.width >> 1, zf = (L >> 1) - 1, zb = zf - L + 1, H = p.height, st = p.style;
+  const bodyEnd = zb + Math.round(L * (st === 'tandem' ? 0.05 : 0.45));   // where the tail boom starts
+  for (let z = bodyEnd; z <= zf; z++) {
+    const nose = Math.max(0, z - (zf - (st === 'transport' || st === 'tandem' ? 4 : 7)));
+    const half = Math.max(1, hw - Math.round(nose * (st === 'attack' || st === 'scout' ? 0.5 : 0.7)));
+    const top = H - Math.round(nose * 0.8), bottom = 2 + Math.round(nose * 0.3);
+    for (let y = bottom; y <= top; y++) for (let x = -half; x <= half; x++) {
+      const glass = (y >= top - (st === 'attack' || st === 'scout' ? 3 : 2) && z > zf - (st === 'attack' || st === 'scout' ? 12 : 6)) || (st === 'attack' && y === top && z > zf - 14);
+      const window = (st === 'transport' || st === 'tandem' || st === 'gunship') && Math.abs(x) === half && y === top - 2 && (z % 4 === 0) && z < zf - 6;
+      s(x, y, z, glass && (Math.abs(x) === half || y === top || z === zf - nose) ? 'glass' : window ? 'glass' : 'c');
+    }
+  }
+  // tail boom, fin, stabiliser (tandem: high rear pylon instead)
+  if (st === 'tandem') {
+    box(s, -hw + 1, hw - 1, H + 1, H + 4, zb, zb + 6, 'c');
+  } else {
+    for (let z = zb; z < bodyEnd; z++) { const r = z < zb + 8 ? 0 : 1; box(s, -r, r, H - 3 - r, H - 1, z, z, 'c'); }
+    box(s, 0, 0, H - 1, H + 4, zb, zb + 2, 'c'); s(0, H + 4, zb + 1, 'team');
+    box(s, -4, 4, H - 2, H - 2, zb + 3, zb + 4, 'c');
+  }
+  // engines / rotor mast on top, team band on the roof
+  box(s, -2, 2, H + 1, H + 2, Math.round((bodyEnd + zf) / 2) - 3, Math.round((bodyEnd + zf) / 2) + 2, 'c1');
+  for (let x = -hw + 1; x <= hw - 1; x++) s(x, H, Math.round((bodyEnd + zf) / 2) - 5, 'team');
+  // stub wings with rocket pods (attack, gunship, scout)
+  if (st === 'attack' || st === 'gunship' || st === 'scout') {
+    const wz = Math.round((bodyEnd + zf) / 2) - 1, span = hw + (st === 'scout' ? 4 : 6);
+    for (let x = hw + 1; x <= span; x++) { s(x, H - 4, wz, 'c'); s(-x, H - 4, wz, 'c'); s(x, H - 4, wz + 1, 'c'); s(-x, H - 4, wz + 1, 'c'); }
+    for (const x of [span - 1, -(span - 1), hw + 2, -(hw + 2)]) box(s, x, x, H - 6, H - 5, wz - 2, wz + 3, x === span - 1 || x === -(span - 1) ? 'hd' : 'c1');
+    if (st !== 'gunship') { s(0, 1, zf - 3, 'hd'); s(0, 0, zf - 3, 'hd'); for (let z = zf - 3; z <= zf + 1; z++) s(0, 0, z, 'metall'); }
+  }
+  // landing gear: skids or wheels
+  if (p.gear === 'skids') for (const x of [-hw, hw]) { for (let z = bodyEnd + 2; z <= zf - 2; z++) s(x, 0, z, 'hd'); s(x, 1, bodyEnd + 4, 'hd'); s(x, 1, zf - 4, 'hd'); }
+  else for (const [x, z] of [[-hw + 1, zf - 4], [hw - 1, zf - 4], [0, bodyEnd + 1]]) { s(x, 0, z, 'tires'); s(x, 1, z, 'hd'); }
+  lights(s, [hw - 1], 3, zf - 2, bodyEnd);
+  return W;
+}
+function heliRotors(p) {
+  const S = KIT_SCALE, L = p.length, zf = (L >> 1) - 1, zb = zf - L + 1, H = p.height;
+  const bodyEnd = zb + Math.round(L * (p.style === 'tandem' ? 0.05 : 0.45)), mid = Math.round((bodyEnd + zf) / 2) - 1;
+  const main = rotorModel(p.rotorR, p.blades, { thick: 1 });
+  if (p.style === 'tandem') return [
+    { W: main, at: [0, (H + 3) * S, (zf - 4) * S], axis: 'y', rate: 22 }, { W: main, at: [0, (H + 6) * S, (zb + 3) * S], axis: 'y', rate: -22 }];
+  return [{ W: main, at: [0, (H + 3) * S, mid * S], axis: 'y', rate: 24 },
+    { W: rotorModel(Math.max(2, Math.round(p.rotorR / 5)), 2, { kind: 'hd' }), at: [S, (H + 2) * S, (zb + 1) * S], axis: 'x', rate: 60, turn: 'z' }];
+}
+// Jet. style: fighter | stealth | attack (A-10) | bomber (H-6). tails 1|2, canards, delta.
+function jetHull(p) {
+  const [W, s] = newModel();
+  const L = p.length, zf = (L >> 1) - 1, zb = zf - L + 1, span = p.span >> 1, st = p.style;
+  const fus = st === 'bomber' ? 3 : 2, cockpit = zf - Math.round(L * 0.22);
+  for (let z = zb; z <= zf; z++) {
+    const nose = Math.max(0, z - (zf - 6)), r = Math.max(0, fus - Math.round(nose * 0.4)), tail = z < zb + 3 ? 1 : 0;
+    for (let y = 2 - r + 1; y <= 2 + r; y++) for (let x = -r - (st === 'stealth' && z < zf - 8 ? 1 : 0); x <= r + (st === 'stealth' && z < zf - 8 ? 1 : 0); x++) if (!(tail && Math.abs(x) > r - 1)) s(x, y + 1, z, 'c');
+    if (z > cockpit && z < zf - 2) { s(0, 4 + r - 1, z, 'glass'); s(0, 5 + r - 1, z, z > cockpit + 1 ? 'glass' : 'c'); }
+  }
+  s(0, 3, zf + 1, 'hd');
+  // wings: swept (fighter/stealth/bomber), straight (attack), delta when p.delta
+  const wRoot = Math.round(L * (st === 'attack' ? 0.0 : 0.05)), chord = Math.round(L * (p.delta ? 0.45 : st === 'attack' ? 0.18 : 0.3));
+  for (let x = fus; x <= span; x++) {
+    const f = (x - fus) / Math.max(1, span - fus);
+    const lead = wRoot + Math.round(chord / 2 - (st === 'attack' ? 0 : f * chord * (p.delta ? 0.95 : 0.7)));
+    const len = Math.max(2, Math.round(chord * (1 - f * (p.delta ? 0.85 : 0.6))));
+    for (let z = lead - len + 1; z <= lead; z++) { s(x, 3, z, 'c'); s(-x, 3, z, 'c'); }
+    if (x === span) for (let z = lead - len + 1; z <= lead; z++) { s(x, 3, z, 'team'); s(-x, 3, z, 'team'); }
+  }
+  // tail fins and stabilisers
+  const fins = p.tails === 2 ? [-(fus + 1), fus + 1] : [0];
+  for (const x of fins) for (let y = 4; y <= 4 + Math.round(L * 0.14); y++) { const back = zb + Math.round((y - 4) * 0.8); for (let z = back; z <= back + 4 - Math.round((y - 4) * 0.3); z++) s(x + (p.tails === 2 && st === 'stealth' ? Math.sign(x) * Math.round((y - 4) * 0.3) : 0), y, z, y === 4 + Math.round(L * 0.14) ? 'team' : 'c'); }
+  if (!p.delta) for (let x = fus; x <= fus + Math.round(span * 0.35); x++) for (let z = zb; z <= zb + 3 - Math.round((x - fus) * 0.3); z++) { s(x, 3, z, 'c'); s(-x, 3, z, 'c'); }
+  if (p.canards) for (let x = fus; x <= fus + 3; x++) { s(x, 4, cockpit - 1, 'c'); s(-x, 4, cockpit - 1, 'c'); }
+  // engines: A-10 pods on the back, bomber under the wings, intakes otherwise
+  if (st === 'attack') for (const x of [-3, 3]) box(s, x, x + Math.sign(x), 6, 7, zb + 6, zb + 11, 'c1');
+  else if (st === 'bomber') for (const x of [-Math.round(span * 0.4), Math.round(span * 0.4)]) box(s, x - 1, x + 1, 0, 2, wRoot - 3, wRoot + 4, 'c1');
+  else for (let z = zb; z <= zb + 1; z++) { s(0, 3, z - 1, 'hd'); if (p.engines === 2) { s(-1, 3, z - 1, 'hd'); s(1, 3, z - 1, 'hd'); } }
+  // weapons under the wings and gear
+  for (const x of [Math.round(span * 0.55), -Math.round(span * 0.55)]) for (let z = wRoot - 3; z <= wRoot + 2; z++) s(x, 2, z, 'hd');
+  if (st === 'attack') for (let z = zf; z <= zf + 2; z++) s(0, 2, z, 'metall');
+  for (const [x, z] of [[0, zf - 5], [-fus, wRoot - 2], [fus, wRoot - 2]]) { s(x, 0, z, 'tires'); s(x, 1, z, 'hd'); }
+  s(span, 3, wRoot, 'tail'); s(-span, 3, wRoot, 'lamp');   // navigation lights on the wing tips
+  return W;
+}
+// Drone. style: male (long thin wings, pusher prop; MQ-9, Wing Loong, TB2, Eurodrone) | wing (flying wing, GJ-11) |
+// cruise (small delta, one-way drone) | quad (quadcopter: FPV and companion drones, 0.1-m voxels via `scale`)
+function uavHull(p) {
+  const [W, s] = newModel();
+  const st = p.style;
+  if (st === 'quad') {
+    box(s, -2, 2, 2, 3, -2, 2, 'c'); s(0, 4, 0, 'team'); s(0, 2, 3, 'glass'); s(0, 1, 2, 'hd');
+    for (const [x, z] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) for (let i = 2; i <= 5; i++) s(x * i, 3, z * i, 'hd');
+    for (const [x, z] of [[-5, -5], [5, -5], [-5, 5], [5, 5]]) { s(x, 2, z, 'hd'); s(x, 1, z, 'hd'); }
+    if (p.payload === 'rockets') for (const x of [-3, 3]) box(s, x, x, 1, 1, -1, 2, 'c1');
+    if (p.payload === 'camera') { s(0, 1, 1, 'black'); s(0, 0, 1, 'glass'); }
+    if (p.payload === 'repair') { box(s, -1, 1, 0, 1, -1, 1, 'c1'); s(0, 0, 2, 'metall'); }
+    if (p.payload === 'bomb') { box(s, 0, 0, 0, 1, -1, 1, 'hd'); s(0, -1, 1, 'metall'); }
+    return W;
+  }
+  const L = p.length, zf = (L >> 1) - 1, zb = zf - L + 1, span = p.span >> 1;
+  if (st === 'wing') {   // flying wing: a flat arrow
+    for (let x = 0; x <= span; x++) { const lead = zf - Math.round(x * 0.9), len = Math.max(2, Math.round(L * 0.7) - Math.round(x * 0.9)); for (let z = lead - len; z <= lead; z++) { s(x, 2, z, x === span ? 'team' : 'c'); s(-x, 2, z, x === span ? 'team' : 'c'); } }
+    box(s, -2, 2, 3, 3, zb + 4, zf - 4, 'c'); s(0, 3, zf - 2, 'hd');
+    for (const [x, z] of [[0, zf - 6], [-3, zb + 6], [3, zb + 6]]) { s(x, 0, z, 'tires'); s(x, 1, z, 'hd'); }
+    return W;
+  }
+  // fuselage with bulbous sensor nose
+  for (let z = zb; z <= zf; z++) { const r = z > zf - 4 ? 1 : z < zb + 3 ? 0 : 1; box(s, -r, r, 2, 2 + r * 2, z, z, 'c'); }
+  box(s, -1, 1, 1, 1, zf - 5, zf - 3, 'hd'); s(0, 0, zf - 4, 'glass');
+  // wings
+  const wz = st === 'cruise' ? zb + Math.round(L * 0.3) : Math.round(L * 0.05);
+  for (let x = 2; x <= span; x++) {
+    const chord = st === 'cruise' ? Math.max(2, Math.round(L * 0.5) - Math.round(x * 1.2)) : 3;
+    const lead = st === 'cruise' ? wz + Math.round(L * 0.4) - Math.round(x * 1.2) : wz + 1;
+    for (let z = lead - chord + 1; z <= lead; z++) { s(x, 4, z, x === span ? 'team' : 'c'); s(-x, 4, z, x === span ? 'team' : 'c'); }
+  }
+  // tail: V (MQ-9 inverted + fin), twin boom (TB2/Eurodrone simplified as V)
+  if (st === 'male') for (let i = 1; i <= 4; i++) { s(i, 4 + i, zb + 1, 'c'); s(-i, 4 + i, zb + 1, 'c'); s(i, 4 + i, zb + 2, 'c'); s(-i, 4 + i, zb + 2, 'c'); if (p.tail === 'inv') s(0, 2 - i, zb + 1, 'c'); }
+  else for (let i = 1; i <= 2; i++) { s(0, 4 + i, zb + 1, 'c'); }
+  if (p.engines === 2) for (const x of [-Math.round(span * 0.3), Math.round(span * 0.3)]) box(s, x, x, 3, 4, wz - 1, wz + 2, 'c1');
+  for (const [x, z] of [[0, zf - 3], [-2, wz], [2, wz]]) if (st !== 'cruise') { s(x, 0, z, 'tires'); s(x, 1, z, 'hd'); }
+  return W;
+}
+function uavRotors(p) {
+  const S = p.style === 'quad' ? 0.1 : KIT_SCALE;
+  if (p.style === 'quad') { const r = rotorModel(3, 2, { kind: 'black' }); return [[-5, -5], [5, -5], [-5, 5], [5, 5]].map(([x, z], i) => ({ W: r, at: [x * S, 3 * S, z * S], axis: 'y', rate: i % 2 ? 70 : -70 })); }
+  if (p.style === 'wing') return [];
+  const zb = -(p.length >> 1);
+  if (p.engines === 2) { const span = p.span >> 1, wz = Math.round(p.length * 0.05); return [-1, 1].map((d) => ({ W: rotorModel(3, 3, { kind: 'black' }), at: [d * Math.round(span * 0.3) * S, 3.5 * S, (wz + 3) * S], axis: 'z', rate: 50, turn: 'x' })); }
+  return [{ W: rotorModel(p.style === 'cruise' ? 2 : 3, p.style === 'cruise' ? 2 : 3, { kind: 'black' }), at: [0, 3 * S, (zb - 1) * S], axis: 'z', rate: 50, turn: 'x' }];
+}
+
 // ---------- types: defaults, builder, which params the workshop shows ----------
 const TRACKED = { trackH: 5, trackW: 4 };
 export const KIT_TYPES = {
+  heli: { name: 'Hubschrauber', life: 'drone',
+    defaults: { length: 50, width: 9, height: 8, style: 'transport', rotorR: 20, blades: 4, gear: 'wheels' },
+    build: (p) => ({ hull: heliHull(p), rotors: heliRotors(p) }) },
+  jet: { name: 'Flugzeug', life: 'drone',
+    defaults: { length: 54, span: 34, style: 'fighter', tails: 1, canards: false, delta: false, engines: 1 },
+    build: (p) => ({ hull: jetHull(p), rotors: [] }) },
+  uav: { name: 'Drohne', life: 'drone',
+    defaults: { length: 30, span: 60, style: 'male', tail: 'inv', engines: 1, payload: 'none' },
+    build: (p) => ({ hull: uavHull(p), rotors: uavRotors(p), scale: p.style === 'quad' ? 0.1 : KIT_SCALE, hover: p.style === 'quad' ? 0.5 : 0 }) },
   soldier: { name: 'Soldat', life: 'infantry', footprint: 'soldat', scale: 0.1,
     defaults: { headgear: 'helmet', weapon: 'rifle', pack: 'pack', vest: true, mask: false },
     build: (p) => ({ hull: soldierBody(p), legs: { W: soldierLeg(), at: [{ x: -0.1, side: -1 }, { x: 0.1, side: 1 }], hip: 0.8, center: [-0.05, 0, -0.05] } }) },
@@ -470,6 +627,13 @@ export const KIT_FIELDS = {
   weapon_soldier: ['Waffe', 'choice', { rifle: 'Sturmgewehr', at: 'Panzerfaust', mg: 'Maschinengewehr', sniper: 'Scharfschützengewehr', grenade: 'Granatwerfer', tool: 'Werkzeug', drone: 'Drohne + Steuerung', none: 'Keine' }],
   pack: ['Rucksack', 'choice', { pack: 'Rucksack', shovel: 'Mit Spaten', radio: 'Mit Funkgerät', none: 'Keiner' }],
   vest: ['Schutzweste', 'check'], mask: ['Sturmhaube', 'check'],
+  height: ['Rumpfhöhe', 'number'], rotorR: ['Rotorradius', 'number'], blades: ['Rotorblätter', 'number'], gear: ['Fahrwerk', 'choice', { wheels: 'Räder', skids: 'Kufen' }],
+  style_heli: ['Bauart', 'choice', { attack: 'Kampfhubschrauber', scout: 'Leichter Kampfhubschrauber', gunship: 'Kampf mit Kabine', transport: 'Transport', tandem: 'Tandem (Chinook)' }],
+  span: ['Spannweite', 'number'], tails: ['Seitenleitwerke', 'number'], canards: ['Entenflügel', 'check'], delta: ['Deltaflügel', 'check'], engines: ['Triebwerke', 'number'],
+  style_jet: ['Bauart', 'choice', { fighter: 'Jäger', stealth: 'Tarnkappe', attack: 'Erdkampf (A-10)', bomber: 'Bomber' }],
+  style_uav: ['Bauart', 'choice', { male: 'Langstrecke mit Propeller', wing: 'Nurflügler', cruise: 'Einweg-Drohne', quad: 'Quadrocopter' }],
+  tail: ['Leitwerk', 'choice', { inv: 'V umgekehrt + Flosse', v: 'V' }],
+  payload: ['Last', 'choice', { none: 'Keine', camera: 'Kamera', rockets: 'Raketen', repair: 'Reparatur', bomb: 'Sprengladung' }],
 };
 
 const cache = new Map();
@@ -481,7 +645,8 @@ export function buildKit(type, params = {}, paintId = 'usa') {
   const p = { ...T.defaults, ...params };
   const b = T.build(p);
   const seed = [...key].reduce((a, c) => (a * 31 + c.charCodeAt(0)) | 0, 7) & 1023;
-  const out = { hull: paint(b.hull, paintId, seed), turret: b.turret ? paint(b.turret, paintId, seed + 1) : null, pivot: b.pivot || null, scale: T.scale || KIT_SCALE,
+  const out = { hull: paint(b.hull, paintId, seed), turret: b.turret ? paint(b.turret, paintId, seed + 1) : null, pivot: b.pivot || null, scale: b.scale || T.scale || KIT_SCALE,
+    rotors: (b.rotors || []).map((r) => ({ ...r, W: paint(r.W, paintId) })), hover: b.hover || 0,
     wheels: b.wheels ? { ...b.wheels, W: paint(b.wheels.W, paintId) } : null, trackMid: T.life === 'tracked' ? (p.trackH || 5) * KIT_SCALE / 2 : 0,
     legs: b.legs ? { ...b.legs, W: paint(b.legs.W, paintId, seed + 2) } : null };
   cache.set(key, out);

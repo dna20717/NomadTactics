@@ -603,7 +603,7 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
     if (src === 'prototype:pad') { entry.hull = landingPad(31); finish(entry, def); return entry; }
     if (src.startsWith('kit:')) {   // vehicle kit (game/tactics/voxel/kit.js): 0.2-m voxels, wheels as their own part
       const k = buildKit(src.slice(4), tone != null ? { ...(def?.kit || {}), skin: +tone } : def?.kit || {}, def?.paint || 'usa');
-      Object.assign(entry, { hull: k.hull, turret: k.turret, pivot: k.pivot, scale: k.scale, wheels: k.wheels, trackMid: k.trackMid, legs: k.legs });
+      Object.assign(entry, { hull: k.hull, turret: k.turret, pivot: k.pivot, scale: k.scale, wheels: k.wheels, trackMid: k.trackMid, legs: k.legs, rotors: k.rotors?.length ? k.rotors : null });
       finish(entry, { ...def, scale: def?.scale || k.scale }); return entry;
     }
     if (src.startsWith('prototype:')) {
@@ -629,8 +629,8 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
   }
   // model for a damage stage (0 = intact); cached per model
   function variant(e, which, stage) {
-    const W = which === 'turret' ? e.turret : which === 'wheel' ? e.wheels?.W : which === 'leg' ? e.legs?.W : e.hull;
-    if (which === 'wheel' || which === 'leg') return { W, soot: null };
+    const W = which === 'turret' ? e.turret : which === 'wheel' ? e.wheels?.W : which === 'leg' ? e.legs?.W : which.startsWith('rotor') ? e.rotors?.[+which.slice(5)]?.W : e.hull;
+    if (which === 'wheel' || which === 'leg' || which.startsWith('rotor')) return { W, soot: null };
     if (!stage || !lifeOn) return { W, soot: null };
     const id = which + stage;
     if (!e.variants.has(id)) {
@@ -973,6 +973,18 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
   // every figure with its own skin tone ("<model>~<tone>")
   const SQUAD = [[0, 0], [-0.9, -1.1], [0.9, -1.1], [-1.8, -2.2], [0, -2.3], [1.8, -2.2], [-0.9, -3.4], [0.9, -3.4]];
   const lM = new THREE.Matrix4(), fM = new THREE.Matrix4();
+  // rotors and propellers (aircraft kit): spin about their axis, laid flat/upright by `turn`
+  const rT = new THREE.Matrix4(), rS = new THREE.Matrix4();
+  function drawRotors(e, key, colour, base, now) {
+    e.rotors.forEach((r, i) => {
+      const a = now / 1000 * (r.rate || 30);
+      rS.makeRotationAxis(r.axis === 'x' ? xAxis : r.axis === 'z' ? zAxis : yAxis, a);
+      rT.makeTranslation(r.at[0], r.at[1], r.at[2]).multiply(rS);
+      if (r.turn === 'x') rT.multiply(rS.makeRotationX(Math.PI / 2)); else if (r.turn === 'z') rT.multiply(rS.makeRotationZ(Math.PI / 2));
+      putMatrix(part(key, 'rotor' + i, colour, false, 0), rT.premultiply(base), 0, 0);
+    });
+  }
+  const xAxis = new THREE.Vector3(1, 0, 0), zAxis = new THREE.Vector3(0, 0, 1);
   function drawLegs(e, key, colour, base, swing) {
     const L = e.legs;
     wC.makeTranslation(-L.center[0], -L.center[1], -L.center[2]);
@@ -1049,6 +1061,7 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
     if (!e.turret && rc) hullM.multiply(locM.makeTranslation(0, 0, -rc * 0.5));
     if (e.legs) drawSoldiers(u, ty, e, key, colour, hullM, s, speed, true);
     else putMatrix(part(key, 'hull', colour, false, stage), hullM, s.dist, runs);
+    if (e.rotors) drawRotors(e, key, colour, hullM, now);
     drawWheels(e, key, colour, hullM, s, dt, true);
     let mzFrom = hullM;
     if (e.turret) {
@@ -1179,6 +1192,7 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
           const v = Math.hypot(wx - s.px, wz - s.pz) / Math.max(dt, 1e-3);
           s.tilt += (Math.min(0.3, v * 0.03) - s.tilt) * k; s.px = wx; s.pz = wz;
           put(part(key, 'hull', colour), wx, s.y, wz, s.yaw, (o) => { o.rotation.set(s.tilt, s.yaw, 0, 'YXZ'); });
+          if (e.rotors) { o3.updateMatrix(); baseM.copy(o3.matrix); drawRotors(e, key, colour, baseM, performance.now()); }
         } else if (e.legs) { o3.position.set(wx, s.y, wz); o3.rotation.set(0, s.yaw, 0, 'XYZ'); o3.scale.set(1, 1, 1); o3.updateMatrix(); baseM.copy(o3.matrix); drawSoldiers(u, ty, e, key, colour, baseM, s, 0, false); }
         else put(part(key, 'hull', colour), wx, s.y, wz, s.yaw);
         if (e.wheels) { o3.position.set(wx, s.y, wz); o3.rotation.set(0, s.yaw, 0, 'XYZ'); o3.scale.set(1, 1, 1); o3.updateMatrix(); baseM.copy(o3.matrix); drawWheels(e, key, colour, baseM, s, dt, false); }

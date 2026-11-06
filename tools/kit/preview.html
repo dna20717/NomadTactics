@@ -32,6 +32,8 @@ list.forEach(([id, m], i) => {
   if (k.legs) k.legs.at.forEach((a, j) => add(k.legs.W, (me) => {
     const o = new THREE.Object3D(); o.position.set(a.x, k.legs.hip, 0); o.rotation.x = (j ? 1 : -1) * +(q.get('stride') || 0);
     me.position.set(-k.legs.center[0], -k.legs.center[1], -k.legs.center[2]); o.add(me); g.add(o); }));
+  for (const r of k.rotors || []) add(r.W, (me) => { const o = new THREE.Object3D(); o.position.set(...r.at); if (r.turn === 'x') me.rotation.x = Math.PI / 2; else if (r.turn === 'z') me.rotation.z = Math.PI / 2; o.rotation[r.axis] = 0.4; o.add(me); g.add(o); });
+  if (k.hover) g.children.forEach((c) => { c.position.y += k.hover; });
   if (k.wheels) for (const w of k.wheels.at) add(k.wheels.W, (me) => {
     const o = new THREE.Object3D(); o.position.set(w.x, w.y, w.z); o.rotation.y = w.side < 0 ? Math.PI : 0;
     me.position.set(-k.wheels.center[0], -k.wheels.center[1], -k.wheels.center[2]); o.add(me); g.add(o); });

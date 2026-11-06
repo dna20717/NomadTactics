@@ -197,10 +197,12 @@ export const PAGES = {
 
   models(w, main, insp) {
     const file = w.path('models');
+    main.classList.toggle('tk-gallery-mode', !!w.modelGallery);
     catalog(w, main, insp, { title: 'Modelle', kind: 'model', ic: 'cube', obj: () => w.p.data.models, file, new: () => ({ name: 'Neues Modell', source: '' }),
-      hint: 'Modelle verweisen auf Voxel-Modelle: „prototyp:panzer“ sind die Modelle aus dem Härtetest, ein Pfad auf eine .vox-Datei aus Voxel Max. Die Vorschau kommt später.',
+      aheadList: () => modelGallery(w),
+      hint: 'Modelle sind Voxel-Modelle: aus dem Baukasten („kit:…“, Fahrzeuge, Soldaten, Luftfahrzeuge, Gebäude), aus dem Härtetest („prototype:…“) oder eine .vox-Datei aus Voxel Max. Rechts dreht sich die Vorschau; ziehen dreht, Rad zoomt.',
       row: (id, x) => [icon('cube', 16), el('span', { class: 'da-name' }, x.name || id), el('small', {}, x.source || '')],
-      inspector: x => insp.append(w.field('Name', x, 'name', 'text', file), w.field('Quelle', x, 'source', 'text', file), ...modelLifeFields(w, x, file), el('p', { class: 'ed-small' }, 'Tipp für Voxel Max: feste Teamfarbe in der Palette, Turm als eigene Ebene, Rohr nach vorne (+z).')) });
+      inspector: x => insp.append(previewOf(w, x, 280), w.field('Name', x, 'name', 'text', file), w.field('Quelle', x, 'source', 'text', file), ...modelLifeFields(w, x, file), el('p', { class: 'ed-small' }, 'Tipp für Voxel Max: feste Teamfarbe in der Palette, Turm als eigene Ebene, Rohr nach vorne (+z).')) });
   },
 
   life(w, main, insp) {
@@ -389,6 +391,7 @@ function entryInspector(w, eb, insp, cat, id) {
     insp.append(F('Rolle', 'role'), F('Beschreibung', 'description', 'textarea'),
       W('Klasse', 'class', Object.entries(K.classes).map(([k, c]) => [k, c.name])), W('Rüstung', 'armor', Object.entries(K.armors).map(([k, r]) => [k, r.name])),
       W('Modell', 'model', Object.entries(w.p.data.models).map(([k, m]) => [k, m.name]), '— kein Modell —'),
+      previewOf(w, w.p.data.models[x.model], 200),
       el('h4', {}, 'Werte'), B('Kosten', 'cost', (v, s) => w.costEditor(v, resources, s)),
       F('Bauzeit (s)', 'buildTime', 'number'), F('Truppstärke', 'squad', 'number'), F(x.squad > 1 ? 'Leben je Mann' : 'Leben', 'health', 'number'), F('Tempo (m/s)', 'speed', 'number'), F('Sicht (m)', 'sight', 'number'),
       el('h4', {}, 'Waffen & Regeln'), B('Waffen', 'weapons', (v, s) => w.chips(v, Object.entries(w.p.data.weapons).map(([k, a]) => [k, a.name]), s, '+ Waffe', k => w.p.data.weapons[k]?.name || k)),
@@ -564,4 +567,29 @@ function jumpToTo(w, place) {
     return w.go({ area: 'faction', faction: m[1], sub, choice: m[4] || (sub === 'generals' ? m[2] : null), general: m[2] || null });
   }
   w.hint('Stelle nicht gefunden: ' + place);
+}
+
+// 3D preview of a model (game/tactics/model_view.js, loads three.js only when shown); placeholder until it is ready
+export function previewOf(w, def, height = 240, mini = false) {
+  if (!def) return el('span');
+  const slot = el('div', { class: 'tk-model-view' + (mini ? ' mini' : ''), style: `height:${height}px` }, el('div', { class: 'tk-mv-info' }, 'Vorschau lädt …'));
+  import('./model_view.js').then(({ modelPreview }) => slot.replaceWith(modelPreview(def, { base: w.basis, height, mini })))
+    .catch((e) => { slot.firstChild.textContent = `Keine Vorschau (${e.message})`; });
+  return slot;
+}
+
+// Models page: list or gallery (every model turning in its own small box; click = choose)
+function modelGallery(w) {
+  const seg = el('div', { class: 'ed-row tk-gallery-switch' },
+    w.button('list', 'Liste', () => { w.modelGallery = false; w.draw(); }), w.button('grid', 'Galerie', () => { w.modelGallery = true; w.draw(); }));
+  seg.children[w.modelGallery ? 1 : 0].classList.add('on');
+  if (!w.modelGallery) return seg;
+  const f = (w.filter || '').toLowerCase(), M = w.p.data.models, grid = el('div', { class: 'tk-gallery' });
+  for (const [id, m] of Object.entries(M)) {
+    if (f && !id.includes(f) && !String(m.name || '').toLowerCase().includes(f)) continue;
+    const card = el('button', { class: 'tk-gallery-card' + (w.page.choice === id ? ' on' : ''), onclick: () => w.go({ ...w.page, choice: id }) },
+      previewOf(w, m, 150, true), el('span', { class: 'da-name' }, m.name || id), el('small', {}, m.source || ''));
+    grid.append(card);
+  }
+  return el('div', {}, seg, grid);
 }
