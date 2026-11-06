@@ -2,7 +2,7 @@
  "id": "usa",
  "name": "USA",
  "color": "#3a78d8",
- "description": "Hochgerüstete Berufsarmee. Wenige, teure Einheiten mit Reichweite und Luftüberlegenheit. Jedes Gebäude braucht Strom: fällt das Netz, steht die Armee.",
+ "description": "Expeditionary Force: Hightech, Professionalität, Mobilität und Luftüberlegenheit. Wenige, teure Einheiten; alles hängt am Strom.",
  "playstyle": "Halten und präzise zuschlagen",
  "resources": ["money", "power", "rank"],
  "start": {"money": 10000, "building": ["hauptquartier"], "units": ["bautrupp", "bautrupp"]},
@@ -44,13 +44,13 @@
    "armor": "building",
    "size": [6, 5],
    "power": -1,
-   "produces": ["soldat", "scharfschuetze"],
+   "produces": ["soldat", "rangers", "seals", "pioniere"],
    "requires": ["kraftwerk"],
    "keywords": {"garnison": 10},
    "pos": [-1.5, 2]
   },
   "depot": {
-   "name": "Nachschubdepot",
+   "name": "Versorgungsdepot",
    "function": "resource",
    "cost": {"money": 1500},
    "buildTime": 20,
@@ -63,7 +63,7 @@
    "pos": [-0.5, 2]
   },
   "waffenfabrik": {
-   "name": "Waffenfabrik",
+   "name": "Fahrzeugfabrik",
    "function": "production",
    "cost": {"money": 2000},
    "buildTime": 25,
@@ -71,12 +71,12 @@
    "armor": "building",
    "size": [9, 7],
    "power": -3,
-   "produces": ["spaeher", "kampfpanzer", "lenkwerfer"],
+   "produces": ["spaeher", "stryker", "kampfpanzer", "booker", "paladin", "lenkwerfer", "mlrs"],
    "requires": ["depot"],
    "pos": [-0.5, 3]
   },
   "flugfeld": {
-   "name": "Flugfeld",
+   "name": "Luftwaffenstützpunkt",
    "function": "production",
    "cost": {"money": 1800},
    "buildTime": 25,
@@ -84,12 +84,12 @@
    "armor": "building",
    "size": [10, 8],
    "power": -4,
-   "produces": ["kampfdrohne", "jaeger", "transporter", "empbomber"],
+   "produces": ["apache", "blackhawk", "chinook", "f16", "f35", "a10", "reaper"],
    "requires": ["waffenfabrik"],
    "pos": [1, 4]
   },
   "forschungszentrum": {
-   "name": "Forschungszentrum",
+   "name": "Waffen- und Forschungszentrum",
    "function": "research",
    "cost": {"money": 1500},
    "buildTime": 20,
@@ -99,6 +99,34 @@
    "power": -3,
    "requires": ["waffenfabrik"],
    "pos": [-0.5, 4]
+  },
+  "radarstation": {
+   "name": "Radarstation",
+   "function": "misc",
+   "cost": {"money": 800},
+   "buildTime": 12,
+   "health": 1000,
+   "armor": "building",
+   "size": [4, 4],
+   "power": -2,
+   "keywords": {"scout": true},
+   "requires": ["depot"],
+   "pos": [0.5, 2],
+   "description": "Zeigt die Minikarte und deckt Getarnte in der Nähe auf."
+  },
+  "feldlazarett": {
+   "name": "Feldlazarett",
+   "function": "misc",
+   "cost": {"money": 600},
+   "buildTime": 10,
+   "health": 1000,
+   "armor": "building",
+   "size": [5, 4],
+   "power": -1,
+   "keywords": {"lazarett": 5},
+   "requires": ["kaserne"],
+   "pos": [-2.5, 2],
+   "description": "Heilt Infanterie in der Nähe."
   },
   "abwehrlaser": {
    "name": "Abwehrlaser",
@@ -195,7 +223,7 @@
    "equipment": ["spaeherdrohne", "gefechtsdrohne", "raketendrohne"]
   },
   "soldat": {
-   "name": "Soldat",
+   "name": "Riflemen",
    "role": "Grundtruppe",
    "class": "infantry",
    "model": "soldat",
@@ -221,29 +249,61 @@
       "text": "Unerschütterlich"
      }
     ]
-   }
+   },
+   "description": "Reguläre Infanterie. Variante: Marines (beim General, mit „Schwimmt“)."
   },
-  "scharfschuetze": {
-   "name": "Scharfschütze",
-   "role": "Infanterie-Jäger",
+  "rangers": {
+   "name": "Rangers",
+   "role": "Panzerabwehr",
+   "class": "infantry",
+   "armor": "infantry",
+   "model": "soldat",
+   "cost": {"money": 400},
+   "buildTime": 7,
+   "health": 110,
+   "speed": 3.4,
+   "sight": 24,
+   "weapons": ["panzerfaust"],
+   "keywords": {"schnell": true, "fallschirm": true, "nachtsicht": true},
+   "description": "Spezialisierte leichte Infanterie, schnell und gut gegen Fahrzeuge."
+  },
+  "seals": {
+   "name": "Navy SEALs",
+   "role": "Elite",
    "class": "infantry",
    "model": "soldat",
-   "cost": {"money": 600},
-   "buildTime": 10,
-   "health": 90,
+   "cost": {"money": 900},
+   "buildTime": 14,
+   "health": 120,
    "armor": "infantry",
    "speed": 2.6,
    "sight": 36,
    "weapons": [
-    "scharfschuetzengewehr"
+    "scharfschuetzengewehr",
+    "sprengladung"
    ],
-   "keywords": {"tarnung": true, "fallschirm": true, "nachtsicht": true},
+   "keywords": {"tarnung": true, "schwimmt": true, "fallschirm": true, "nachtsicht": true},
    "requires": ["forschungszentrum"],
-   "equipment": ["zielfernrohr"]
+   "description": "Eliteeinheit: getarnt, schwimmt, sprengt Gebäude."
+  },
+  "pioniere": {
+   "name": "Combat Engineers",
+   "role": "Pioniere",
+   "class": "infantry",
+   "armor": "infantry",
+   "model": "soldat",
+   "cost": {"money": 350},
+   "buildTime": 8,
+   "health": 110,
+   "speed": 2.8,
+   "sight": 22,
+   "weapons": ["sturmgewehr"],
+   "keywords": {"repaired": 10, "nachtsicht": true},
+   "description": "Reparieren Fahrzeuge und Brücken, legen Minen und Sprengladungen."
   },
   "spaeher": {
-   "name": "Späher",
-   "role": "Aufklärung",
+   "name": "Humvee",
+   "role": "Späher/Transport",
    "class": "vehicle",
    "model": "spaeher",
    "cost": {"money": 700},
@@ -267,11 +327,28 @@
      {"id": "held", "name": "Held", "min": 260, "effect": [{"kind": "stat", "field": "damage", "times": 1.17},{"kind": "stat", "field": "health", "times": 1.2}]}
     ]
    },
-   "behavior": "spaeher"
+   "behavior": "spaeher",
+   "description": "Schnell und vielseitig. Ab Veteran: M-ATV."
+  },
+  "stryker": {
+   "name": "Stryker",
+   "role": "Truppentransporter",
+   "class": "vehicle",
+   "armor": "leicht",
+   "model": "spaeher",
+   "cost": {"money": 900},
+   "buildTime": 10,
+   "health": 340,
+   "speed": 8,
+   "sight": 26,
+   "weapons": ["bordkanone"],
+   "keywords": {"transport": 9, "wheel": true, "fahrtfeuer": true, "schiessscharten": true, "size": 4, "nachtsicht": true, "rauchwand": 10},
+   "equipment": ["spaeherdrohne", "gefechtsdrohne", "raketendrohne"],
+   "description": "Radpanzer mit Kanone, bringt einen ganzen Trupp nach vorn."
   },
   "kampfpanzer": {
-   "name": "Kampfpanzer",
-   "role": "Panzerbrecher",
+   "name": "M1 Abrams",
+   "role": "Kampfpanzer",
    "class": "vehicle",
    "model": "tank",
    "cost": {"money": 1200},
@@ -301,11 +378,47 @@
      }
     ]
    },
-   "behavior": "panzer"
+   "behavior": "panzer",
+   "description": "Das Rückgrat der Panzertruppe. Ab Veteran: M1A2 SEP."
+  },
+  "booker": {
+   "name": "M10 Booker",
+   "role": "Infanterie-Begleiter",
+   "class": "vehicle",
+   "armor": "schwer",
+   "model": "tank",
+   "cost": {"money": 950},
+   "buildTime": 12,
+   "health": 380,
+   "speed": 6.5,
+   "sight": 26,
+   "weapons": ["kanone_105"],
+   "keywords": {"tough": 2, "track": true, "fahrtfeuer": true, "nachtsicht": true, "rauchwand": 10},
+   "equipment": ["spaeherdrohne", "gefechtsdrohne", "raketendrohne"],
+   "behavior": "panzer",
+   "description": "Leichter Panzer, fährt mit der Infanterie und knackt Stellungen."
+  },
+  "paladin": {
+   "name": "M109 Paladin",
+   "role": "Haubitze",
+   "class": "vehicle",
+   "armor": "leicht",
+   "model": "werfer",
+   "cost": {"money": 1300},
+   "buildTime": 15,
+   "health": 300,
+   "speed": 4.5,
+   "sight": 22,
+   "weapons": ["haubitze"],
+   "keywords": {"track": true, "aufbauen": 2},
+   "equipment": ["spaeherdrohne", "gefechtsdrohne", "raketendrohne"],
+   "behavior": "artillerie",
+   "requires": ["forschungszentrum"],
+   "description": "Dauerfeuer auf große Entfernung."
   },
   "lenkwerfer": {
-   "name": "Lenkraketenwerfer",
-   "role": "Artillerie",
+   "name": "HIMARS",
+   "role": "Präzisionsschlag",
    "class": "vehicle",
    "model": "werfer",
    "cost": {"money": 1400},
@@ -329,36 +442,43 @@
      }
     ]
    },
-   "behavior": "artillerie"
+   "behavior": "artillerie",
+   "description": "Lenkraketen auf einzelne Ziele, danach schnell weg."
   },
-  "kampfdrohne": {
-   "name": "Kampfdrohne",
-   "role": "Schwarm",
+  "mlrs": {
+   "name": "M270 MLRS",
+   "role": "Flächensalve",
+   "class": "vehicle",
+   "armor": "leicht",
+   "model": "werfer",
+   "cost": {"money": 1600},
+   "buildTime": 18,
+   "health": 320,
+   "speed": 4.5,
+   "sight": 22,
+   "weapons": ["raketenbatterie"],
+   "keywords": {"track": true, "aufbauen": 3},
+   "equipment": ["spaeherdrohne", "gefechtsdrohne", "raketendrohne"],
+   "behavior": "artillerie",
+   "requires": ["forschungszentrum"],
+   "description": "Raketensalve auf eine Fläche, ideal gegen Pulks."
+  },
+  "apache": {
+   "name": "AH-64 Apache",
+   "role": "Panzerjäger",
    "class": "air",
-   "cost": {"money": 900},
-   "buildTime": 10,
-   "health": 80,
    "armor": "air",
-   "speed": 12,
-   "sight": 26,
-   "weapons": ["bordkanone"],
-   "keywords": {"flies": true, "schwarm": true, "hovers": true}
+   "cost": {"money": 1500},
+   "buildTime": 16,
+   "health": 320,
+   "speed": 13,
+   "sight": 28,
+   "weapons": ["panzerabwehrrakete", "bordkanone"],
+   "keywords": {"flies": true, "hovers": true, "nachtsicht": true},
+   "description": "Kampfhubschrauber, jagt Panzer aus der Deckung."
   },
-  "jaeger": {
-   "name": "Jagdbomber",
-   "role": "Luftschlag",
-   "class": "air",
-   "cost": {"money": 1400},
-   "buildTime": 14,
-   "health": 200,
-   "armor": "air",
-   "speed": 24,
-   "sight": 30,
-   "weapons": ["air_ground"],
-   "keywords": {"flies": true, "jet": true, "munition": 4}
-  },
-  "transporter": {
-   "name": "Transporthubschrauber",
+  "blackhawk": {
+   "name": "UH-60 Black Hawk",
    "role": "Transport",
    "class": "air",
    "cost": {"money": 900},
@@ -367,10 +487,82 @@
    "armor": "air",
    "speed": 14,
    "sight": 24,
-   "keywords": {"flies": true, "transport": 8, "hovers": true, "lazarett": 5}
+   "keywords": {"flies": true, "transport": 8, "hovers": true, "lazarett": 5},
+   "weapons": ["mg"],
+   "description": "Transporthubschrauber mit Bord-MG."
+  },
+  "chinook": {
+   "name": "CH-47 Chinook",
+   "role": "Schwerer Transport",
+   "class": "air",
+   "armor": "air",
+   "cost": {"money": 1200},
+   "buildTime": 14,
+   "health": 420,
+   "speed": 11,
+   "sight": 24,
+   "keywords": {"flies": true, "hovers": true, "transport": 16, "collects": 300},
+   "description": "Schwerer Transporthubschrauber, holt Nachschub direkt vom Lager."
+  },
+  "f16": {
+   "name": "F-16 Fighting Falcon",
+   "role": "Luftkampf",
+   "class": "air",
+   "armor": "air",
+   "cost": {"money": 1300},
+   "buildTime": 14,
+   "health": 220,
+   "speed": 26,
+   "sight": 32,
+   "weapons": ["luft_luft"],
+   "keywords": {"flies": true, "jet": true, "munition": 4},
+   "description": "Jäger, holt feindliche Flieger vom Himmel."
+  },
+  "f35": {
+   "name": "F-35 Lightning II",
+   "role": "Tarnkappe",
+   "class": "air",
+   "armor": "air",
+   "cost": {"money": 2200},
+   "buildTime": 22,
+   "health": 240,
+   "speed": 26,
+   "sight": 34,
+   "weapons": ["luft_luft", "air_ground"],
+   "keywords": {"flies": true, "jet": true, "tarnung": true, "munition": 4},
+   "requires": ["forschungszentrum"],
+   "description": "Tarnkappen-Mehrzweckjäger."
+  },
+  "a10": {
+   "name": "A-10 Thunderbolt II",
+   "role": "Erdkampf",
+   "class": "air",
+   "cost": {"money": 1400},
+   "buildTime": 14,
+   "health": 320,
+   "armor": "air",
+   "speed": 24,
+   "sight": 30,
+   "weapons": ["bordkanone", "air_ground"],
+   "keywords": {"flies": true, "jet": true, "munition": 4, "tough": 2},
+   "description": "Panzerknacker aus der Luft, steckt viel ein."
+  },
+  "reaper": {
+   "name": "MQ-9 Reaper",
+   "role": "Aufklärung + Raketen",
+   "class": "air",
+   "cost": {"money": 1100},
+   "buildTime": 10,
+   "health": 120,
+   "armor": "air",
+   "speed": 12,
+   "sight": 40,
+   "weapons": ["drohnenrakete"],
+   "keywords": {"flies": true, "hovers": true, "scout": true},
+   "description": "Kreist hoch über dem Feld, sieht weit und schießt Raketen."
   },
   "drohne_spaeh": {
-   "name": "Späherdrohne",
+   "name": "RQ-7 Shadow",
    "role": "Begleiter",
    "class": "air",
    "model": "drone",
@@ -406,21 +598,6 @@
    "sight": 26,
    "weapons": ["drohnenrakete"],
    "keywords": {"flies": true, "companion": true, "hovers": true}
-  },
-  "empbomber": {
-   "name": "EMP-Bomber",
-   "role": "Lähmen",
-   "class": "air",
-   "cost": {"money": 1600},
-   "buildTime": 16,
-   "health": 220,
-   "armor": "air",
-   "speed": 22,
-   "sight": 30,
-   "weapons": ["emp_bombe"],
-   "requires": ["forschungszentrum"],
-   "keywords": {"flies": true, "jet": true, "munition": 1},
-   "description": "Ein Überflug legt eine ganze Basis lahm."
   }
  },
  "research": {
@@ -454,8 +631,8 @@
    "researchIn": "flugfeld",
    "requires": ["flugfeld"],
    "pos": [1.5, 5],
-   "description": "Kampfdrohnen bekommen ein Energieschild.",
-   "effect": [{"kind": "keyword", "target": "unit:kampfdrohne", "keyword": "sign", "stat": 60}]
+   "description": "Die MQ-9 Reaper bekommt ein Energieschild.",
+   "effect": [{"kind": "keyword", "target": "unit:reaper", "keyword": "sign", "stat": 60}]
   },
   "satellitennetz": {
    "name": "Satellitennetz",
@@ -477,6 +654,16 @@
    "pos": [1, 1],
    "description": "General-Fähigkeit: Ein Marschflugkörper auf ein Ziel nach Wahl.",
    "effect": [{"kind": "ability", "name": "Präzisionsschlag", "cooldown": 180, "description": "400 Schaden, Fläche 4 m."}]
+  },
+  "c130": {
+   "name": "C-130 Hercules",
+   "symbol": "C",
+   "cost": {"rank": 2},
+   "time": 0,
+   "requires": ["flugfeld"],
+   "pos": [2, 3.5],
+   "description": "General-Fähigkeit: Eine C-130 wirft Fallschirmjäger oder Nachschub ab.",
+   "effect": [{"kind": "ability", "name": "C-130-Abwurf", "cooldown": 240, "description": "Fünf Riflemen per Fallschirm oder eine Kiste Nachschub."}]
   }
  },
  "generals": {
@@ -487,8 +674,8 @@
    "description": "Alles, was fliegt, ist billiger und besser. Schwere Panzer gibt es kaum.",
    "modify": {
     "units": {
-     "jaeger": {"cost": {"money": 1050}, "health": 260},
-     "kampfdrohne": {"cost": {"money": 700}},
+     "a10": {"cost": {"money": 1050}, "health": 260},
+     "reaper": {"cost": {"money": 700}},
      "kampfpanzer": {"cost": {"money": 1500}, "buildTime": 18},
      "tarnbomber": {
       "name": "Tarnkappenbomber",
@@ -503,10 +690,25 @@
       "weapons": ["bomb"],
       "keywords": {"flies": true, "jet": true, "tarnung": true},
       "requires": ["nachbrenner"]
+     },
+     "empbomber": {
+      "name": "EMP-Bomber",
+      "role": "Lähmen",
+      "class": "air",
+      "cost": {"money": 1600},
+      "buildTime": 16,
+      "health": 220,
+      "armor": "air",
+      "speed": 22,
+      "sight": 30,
+      "weapons": ["emp_bombe"],
+      "requires": ["forschungszentrum"],
+      "keywords": {"flies": true, "jet": true, "munition": 1},
+      "description": "Ein Überflug legt eine ganze Basis lahm."
      }
     },
     "building": {
-     "flugfeld": {"produces": ["kampfdrohne", "jaeger", "transporter", "tarnbomber", "empbomber"], "cost": {"money": 1400}}
+     "flugfeld": {"produces": ["apache", "blackhawk", "chinook", "f16", "f35", "a10", "reaper", "tarnbomber", "empbomber"], "cost": {"money": 1400}}
     },
     "research": {
      "nachbrenner": {
@@ -548,12 +750,12 @@
  },
  "equipment": {
   "spaeherdrohne": {
-   "name": "Späherdrohne",
+   "name": "RQ-7 Shadow",
    "symbol": "S",
    "slot": "drohne",
    "cost": {"money": 100},
    "time": 5,
-   "description": "Sieht weit und entdeckt Getarnte.",
+   "description": "Späher-Begleitdrohne: sieht weit und entdeckt Getarnte.",
    "effect": [{"kind": "companion", "unit": "drohne_spaeh"}]
   },
   "gefechtsdrohne": {
@@ -582,7 +784,7 @@
    "cost": {"money": 300},
    "time": 10,
    "onlyAt": "waffenfabrik",
-   "description": "Nur an der Waffenfabrik nachrüstbar.",
+   "description": "Nur an der Fahrzeugfabrik nachrüstbar.",
    "effect": [{"kind": "stat", "field": "health", "plus": 150},{"kind": "stat", "field": "speed", "times": 0.9}]
   },
   "zielfernrohr": {

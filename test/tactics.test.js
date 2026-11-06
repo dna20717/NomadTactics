@@ -41,7 +41,7 @@ test('Forschung wirkt auf Ziele', async () => {
   assert.equal(e.units.spaeher.health, 300);
   assert.equal(e.units.soldat.health, 120);
   assert.equal(e.units.kampfpanzer.weaponsStats[0].range, 29.9);
-  assert.equal(e.units.kampfdrohne.keywords.sign, 60);
+  assert.equal(e.units.reaper.keywords.sign, 60);
 });
 
 test('Prüfung findet kaputte Verweise und Kreise', async () => {

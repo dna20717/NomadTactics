@@ -72,5 +72,10 @@
   "targets": ["ground", "air"],
   "keywords": {"paralyzes": 10, "surface": 6}
  },
- "emp_bombe": {"name": "EMP-Bombe", "damageType": "energy", "damage": 20, "range": 4, "reload": 30, "projectile": "bomb", "targets": ["ground"], "keywords": {"paralyzes": 15, "surface": 10}}
+ "emp_bombe": {"name": "EMP-Bombe", "damageType": "energy", "damage": 20, "range": 4, "reload": 30, "projectile": "bomb", "targets": ["ground"], "keywords": {"paralyzes": 15, "surface": 10}},
+ "kanone_105": {"name": "105-mm-Kanone", "damageType": "panzerbrechend", "damage": 32, "range": 24, "reload": 2.2, "projectile": "granate", "targets": ["ground"]},
+ "panzerabwehrrakete": {"name": "Panzerabwehr-Lenkrakete", "damageType": "panzerbrechend", "damage": 55, "range": 26, "reload": 4, "salvo": 2, "projectile": "rakete", "targets": ["ground"]},
+ "luft_luft": {"name": "Luft-Luft-Raketen", "damageType": "flugabwehr", "damage": 60, "range": 32, "reload": 5, "salvo": 2, "projectile": "rakete", "targets": ["air"]},
+ "sprengladung": {"name": "Sprengladung", "damageType": "explosiv", "damage": 220, "range": 2, "reload": 15, "projectile": "bomb", "targets": ["ground"], "keywords": {"surface": 3}},
+ "granatwerfer": {"name": "Granatwerfer", "damageType": "explosiv", "damage": 22, "range": 20, "reload": 3, "projectile": "granate", "targets": ["ground"], "keywords": {"surface": 2}}
 }
