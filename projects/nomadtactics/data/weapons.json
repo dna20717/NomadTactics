@@ -89,5 +89,16 @@
   "projectile": "rakete",
   "targets": ["ground"],
   "keywords": {"surface": 4}
+ },
+ "fpv_angriff": {"name": "FPV-Angriff", "damageType": "panzerbrechend", "damage": 70, "range": 40, "reload": 12, "projectile": "rakete", "targets": ["ground"], "keywords": {"indirekt": true}},
+ "haubitze_122": {
+  "name": "122-mm-Haubitze",
+  "damageType": "explosiv",
+  "damage": 40,
+  "range": 45,
+  "reload": 4.5,
+  "projectile": "granate",
+  "targets": ["ground"],
+  "keywords": {"indirekt": true, "surface": 2, "mindestreichweite": 10}
  }
 }

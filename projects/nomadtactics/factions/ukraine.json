@@ -3,25 +3,25 @@
  "name": "Ukraine",
  "color": "#e8b923",
  "ui": {"mood": "workbench", "accent": "#e8b818"},
- "description": "Bewegliche Verteidigungsarmee. Billig, erfinderisch und schwer zu fassen. Kein Strom, dafür Tarnung, Tunnel und Schrott: Erbeutete Wracks fahren für die eigene Seite weiter, billige Drohnen jagen teure Panzer.",
+ "description": "Adaptive Warfare: GLA-DNA mit modernen Mitteln. Improvisation, Eigenentwicklungen, Freiwillige und Drohnen. Kein Strom, dafür Schrott, Tarnung und Tunnel; schweres Gerät kommt als westliche Lieferung.",
  "playstyle": "Ausweichen, zermürben, zurückschlagen",
  "resources": ["money", "schrott", "rank"],
- "start": {"money": 8000, "schrott": 200, "building": ["kommandobunker"], "units": ["arbeiter", "arbeiter", "arbeiter"]},
+ "start": {"money": 8000, "schrott": 200, "building": ["feldkommando"], "units": ["techniker", "techniker", "techniker"]},
  "building": {
-  "kommandobunker": {
-   "name": "Kommandobunker",
+  "feldkommando": {
+   "name": "Feldkommando",
    "function": "hq",
    "cost": {"money": 1500},
    "buildTime": 35,
    "health": 3500,
    "armor": "building",
    "size": [7, 7],
-   "produces": ["arbeiter"],
+   "produces": ["techniker"],
    "keywords": {"stromlos": true, "tunnel": true, "tough": 10, "abgeschirmt": true},
    "pos": [0, 0]
   },
-  "shelter": {
-   "name": "Unterschlupf",
+  "kaserne": {
+   "name": "Improvisierte Kaserne",
    "function": "production",
    "model": "kaserne",
    "cost": {"money": 400},
@@ -29,13 +29,13 @@
    "health": 1100,
    "armor": "building",
    "size": [5, 4],
-   "produces": ["kaempfer", "raketenschuetze"],
-   "requires": ["kommandobunker"],
+   "produces": ["kaempfer", "raketenschuetze", "drohnenoperatoren", "spezialeinheiten"],
+   "requires": ["feldkommando"],
    "keywords": {"stromlos": true, "garnison": 6, "abgeschirmt": true},
    "pos": [-1, 1]
   },
-  "schrottplatz": {
-   "name": "Schrottplatz",
+  "versorgungszentrum": {
+   "name": "Mobiles Versorgungszentrum",
    "function": "resource",
    "cost": {"money": 600},
    "buildTime": 12,
@@ -43,23 +43,77 @@
    "armor": "building",
    "size": [8, 6],
    "produces": ["sammler"],
-   "requires": ["kommandobunker"],
+   "requires": ["feldkommando"],
    "keywords": {"stromlos": true, "collects": 20, "abgeschirmt": true},
    "pos": [1, 1],
    "description": "Zieht langsam Schrott aus dem Boden und nimmt Wracks an."
   },
-  "workshop": {
-   "name": "Hinterhof-Werkstatt",
+  "werkstatt": {
+   "name": "Werkstatt",
    "function": "production",
    "cost": {"money": 1200, "schrott": 200},
    "buildTime": 18,
    "health": 1600,
    "armor": "building",
    "size": [8, 7],
-   "produces": ["pickup", "schrottpanzer", "raketenlaster", "fpv_drohne"],
-   "requires": ["shelter", "schrottplatz"],
+   "produces": ["pickup", "drohnentransporter"],
+   "requires": ["kaserne", "versorgungszentrum"],
    "keywords": {"stromlos": true, "abgeschirmt": true},
    "pos": [0, 2]
+  },
+  "fahrzeugdepot": {
+   "name": "Fahrzeugdepot",
+   "function": "production",
+   "cost": {"money": 1400, "schrott": 150},
+   "buildTime": 22,
+   "health": 2200,
+   "armor": "building",
+   "size": [9, 7],
+   "produces": ["kozak", "schrottpanzer", "bohdana", "gvozdika"],
+   "requires": ["werkstatt"],
+   "keywords": {"abgeschirmt": true},
+   "pos": [-1, 3]
+  },
+  "drohnenzentrum": {
+   "name": "Drohnenzentrum",
+   "function": "production",
+   "cost": {"money": 1000, "schrott": 100},
+   "buildTime": 18,
+   "health": 1200,
+   "armor": "building",
+   "size": [5, 5],
+   "produces": ["fpv_drohne", "tb2", "langstreckendrohne"],
+   "requires": ["werkstatt"],
+   "keywords": {"tarnung": true},
+   "pos": [0, 3],
+   "description": "Unauffällige Halle, aus der die Schwärme starten."
+  },
+  "kommunikationsstation": {
+   "name": "Kommunikationsstation",
+   "function": "production",
+   "cost": {"money": 1200},
+   "buildTime": 18,
+   "health": 1000,
+   "armor": "building",
+   "size": [4, 4],
+   "produces": ["mi8", "mi24", "mig29"],
+   "requires": ["kaserne"],
+   "keywords": {"scout": true},
+   "pos": [2, 2],
+   "description": "Fordert Hubschrauber und Jets von Flugplätzen im Hinterland an. Hier kommen auch die westlichen Lieferungen an."
+  },
+  "feldlazarett": {
+   "name": "Feldlazarett",
+   "function": "misc",
+   "cost": {"money": 500},
+   "buildTime": 10,
+   "health": 900,
+   "armor": "building",
+   "size": [5, 4],
+   "keywords": {"lazarett": 5},
+   "requires": ["kaserne"],
+   "pos": [-2, 1],
+   "description": "Heilt Infanterie in der Nähe."
   },
   "tunnelnetz": {
    "name": "Tunnelnetz",
@@ -70,7 +124,7 @@
    "armor": "building",
    "size": [3, 3],
    "weapons": ["sturmgewehr"],
-   "requires": ["shelter"],
+   "requires": ["kaserne"],
    "keywords": {"stromlos": true, "tunnel": true, "garnison": 10, "abgeschirmt": true, "tarnfeld": 15},
    "pos": [-2, 2]
   },
@@ -83,7 +137,7 @@
    "armor": "building",
    "size": [2, 2],
    "weapons": ["mg"],
-   "requires": ["shelter"],
+   "requires": ["kaserne"],
    "keywords": {"stromlos": true, "tarnung": true, "abgeschirmt": true},
    "pos": [-1, 2]
   },
@@ -96,7 +150,7 @@
    "armor": "building",
    "size": [2, 2],
    "weapons": ["flak"],
-   "requires": ["shelter"],
+   "requires": ["kaserne"],
    "keywords": {"stromlos": true, "abgeschirmt": true},
    "pos": [-3, 2]
   },
@@ -108,7 +162,7 @@
    "health": 1200,
    "armor": "building",
    "size": [6, 5],
-   "requires": ["workshop"],
+   "requires": ["werkstatt"],
    "keywords": {"stromlos": true, "collects": 15, "abgeschirmt": true},
    "pos": [1, 3],
    "description": "Erforscht Verbesserungen und tauscht ein wenig Geld pro Minute."
@@ -129,9 +183,9 @@
   }
  },
  "units": {
-  "arbeiter": {
-   "name": "Arbeiter",
-   "role": "Bauen",
+  "techniker": {
+   "name": "Techniker",
+   "role": "Bauen, Reparieren",
    "class": "infantry",
    "model": "soldat",
    "cost": {"money": 200},
@@ -140,8 +194,9 @@
    "armor": "infantry",
    "speed": 3,
    "sight": 18,
-   "keywords": {"builds": true, "collects": 100},
-   "squad": 1
+   "keywords": {"builds": true, "collects": 100, "repaired": 5},
+   "squad": 1,
+   "description": "Bauen, reparieren und sammeln Schrott aus Wracks."
   },
   "sammler": {
    "name": "Schrottsammler",
@@ -157,8 +212,8 @@
    "keywords": {"collects": 60, "loot": true, "wheel": true}
   },
   "kaempfer": {
-   "name": "Kämpfer",
-   "role": "Masse",
+   "name": "Territorialtruppen",
+   "role": "Grundtruppe",
    "class": "infantry",
    "model": "soldat",
    "cost": {"money": 150},
@@ -170,11 +225,12 @@
    "weapons": ["sturmgewehr"],
    "keywords": {"schwarm": true, "nachtsicht": true},
    "squad": 5,
-   "equipment": ["mg_shooter", "flammenwerfer_mann", "panzerfaust_mann", "anfuehrer", "verstaerkung"]
+   "equipment": ["mg_shooter", "flammenwerfer_mann", "panzerfaust_mann", "anfuehrer", "verstaerkung"],
+   "description": "Günstige reguläre Infanterie. Ab Veteran: Veteranen. Variante: Mechanisierte Infanterie."
   },
   "raketenschuetze": {
-   "name": "Raketenschütze",
-   "role": "Panzerjäger",
+   "name": "Panzerabwehrtrupp",
+   "role": "Panzerabwehr",
    "class": "infantry",
    "model": "soldat",
    "cost": {"money": 300},
@@ -188,9 +244,41 @@
    "equipment": ["tarnumhang", "anfuehrer"],
    "keywords": {"eingraben": true}
   },
+  "drohnenoperatoren": {
+   "name": "Drohnenoperatoren",
+   "role": "FPV-Angriff",
+   "class": "infantry",
+   "armor": "infantry",
+   "model": "soldat",
+   "cost": {"money": 450, "schrott": 30},
+   "buildTime": 8,
+   "health": 80,
+   "speed": 2.8,
+   "sight": 30,
+   "weapons": ["fpv_angriff"],
+   "keywords": {"tarnung": true, "eingraben": true},
+   "squad": 2,
+   "description": "Schicken FPV-Drohnen aus der Deckung. Brauchen Sichtkontakt (oder einen Späher)."
+  },
+  "spezialeinheiten": {
+   "name": "Spezialeinheiten",
+   "role": "Sabotage",
+   "class": "infantry",
+   "armor": "infantry",
+   "model": "soldat",
+   "cost": {"money": 800},
+   "buildTime": 12,
+   "health": 100,
+   "speed": 3.2,
+   "sight": 26,
+   "weapons": ["sturmgewehr", "sprengladung"],
+   "keywords": {"tarnung": true, "nachtsicht": true, "schwimmt": true},
+   "requires": ["schwarzmarkt"],
+   "description": "Getarnte Saboteure, sprengen Brücken und Gebäude."
+  },
   "pickup": {
-   "name": "Pickup mit MG",
-   "role": "Überfall",
+   "name": "Improvisierter Pick-up",
+   "role": "Technical",
    "class": "vehicle",
    "model": "spaeher",
    "cost": {"money": 500},
@@ -201,12 +289,46 @@
    "sight": 26,
    "weapons": ["mg"],
    "keywords": {"schnell": true, "loot": true, "transport": 5, "wheel": true, "fahrtfeuer": true, "schiessscharten": true, "size": 3, "abgeschirmt": true},
-   "equipment": ["raketenaufbau", "flakaufbau", "panzerplatten"],
-   "behavior": "spaeher"
+   "equipment": ["raketenaufbau", "flakaufbau", "panzerplatten", "aufklaerungsdrohne"],
+   "behavior": "spaeher",
+   "description": "Billig, schnell, mit allem bestückbar, was die Werkstatt hergibt."
+  },
+  "kozak": {
+   "name": "Kozak",
+   "role": "Gepanzerter Transport",
+   "class": "vehicle",
+   "armor": "leicht",
+   "model": "spaeher",
+   "cost": {"money": 700},
+   "buildTime": 9,
+   "health": 320,
+   "speed": 8.5,
+   "sight": 24,
+   "weapons": ["mg"],
+   "keywords": {"wheel": true, "transport": 8, "fahrtfeuer": true, "schiessscharten": true, "size": 4, "abgeschirmt": true},
+   "equipment": ["panzerplatten", "aufklaerungsdrohne"],
+   "description": "Geschützter Transporter. Variante: Novator."
+  },
+  "drohnentransporter": {
+   "name": "Mobiler Drohnentransporter",
+   "role": "Fahrende Drohnenbasis",
+   "class": "vehicle",
+   "armor": "leicht",
+   "model": "werfer",
+   "cost": {"money": 900, "schrott": 60},
+   "buildTime": 11,
+   "health": 260,
+   "speed": 7,
+   "sight": 30,
+   "weapons": ["fpv_angriff"],
+   "keywords": {"wheel": true, "aufbauen": 1, "scout": true, "abgeschirmt": true},
+   "equipment": ["aufklaerungsdrohne"],
+   "behavior": "artillerie",
+   "description": "Startet FPV-Schwärme, sobald er steht."
   },
   "schrottpanzer": {
-   "name": "Schrottpanzer",
-   "role": "Linie",
+   "name": "T-64BV",
+   "role": "Kampfpanzer",
    "class": "vehicle",
    "model": "daniel_tank",
    "cost": {"money": 600, "schrott": 100},
@@ -217,24 +339,85 @@
    "sight": 22,
    "weapons": ["kanone_alt"],
    "keywords": {"loot": true, "ueberrollt": true, "track": true, "abgeschirmt": true},
-   "equipment": ["zweites_rohr", "panzerplatten"],
-   "behavior": "panzer"
+   "equipment": ["zweites_rohr", "panzerplatten", "aufklaerungsdrohne"],
+   "behavior": "panzer",
+   "description": "Altes Arbeitstier, mit Schrott aufrüstbar. Ab Veteran: T-84 Oplot."
   },
-  "raketenlaster": {
-   "name": "Raketenlaster",
-   "role": "Artillerie",
+  "bohdana": {
+   "name": "2S22 Bohdana",
+   "role": "Radhaubitze",
    "class": "vehicle",
    "model": "werfer",
-   "cost": {"money": 900, "schrott": 150},
+   "cost": {"money": 1100, "schrott": 80},
    "buildTime": 12,
-   "health": 160,
+   "health": 280,
    "armor": "leicht",
    "speed": 5.5,
    "sight": 22,
-   "weapons": ["raketenbatterie"],
+   "weapons": ["haubitze"],
    "equipment": ["panzerplatten"],
    "keywords": {"wheel": true, "aufbauen": 2, "abgeschirmt": true},
-   "behavior": "artillerie"
+   "behavior": "artillerie",
+   "description": "Eigenbau-Radhaubitze: schießen und weg."
+  },
+  "gvozdika": {
+   "name": "2S1 Gvozdika",
+   "role": "Leichte Haubitze",
+   "class": "vehicle",
+   "armor": "leicht",
+   "model": "werfer",
+   "cost": {"money": 700},
+   "buildTime": 10,
+   "health": 240,
+   "speed": 5.5,
+   "sight": 22,
+   "weapons": ["haubitze_122"],
+   "keywords": {"track": true, "schwimmt": true, "aufbauen": 1, "abgeschirmt": true},
+   "equipment": ["panzerplatten"],
+   "behavior": "artillerie",
+   "description": "Leicht, billig und schwimmfähig."
+  },
+  "mi8": {
+   "name": "Mi-8",
+   "role": "Transport",
+   "class": "air",
+   "armor": "air",
+   "cost": {"money": 800},
+   "buildTime": 10,
+   "health": 320,
+   "speed": 13,
+   "sight": 24,
+   "weapons": ["mg"],
+   "keywords": {"flies": true, "hovers": true, "transport": 12},
+   "description": "Robuster Transporthubschrauber."
+  },
+  "mi24": {
+   "name": "Mi-24",
+   "role": "Kampf + Transport",
+   "class": "air",
+   "armor": "air",
+   "cost": {"money": 1300},
+   "buildTime": 14,
+   "health": 380,
+   "speed": 13,
+   "sight": 26,
+   "weapons": ["panzerabwehrrakete", "mg"],
+   "keywords": {"flies": true, "hovers": true, "transport": 6, "tough": 2},
+   "description": "Fliegender Schützenpanzer."
+  },
+  "mig29": {
+   "name": "MiG-29",
+   "role": "Mehrzweck",
+   "class": "air",
+   "armor": "air",
+   "cost": {"money": 1200},
+   "buildTime": 13,
+   "health": 220,
+   "speed": 26,
+   "sight": 30,
+   "weapons": ["luft_luft", "air_ground"],
+   "keywords": {"flies": true, "jet": true, "munition": 2},
+   "description": "Jäger für Luftkampf und Bodenangriff. Variante: Su-27 (beim General)."
   },
   "fpv_drohne": {
    "name": "FPV-Drohne",
@@ -247,8 +430,124 @@
    "speed": 18,
    "sight": 18,
    "keywords": {"flies": true, "schnell": true, "selbstzerstoerung": 250, "hovers": true},
-   "description": "Billig, schnell, fliegt ins Ziel. Ein Treffer reicht für leichte Fahrzeuge.",
+   "description": "Billig, schnell, fliegt ins Ziel. Kommt im Schwarm. Variante: Improvisierte Kampfdrohne.",
    "requires": ["schwarzmarkt"]
+  },
+  "tb2": {
+   "name": "Bayraktar TB2",
+   "role": "Bewaffnete Aufklärung",
+   "class": "air",
+   "armor": "air",
+   "cost": {"money": 1000},
+   "buildTime": 11,
+   "health": 120,
+   "speed": 12,
+   "sight": 40,
+   "weapons": ["drohnenrakete"],
+   "keywords": {"flies": true, "hovers": true, "scout": true},
+   "description": "Kreist über dem Feld und schießt Lenkraketen."
+  },
+  "langstreckendrohne": {
+   "name": "Langstreckendrohne",
+   "role": "Fernschlag",
+   "class": "air",
+   "armor": "air",
+   "cost": {"money": 900, "schrott": 80},
+   "buildTime": 12,
+   "health": 60,
+   "speed": 22,
+   "sight": 16,
+   "keywords": {"flies": true, "jet": true, "selbstzerstoerung": 600},
+   "requires": ["schwarzmarkt"],
+   "description": "Fliegt weit hinter die Front und schlägt in Gebäuden ein."
+  },
+  "leopard2": {
+   "name": "Leopard 2",
+   "role": "Kampfpanzer (Lieferung)",
+   "class": "vehicle",
+   "armor": "schwer",
+   "model": "tank",
+   "cost": {},
+   "buildTime": 0,
+   "health": 560,
+   "speed": 6,
+   "sight": 26,
+   "weapons": ["kanone_120"],
+   "keywords": {"tough": 4, "track": true, "fahrtfeuer": true, "nachtsicht": true, "rauchwand": 12, "lieferung": true},
+   "behavior": "panzer",
+   "description": "Westliche Lieferung."
+  },
+  "caesar": {
+   "name": "Caesar",
+   "role": "Radhaubitze (Lieferung)",
+   "class": "vehicle",
+   "armor": "leicht",
+   "model": "werfer",
+   "cost": {},
+   "buildTime": 0,
+   "health": 260,
+   "speed": 6,
+   "sight": 22,
+   "weapons": ["haubitze"],
+   "keywords": {"wheel": true, "aufbauen": 1, "lieferung": true},
+   "behavior": "artillerie",
+   "description": "Westliche Lieferung."
+  },
+  "himars": {
+   "name": "HIMARS",
+   "role": "Präzisionsschlag (Lieferung)",
+   "class": "vehicle",
+   "armor": "leicht",
+   "model": "werfer",
+   "cost": {},
+   "buildTime": 0,
+   "health": 220,
+   "speed": 5,
+   "sight": 24,
+   "weapons": ["lenkrakete"],
+   "keywords": {"wheel": true, "aufbauen": 3, "lieferung": true},
+   "behavior": "artillerie",
+   "description": "Westliche Lieferung."
+  },
+  "uh60": {
+   "name": "UH-60 Black Hawk",
+   "role": "Transport (Lieferung)",
+   "class": "air",
+   "armor": "air",
+   "cost": {},
+   "buildTime": 0,
+   "health": 300,
+   "speed": 14,
+   "sight": 24,
+   "weapons": ["mg"],
+   "keywords": {"flies": true, "hovers": true, "transport": 8, "lieferung": true},
+   "description": "Westliche Lieferung."
+  },
+  "f16": {
+   "name": "F-16",
+   "role": "Luftkampf (Lieferung)",
+   "class": "air",
+   "armor": "air",
+   "cost": {},
+   "buildTime": 0,
+   "health": 220,
+   "speed": 26,
+   "sight": 32,
+   "weapons": ["luft_luft", "air_ground"],
+   "keywords": {"flies": true, "jet": true, "munition": 4, "lieferung": true},
+   "description": "Westliche Lieferung."
+  },
+  "drohne_aufklaerung": {
+   "name": "Aufklärungsdrohne",
+   "role": "Begleiter",
+   "class": "air",
+   "model": "drone",
+   "armor": "air",
+   "cost": {},
+   "health": 30,
+   "speed": 12,
+   "sight": 40,
+   "keywords": {"flies": true, "companion": true, "scout": true, "hovers": true}
   }
  },
  "research": {
@@ -290,8 +589,8 @@
    "symbol": "F",
    "cost": {"money": 900},
    "time": 20,
-   "researchIn": "shelter",
-   "requires": ["shelter"],
+   "researchIn": "kaserne",
+   "requires": ["kaserne"],
    "pos": [-2, 3],
    "description": "Infanterie 20 % mehr Leben, Veteran.",
    "effect": [{"kind": "stat", "target": "class:infantry", "field": "health", "times": 1.2},{"kind": "keyword", "target": "class:infantry", "keyword": "veteran"}]
@@ -301,10 +600,22 @@
    "symbol": "!",
    "cost": {"rank": 2},
    "time": 0,
-   "requires": ["kommandobunker"],
+   "requires": ["feldkommando"],
    "pos": [2, 1],
    "description": "General-Fähigkeit: 10 Kämpfer tauchen aus dem Boden auf.",
    "effect": [{"kind": "ability", "name": "Hinterhalt", "cooldown": 150, "description": "10 getarnte Kämpfer an einem erkundeten Ort."}]
+  },
+  "westliche_lieferung": {
+   "name": "Westliche Lieferung",
+   "symbol": "W",
+   "cost": {"rank": 2},
+   "time": 0,
+   "requires": [
+    "kommunikationsstation"
+   ],
+   "pos": [2, 3],
+   "description": "General-Fähigkeit: Eine Lieferung kommt an der Kommunikationsstation an (Leopard 2, Caesar, HIMARS, UH-60 oder F-16).",
+   "effect": [{"kind": "ability", "name": "Westliche Lieferung", "cooldown": 240, "description": "Wähle eine Lieferung: Leopard 2, Caesar, HIMARS, UH-60 oder F-16."}]
   }
  },
  "generals": {
@@ -334,7 +645,7 @@
      }
     },
     "building": {
-     "workshop": {"produces": ["pickup", "schrottpanzer", "raketenlaster", "koloss"]}
+     "fahrzeugdepot": {"produces": ["kozak", "schrottpanzer", "bohdana", "gvozdika", "koloss"]}
     }
    },
    "without": ["fpv_drohne"]
@@ -365,7 +676,7 @@
     },
     "building": {
      "tunnelnetz": {"cost": {"money": 480}, "buildTime": 8, "keywords": {"stromlos": true, "tunnel": true, "garnison": 10, "abgeschirmt": true, "tarnfeld": 30}},
-     "shelter": {"produces": ["kaempfer", "raketenschuetze", "saboteur"]}
+     "kaserne": {"produces": ["kaempfer", "raketenschuetze", "drohnenoperatoren", "spezialeinheiten", "saboteur"]}
     },
     "equipment": {
      "tarnumhang": {"cost": {"money": 60}}
@@ -455,7 +766,7 @@
    "slot": "aufbau",
    "cost": {"money": 200, "schrott": 100},
    "time": 12,
-   "onlyAt": "workshop",
+   "onlyAt": "werkstatt",
    "description": "Noch eine alte Kanone aufs Dach geschweißt.",
    "effect": [{"kind": "weapon", "weapon": "kanone_alt"}]
   },
@@ -467,6 +778,15 @@
    "time": 8,
    "description": "Mehr Leben, etwas langsamer.",
    "effect": [{"kind": "stat", "field": "health", "plus": 80},{"kind": "stat", "field": "speed", "times": 0.9}]
+  },
+  "aufklaerungsdrohne": {
+   "name": "Aufklärungsdrohne",
+   "symbol": "A",
+   "slot": "drohne",
+   "cost": {"money": 80},
+   "time": 4,
+   "description": "Kleine Drohne über dem Fahrzeug: sieht weit und entdeckt Getarnte.",
+   "effect": [{"kind": "companion", "unit": "drohne_aufklaerung"}]
   }
  }
 }

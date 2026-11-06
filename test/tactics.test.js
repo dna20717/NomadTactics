@@ -26,7 +26,7 @@ test('General: ändern, neu, ohne samt Verweisen', async () => {
   assert.equal(e.units.schrottpanzer.cost.money, 750);
   assert.ok(e.units.koloss);
   assert.equal(e.units.fpv_drohne, undefined);
-  assert.ok(!e.building.workshop.produces.includes('fpv_drohne'));
+  assert.ok(!e.building.drohnenzentrum.produces.includes('fpv_drohne'));
   assert.equal(ukraine.units.schrottpanzer.health, 380, 'Basis bleibt unverändert');
   assert.equal(origin(ukraine, 'brannick', 'units', 'schrottpanzer', 'health'), 'general');
   assert.equal(origin(ukraine, 'brannick', 'units', 'schrottpanzer', 'speed'), 'basis');

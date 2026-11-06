@@ -62,5 +62,6 @@
   "description": "Wie EMP: Getroffene Fahrzeuge, Flieger und Gebäude fallen X Sekunden aus (keine Bewegung, kein Feuer, kein Strom). Infanterie bleibt unberührt."
  },
  "abgeschirmt": {"name": "Abgeschirmt", "for": ["unit", "building"], "description": "Lässt sich nicht lähmen. Alte Technik ohne viel Elektronik oder gehärtete Systeme."},
- "tarnfeld": {"name": "Tarnfeld", "number": true, "for": ["unit", "building"], "description": "Tarnt alle Verbündeten im Umkreis von X Metern, solange sie still stehen."}
+ "tarnfeld": {"name": "Tarnfeld", "number": true, "for": ["unit", "building"], "description": "Tarnt alle Verbündeten im Umkreis von X Metern, solange sie still stehen."},
+ "lieferung": {"name": "Lieferung", "description": "Wird nicht gebaut, sondern geliefert (Westliche Hilfe, per General-Fähigkeit).", "for": ["unit"]}
 }

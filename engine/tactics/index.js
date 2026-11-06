@@ -302,6 +302,7 @@ export function validateTactics(p) {
         if (u.model && !M[u.model]) report('warning', place, `unbekanntes Modell „${u.model}“`);
         for (const w of u.weapons || []) if (!W[w]) report('error', place, `unbekannte Waffe „${w}“`);
         if (u.keywords?.companion) { if (!companionUsed.has(id)) report('hint', place, 'Begleiter, den keine Ausrüstung mitbringt'); }
+        else if (u.keywords?.lieferung) { if (produces.has(id)) report('hint', place, 'Lieferung, wird aber auch gebaut'); }
         else if (!produces.has(id)) report('warning', place, 'wird in keinem Gebäude gebaut');
         if (!(u.health > 0)) report('error', place, 'braucht Leben');
         costVerify(place, u.cost); requiresVerify(place, u.requires); keywordVerify(place, u.keywords, 'unit');
