@@ -188,3 +188,29 @@ body.tk { background: var(--ui-bg); color: var(--ui-text); font-family: var(--ui
 .tk-ladder-tier .chevrons-box { color: #e8b23a; }
 .tk-ladder-tier small { margin-top: 12px; color: var(--ui-text2); font-size: 11px; }
 .tk-std { color: var(--ui-text3); font-style: italic; }
+
+/* SPIELREGELN › Verhalten (06.11.) */
+.tk-mind { display: flex; flex-direction: column; gap: 8px; margin: 8px 0 4px; }
+.tk-mind-step { display: grid; grid-template-columns: 26px 26px 1fr; gap: 10px; align-items: start; padding: 10px 12px; border-radius: var(--ui-r-button); background: var(--ui-field); border: 1px solid var(--ui-border); }
+.tk-mind-step b { font-size: var(--ui-gr-l, 15px); }
+.tk-mind-step p { margin: 4px 0 6px; }
+.tk-mind-n { width: 24px; height: 24px; border-radius: 50%; background: var(--ui-acc-soft); color: var(--ui-acc-line); display: grid; place-items: center; font-weight: 700; font-size: 12px; }
+.tk-mind-ic { color: var(--ui-acc-line); display: grid; place-items: center; height: 24px; }
+.tk-who td, .tk-who th { padding: 4px 8px; text-align: left; }
+.tk-who .tk-std { color: var(--ui-text3); }
+.tk-linkish { background: none; border: 0; padding: 0; color: var(--ui-text); cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; font: inherit; }
+.tk-linkish:hover { color: var(--ui-acc-line); }
+.tk-probe-table { width: 100%; border-collapse: collapse; }
+.tk-probe-table th { font-size: 11px; font-weight: 600; color: var(--ui-text2); text-align: left; padding: 4px 6px; white-space: nowrap; }
+.tk-probe-table td { padding: 3px 6px; border-top: 1px solid var(--ui-border); }
+.tk-probe-table .tk-num { text-align: right; font-variant-numeric: tabular-nums; }
+.tk-probe-table tr.tk-best td { background: var(--ui-acc-soft); }
+.tk-probe-table tr.tk-dim td { opacity: 0.5; }
+.tk-pill { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 99px; background: var(--ui-acc); color: var(--ui-bg); font-size: 11px; font-weight: 700; white-space: nowrap; }
+.tk-icons { display: flex; flex-wrap: wrap; gap: 4px; }
+.tk-weight-help { margin: -2px 0 6px; }
+.tk-probe-scroll { overflow-x: auto; }
+.tk-probe-table th small { display: block; font-weight: 400; color: var(--ui-text3); }
+.tk-probe-table .ed-choice { max-width: 148px; }
+.tk-probe-table input.ed-field.small { width: 60px !important; padding-left: 6px; padding-right: 2px; }
+.tk-probe-table td, .tk-probe-table th { padding-left: 4px; padding-right: 4px; }

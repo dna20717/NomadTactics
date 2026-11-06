@@ -13,6 +13,8 @@ export async function loadSkirmish(json, choice = SKIRMISH) {
     json('data/world.json'), json(`maps/${choice.map}.json`), json('data/modes.json'),
   ]);
   const setup = { faction, weapons, combat, world, mapDef, mode: modes[choice.mode] || {} };
+  // behaviour of units without orders: part of the simulation, so part of the data fingerprint
+  try { setup.behavior = await json('data/behavior.json'); } catch { setup.behavior = null; }
   // models are only for the view (not part of the data fingerprint)
   try { setup.models = await json('data/models.json'); } catch { setup.models = {}; }
   try { setup.life = await json('data/life.json'); } catch { setup.life = null; }   // liveliness profiles (optics)
@@ -27,7 +29,7 @@ export async function loadSkirmish(json, choice = SKIRMISH) {
 // Short fingerprint of the game data: different numbers = different data = guaranteed desync
 export function dataVersion(setup) {
   const h = hasher();
-  const text = JSON.stringify([setup.faction, setup.weapons, setup.combat, setup.world, setup.mapDef, setup.mode]);
+  const text = JSON.stringify([setup.faction, setup.weapons, setup.combat, setup.world, setup.mapDef, setup.mode, setup.behavior || null]);
   for (let i = 0; i < text.length; i++) h.mix(text.charCodeAt(i));
   return h.text();
 }

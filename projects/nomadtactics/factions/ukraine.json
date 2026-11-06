@@ -201,7 +201,8 @@
    "sight": 26,
    "weapons": ["mg"],
    "keywords": {"schnell": true, "loot": true, "transport": 5, "wheel": true, "fahrtfeuer": true, "schiessscharten": true, "size": 3, "abgeschirmt": true},
-   "equipment": ["raketenaufbau", "flakaufbau", "panzerplatten"]
+   "equipment": ["raketenaufbau", "flakaufbau", "panzerplatten"],
+   "behavior": "spaeher"
   },
   "schrottpanzer": {
    "name": "Schrottpanzer",
@@ -216,7 +217,8 @@
    "sight": 22,
    "weapons": ["kanone_alt"],
    "keywords": {"loot": true, "ueberrollt": true, "track": true, "abgeschirmt": true},
-   "equipment": ["zweites_rohr", "panzerplatten"]
+   "equipment": ["zweites_rohr", "panzerplatten"],
+   "behavior": "panzer"
   },
   "raketenlaster": {
    "name": "Raketenlaster",
@@ -231,7 +233,8 @@
    "sight": 22,
    "weapons": ["raketenbatterie"],
    "equipment": ["panzerplatten"],
-   "keywords": {"wheel": true, "aufbauen": 2, "abgeschirmt": true}
+   "keywords": {"wheel": true, "aufbauen": 2, "abgeschirmt": true},
+   "behavior": "artillerie"
   },
   "fpv_drohne": {
    "name": "FPV-Drohne",

@@ -15,11 +15,18 @@
 // combat drone). Drones are units of their own (air, never commanded), hover around their host, shoot what the
 // host shoots, repair it (keyword repaired) or lend it their sight (keyword scout). Only weapons with
 // targets: air can hit them; when the host dies they crash.
+//
+// Behaviour without orders (06.11., data/behavior.json, engine/tactics/behavior.js): an order always beats the
+// unit's own will. Without one, the unit's profile and stance decide: whom to shoot (target weights), how far to
+// chase and whether to come back (stance), taking cover, pulling back to the pad (stance „Vorsichtig“),
+// running over enemy infantry and jumping aside, leaving the impact point of artillery.
+//   { kind: 'stance', ids, stance }  set the stance (id from behavior.json › stances)
 
 import { sin, cos, angleOf, angleDiff, root, whole, Random, hasher } from './fixed.js';
 import { MM, buildMap, stepAllowed } from './map.js';
 import { FlowCache, FAR, NEIGHBOURS, nearestOpen } from './flowfield.js';
 import { movementTypes } from './world.js';
+import { compileStances, compileBehavior, targetParts, targetScore } from './behavior.js';
 
 export const TICKS_PER_SECOND = 20;
 // Alone in the room: a practice opponent with its own landing pad. It gets waves like a player,
@@ -51,6 +58,7 @@ const LINE_MAX = 160000;                  // straight to the own slot when the w
 // ---------- compile game data into integer types (once per match, not part of the state) ----------
 export function compileTypes(setup) {
   const { faction, weapons = {}, combat = {}, world = {}, mode = {} } = setup;
+  const stances = compileStances(setup.behavior);
   const table = {};
   for (const [dt, row] of Object.entries(combat.table || {})) {
     table[dt] = {};
@@ -79,6 +87,7 @@ export function compileTypes(setup) {
       air: air ? 1 : 0,
       repair: air ? whole((typeof kw.repaired === 'number' ? kw.repaired : 0) * 100 / TICKS_PER_SECOND) : 0,
       scout: air && kw.scout ? 1 : 0,
+      beh: compileBehavior(setup.behavior, u, stances, TICKS_PER_SECOND),
     });
     if (air) Object.assign(types[id], { radius: 700, body: 700, core: 0, movement: 'air', turn: 24 });
   }
@@ -95,8 +104,9 @@ export function compileTypes(setup) {
   add(padId, {
     id: padId, name: pad.name, cls: 'building', armor: pad.armor || 'building', model: pad.model, building: true,
     hp: whole((pad.health || 3000) * 100), speed: 0, sight: 0, radius: whole(((pad.size || [12])[0]) * MM / 2), turn: 0, tough: 0, weapon: null,
+    beh: compileBehavior(null, { class: 'building' }, stances, TICKS_PER_SECOND),
   });
-  return { types, order, table, pad: padId, loadouts };
+  return { types, order, table, pad: padId, loadouts, stances };
 }
 
 function compileWeapon(w) {
@@ -125,7 +135,7 @@ export class Battle {
     this.map = setup.map.grounds ? setup.map : buildMap(setup.map, this.world);
     this.mode = setup.mode || {};
     const c = compileTypes(setup);
-    this.types = c.types; this.typeOrder = c.order; this.table = c.table; this.padType = c.pad; this.loadouts = c.loadouts;
+    this.types = c.types; this.typeOrder = c.order; this.table = c.table; this.padType = c.pad; this.loadouts = c.loadouts; this.stances = c.stances;
     this.issued = {};            // loadouts handed out per seat and unit type (turn order)
     this.flow = new FlowCache(this.map, this.world);
     this.random = new Random(seed);
@@ -176,6 +186,8 @@ export class Battle {
       cd: 0, salvo: 0, gap: 0, tgt: 0,
       order: 0, gx: x, gy: y, fkey: -1, best: FAR, since: 0, ax: x, ay: y, moved: 0,
       grp: 0, face: -1, direct: 0, gd: 0, host: 0, slot: 0, eye: 0,
+      // behaviour: stance (index into this.stances), pulled back once, took cover once, dodging (ticks, heading), crushed
+      st: t.beh.stance, ret: 0, cv: 0, dodge: 0, dh: 0, crushed: 0,
     };
     this.units.push(u); this.byId.set(u.id, u);
     return u;
@@ -197,6 +209,12 @@ export class Battle {
       if (u && u.seat === seat && !this.types[u.type].building && !this.types[u.type].air && !own.includes(u)) own.push(u);
     }
     if (!own.length) return;
+    if (b.kind === 'stance') {
+      const i = this.stances.ids.indexOf(String(b.stance));
+      if (i >= 0) for (const u of own) u.st = i;
+      return;
+    }
+    for (const u of own) u.dodge = 0;   // an order beats the own will
     if (b.kind === 'halt') { for (const u of own) { this.stop(u); u.face = -1; } return; }
     if (b.kind === 'attack') {
       const target = this.byId.get(b.target | 0);
@@ -250,7 +268,7 @@ export class Battle {
         [gx, gy] = this.slotNear(t, gx, gy, k, px, py);
         u.order = 1; u.gx = gx; u.gy = gy; u.tgt = 0;
         u.fkey = nearestOpen(this.map, this.flow.cost(t.movement), k);
-        u.best = FAR; u.since = 0; u.grp = g.id; u.face = dir; u.direct = 0; u.gd = FAR;
+        u.best = FAR; u.since = 0; u.grp = g.id; u.face = dir; u.direct = 0; u.gd = FAR; u.cv = 0;
       });
     }
     return (rows - 1) * F.gapY + F.depth;
@@ -316,6 +334,7 @@ export class Battle {
       if (t.building || u.hp <= 0) continue;
       u.moved = 0;
       if (t.air) { this.drone(u, t); continue; }
+      this.mind(u, t);
       if (t.weapon) this.aim(u, t);
       this.move(u, t);
     }
@@ -460,59 +479,173 @@ export class Battle {
   }
 
   // ----- choose a target -----
+  // Rated by the unit's behaviour profile (target weights, behavior.js): counter, threat, finish, near, buildings.
+  // The current target is kept while it stays in reach; every 2 s the unit looks again and switches only to a
+  // clearly better one (more than 10 % higher score).
   aim(u, t) {
     const cur = u.tgt ? this.byId.get(u.tgt) : null;
     if (u.order === 2) {
       if (cur && cur.hp > 0) return;
       this.stop(u); // target gone
     }
+    const S = this.stances.list[u.st] || this.stances.list[0];
+    if (!S.fire && !t.air) { u.tgt = 0; u.eye = 0; return; }   // hold fire: only on order
+    let keepCur = false;
     if (cur && cur.hp > 0) {
       const dx = cur.x - u.x, dy = cur.y - u.y, d = root(dx * dx + dy * dy);
       const keep = u.order === 1 ? this.range(u, t, cur) : (u.eye > t.sight ? u.eye : t.sight) + this.types[cur.type].radius;
-      if (d <= keep) return;
+      if (d <= keep) {
+        if ((this.tick + u.id) % 40 !== 0) return;
+        keepCur = true;
+      }
     }
-    u.tgt = 0;
-    if ((this.tick + u.id) % 8 !== 0 && !cur) return; // look around every 8 steps, staggered
+    if (!keepCur) {
+      if (u.tgt && u.order === 0 && !S.returns) { u.ax = u.x; u.ay = u.y; }   // aggressive: stays where the fight ended
+      u.tgt = 0;
+      if ((this.tick + u.id) % 8 !== 0 && !cur) return; // look around every 8 steps, staggered
+    }
     const reach = u.order === 1 ? t.weapon.range + 3000 : (u.eye > t.sight ? u.eye : t.sight);
     u.eye = 0; // a scout drone renews it every step
-    let best = null, bestScore = FAR;
+    const W = t.beh.weights, my = t.weapon.damageType;
+    let best = null, bestScore = 0, bestD = FAR, curScore = null;
     this.around(u.x, u.y, reach + 8000, (e) => {
       if (e.seat === u.seat || e.hp <= 0) return;
       const et = this.types[e.type];
       if (et.air ? !t.weapon.air : !t.weapon.ground) return;
-      const dx = e.x - u.x, dy = e.y - u.y, d = root(dx * dx + dy * dy) - et.radius;
+      const dx = e.x - u.x, dy = e.y - u.y, d0 = root(dx * dx + dy * dy) - et.radius, d = d0 < 0 ? 0 : d0;
+      if (d > reach && e !== cur) return;
+      const score = targetScore(W, targetParts({
+        myFactor: this.table[my]?.[et.armor] ?? 100,
+        itsFactor: et.weapon ? (this.table[et.weapon.damageType]?.[t.armor] ?? 100) : 0,
+        shootsMe: e.tgt === u.id, hpPct: Math.trunc(e.hp * 100 / et.hp), distance: d, reach, building: et.building,
+      }));
+      if (e === cur) curScore = score;
       if (d > reach) return;
-      const score = d + (et.building ? 30000 : 0);
-      if (score < bestScore || (score === bestScore && best && e.id < best.id)) { best = e; bestScore = score; }
+      if (!best || score > bestScore || (score === bestScore && (d < bestD || (d === bestD && e.id < best.id)))) { best = e; bestScore = score; bestD = d; }
     });
-    if (best) u.tgt = best.id;
+    if (keepCur && curScore !== null) {
+      const margin = Math.trunc((curScore < 0 ? -curScore : curScore) / 10);
+      if (best === cur || bestScore <= curScore + margin) return;
+    }
+    if (best) {
+      const first = !u.tgt;
+      u.tgt = best.id;
+      if (first && u.order === 0) this.takeCover(u, t, S);
+    }
+  }
+
+  // ----- the unit's own will (behaviour profile and stance) -----
+  mind(u, t) {
+    const B = t.beh, S = this.stances.list[u.st] || this.stances.list[0];
+    // „Vorsichtig“: below the profile's threshold pull back to the own landing pad, once
+    if (S.retreat && !u.ret && u.hp * 100 < t.hp * B.retreatAt) {
+      const pad = this.units.find((p) => p.seat === u.seat && p.type === this.padType && p.hp > 0);
+      u.ret = 1;
+      if (pad) {
+        const [gx, gy] = this.freeSpot(pad, t, 8 + (u.id % 16));
+        u.order = 1; u.gx = gx; u.gy = gy; u.grp = 0; u.face = -1; u.direct = 0; u.gd = FAR; u.best = FAR; u.since = 0; u.tgt = 0;
+        u.fkey = nearestOpen(this.map, this.flow.cost(t.movement), this.cellOf(gx, gy));
+        this.events.push({ kind: 'retreat', id: u.id, seat: u.seat, x: u.x, y: u.y });
+      }
+    }
+    if (u.dodge > 0 || !S.dodges) return;   // dodging already, or a stance that never gives way („Stellung halten“)
+    // leave the impact point of artillery that is on its way (only shells that fly to a spot, not homing ones)
+    if (B.dodgeArtillery && (this.tick + u.id) % 4 === 0) {
+      for (const p of this.projectiles) {
+        if (!p.indirect || p.seat === u.seat || p.t < 3) continue;
+        const dx = u.x - p.x, dy = u.y - p.y, r = p.splash + t.radius + 1500;
+        if (dx > r || dx < -r || dy > r || dy < -r || dx * dx + dy * dy > r * r) continue;
+        u.dodge = p.t + 4 < 40 ? p.t + 4 : 40;
+        u.dh = dx === 0 && dy === 0 ? (u.id * 37) & 255 : angleOf(dx, dy);
+        return;
+      }
+    }
+    // jump aside when an enemy vehicle that crushes comes straight at me (noticed after the reaction time)
+    if (B.dodges && (this.tick + u.id) % B.reaction === 0) {
+      let hit = null, hitF = FAR, hitL = 0;
+      this.around(u.x, u.y, 14000, (e) => {
+        if (e.seat === u.seat || e.hp <= 0 || !e.moved) return;
+        const te = this.types[e.type];
+        if (!te.beh.crushes || te.cls === 'infantry' || te.air || te.building) return;
+        const c = cos(e.h), sn = sin(e.h), dx = u.x - e.x, dy = u.y - e.y;
+        const f = Math.trunc((dx * c + dy * sn) / 1024), l = Math.trunc((dy * c - dx * sn) / 1024);
+        if (f <= 0 || f > te.body + te.core + 9000) return;
+        if ((l < 0 ? -l : l) > te.body + t.body + 1200) return;
+        if (f < hitF || (f === hitF && hit && e.id < hit.id)) { hit = e; hitF = f; hitL = l; }
+      });
+      if (hit) { u.dodge = 20; u.dh = (hit.h + (hitL >= 0 ? 64 : -64)) & 255; }
+    }
+  }
+
+  // infantry (profile cover.seek) runs into the nearest cover within the radius when a fight starts
+  takeCover(u, t, S) {
+    const B = t.beh;
+    if (!B.seek || u.cv || !S.chase || !B.coverRadius) return;
+    u.cv = 1;
+    const cov = this.coverPct[t.movement];
+    if (!cov) return;
+    const k0 = this.cellOf(u.x, u.y);
+    if (cov[this.map.ground[k0]] > 0) return;   // already in cover
+    const n = this.map.n, cell = this.map.cell, R = Math.trunc(B.coverRadius / cell) + 1, i0 = k0 % n, j0 = (k0 - i0) / n;
+    let best = -1, bestQ = FAR;
+    for (let dj = -R; dj <= R; dj++) for (let di = -R; di <= R; di++) {
+      const i = i0 + di, j = j0 + dj;
+      if (i < 0 || j < 0 || i >= n || j >= n) continue;
+      const k = j * n + i, q = (di * di + dj * dj) * cell * cell;
+      if (q > B.coverRadius * B.coverRadius || !(cov[this.map.ground[k]] > 0) || !this.passable(t, k) || this.map.level[k] !== this.map.level[k0]) continue;
+      if (q < bestQ) { bestQ = q; best = k; }
+    }
+    if (best < 0) return;
+    const bi = best % n, bj = (best - bi) / n;
+    u.order = 1; u.gx = bi * cell + (cell >> 1); u.gy = bj * cell + (cell >> 1); u.grp = 0; u.face = -1; u.direct = 0; u.gd = FAR; u.best = FAR; u.since = 0;
+    u.fkey = nearestOpen(this.map, this.flow.cost(t.movement), best);
   }
 
   // ----- movement -----
   move(u, t) {
     if (t.speed === 0) return;
+    if (u.dodge > 0) {   // jumping aside / out of an impact point: quick steps, nothing else
+      u.dodge--;
+      const k = this.cellOf(u.x, u.y), pct = this.speedPct[t.movement][this.map.ground[k]];
+      const s = Math.trunc(t.speed * 2 * (pct > 0 ? pct : 0) / 100);   // sprint
+      if (s > 0 && this.place(u, t, u.x + Math.trunc(cos(u.dh) * s / 1024), u.y + Math.trunc(sin(u.dh) * s / 1024))) { u.h = u.dh; u.moved = 1; }
+      return;
+    }
+    const S = this.stances.list[u.st] || this.stances.list[0];
     let goalX, goalY, field = -1, arrive = Math.max(t.radius, t.speed * 2);
     if (u.order === 2) {
       const e = this.byId.get(u.tgt);
       if (!e) return;
       const dx = e.x - u.x, dy = e.y - u.y, d = root(dx * dx + dy * dy);
-      if (d <= this.range(u, t, e) - 1500) return; // in range: stand and shoot
+      if (d <= this.range(u, t, e) - 1500 && !this.runsOver(t, e)) return; // in range: stand and shoot
       goalX = e.x; goalY = e.y; arrive = 0;
       if (u.fkey < 0 || (this.tick + u.id) % 20 === 0) u.fkey = nearestOpen(this.map, this.flow.cost(t.movement), this.cellOf(e.x, e.y));
       field = u.fkey;
     } else if (u.order === 1) {
       goalX = u.gx; goalY = u.gy; field = u.fkey;
     } else {
-      // idle: chase what is in sight a little, then hold the new spot
+      // idle: chase what is in sight as far as the stance allows (leash = sight × chase %), then hold the new
+      // spot (aggressive) or go back to the old one (stances with „returns“)
       const e = u.tgt ? this.byId.get(u.tgt) : null;
-      if (!e) { this.turnTo(u, t); return; }
-      const dx = e.x - u.x, dy = e.y - u.y, d = root(dx * dx + dy * dy);
-      if (d <= this.range(u, t, e) - 1500) return;
-      const lx = u.x - u.ax, ly = u.y - u.ay;
-      if (root(lx * lx + ly * ly) > t.sight) return; // leash
-      goalX = e.x; goalY = e.y; arrive = 0;
-      if (u.fkey < 0 || (this.tick + u.id) % 20 === 0) u.fkey = nearestOpen(this.map, this.flow.cost(t.movement), this.cellOf(e.x, e.y));
-      field = u.fkey;
+      const lx = u.x - u.ax, ly = u.y - u.ay, away = root(lx * lx + ly * ly);
+      const home = () => {
+        if (!S.returns || away <= 3000) return false;
+        goalX = u.ax; goalY = u.ay; arrive = 1500;
+        field = nearestOpen(this.map, this.flow.cost(t.movement), this.cellOf(u.ax, u.ay));
+        return true;
+      };
+      if (!e) { if (!home()) { this.turnTo(u, t); return; } }
+      else {
+        const dx = e.x - u.x, dy = e.y - u.y, d = root(dx * dx + dy * dy);
+        if (d <= this.range(u, t, e) - 1500 && !(S.chase && this.runsOver(t, e))) return;
+        if (u.cv && t.beh.seek && this.coverPct[t.movement]?.[this.map.ground[this.cellOf(u.x, u.y)]] > 0) return;   // stays in cover
+        if (!S.chase || away > Math.trunc(t.sight * S.chase / 100)) { if (!home()) return; } // leash
+        else {
+          goalX = e.x; goalY = e.y; arrive = 0;
+          if (u.fkey < 0 || (this.tick + u.id) % 20 === 0) u.fkey = nearestOpen(this.map, this.flow.cost(t.movement), this.cellOf(e.x, e.y));
+          field = u.fkey;
+        }
+      }
     }
     const gx = goalX - u.x, gy = goalY - u.y;
     const gd = root(gx * gx + gy * gy);
@@ -568,6 +701,13 @@ export class Battle {
     const nx = u.x + Math.trunc(cos(u.h) * s / 1024), ny = u.y + Math.trunc(sin(u.h) * s / 1024);
     this.place(u, t, nx, ny);
     u.moved = 1;
+  }
+
+  // a vehicle that crushes drives right into enemy infantry instead of stopping at weapon range (Generals)
+  runsOver(t, e) {
+    if (!t.beh.crushes || t.cls === 'infantry' || t.air) return false;
+    const te = this.types[e.type];
+    return te.cls === 'infantry' && !te.air;
   }
 
   // standing without anything to do: turn to the direction of the last march (formation faces forward)
@@ -653,6 +793,11 @@ export class Battle {
             if (wq < 0 || q < wq) { wq = q; wx = ex; wy = ey; }
           }
           if (wq >= min * min) return;
+          // a moving enemy vehicle that crushes runs infantry over
+          if (a.seat !== b.seat) {
+            if (a.moved && ta.beh.crushes && ta.cls !== 'infantry' && tb.cls === 'infantry') { b.hp = 0; b.crushed = 1; return; }
+            if (b.moved && tb.beh.crushes && tb.cls !== 'infantry' && ta.cls === 'infantry') { a.hp = 0; a.crushed = 1; return; }
+          }
           const d = root(wq);
           const deep = Math.trunc((min - d) / 2) + 1;
           let nx, ny;
@@ -724,7 +869,7 @@ export class Battle {
     if (d <= 0) return;
     v.hp -= d;
     // hit from out of sight: idle units turn towards the shooter
-    if (!v.tgt && !t.building && !t.air && v.order === 0 && p.src) v.tgt = p.src;
+    if (!v.tgt && !t.building && !t.air && v.order === 0 && p.src && (this.stances.list[v.st] || this.stances.list[0]).fire) v.tgt = p.src;
   }
 
   cleanup() {
@@ -733,7 +878,7 @@ export class Battle {
       for (const u of this.units) {
         if (u.hp > 0) { alive.push(u); continue; }
         this.byId.delete(u.id);
-        this.events.push({ kind: 'dead', id: u.id, seat: u.seat, type: u.type, x: u.x, y: u.y, h: u.h });
+        this.events.push({ kind: 'dead', id: u.id, seat: u.seat, type: u.type, x: u.x, y: u.y, h: u.h, crushed: u.crushed });
       }
       this.units = alive;
     }
@@ -754,6 +899,7 @@ export class Battle {
       h.mix(u.id); h.mix(u.seat); h.mix(this.types[u.type].index); h.mix(u.x); h.mix(u.y); h.mix(u.h); h.mix(u.hp);
       h.mix(u.cd); h.mix(u.salvo); h.mix(u.tgt); h.mix(u.order); h.mix(u.gx); h.mix(u.gy); h.mix(u.fkey);
       h.mix(u.grp); h.mix(u.face); h.mix(u.direct); h.mix(u.host); h.mix(u.eye);
+      h.mix(u.st); h.mix(u.ret); h.mix(u.cv); h.mix(u.dodge); h.mix(u.dh); h.mix(u.ax); h.mix(u.ay);
     }
     for (const [id, g] of this.groups) { h.mix(id); h.mix(g.speed); h.mix(g.avg); }
     for (const seat of Object.keys(this.issued)) for (const [type, n] of Object.entries(this.issued[seat])) { h.mix(seat | 0); h.mix(this.types[type].index); h.mix(n); }

@@ -266,7 +266,8 @@
      },
      {"id": "held", "name": "Held", "min": 260, "effect": [{"kind": "stat", "field": "damage", "times": 1.17},{"kind": "stat", "field": "health", "times": 1.2}]}
     ]
-   }
+   },
+   "behavior": "spaeher"
   },
   "kampfpanzer": {
    "name": "Kampfpanzer",
@@ -299,7 +300,8 @@
       "text": "+50 % Schaden, +40 % Leben, schneller"
      }
     ]
-   }
+   },
+   "behavior": "panzer"
   },
   "lenkwerfer": {
    "name": "Lenkraketenwerfer",
@@ -326,7 +328,8 @@
       "effect": [{"kind": "stat", "field": "damage", "times": 1.17},{"kind": "stat", "field": "health", "times": 1.15},{"kind": "stat", "field": "range", "times": 1.1}]
      }
     ]
-   }
+   },
+   "behavior": "artillerie"
   },
   "kampfdrohne": {
    "name": "Kampfdrohne",

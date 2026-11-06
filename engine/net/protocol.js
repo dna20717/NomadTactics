@@ -6,7 +6,7 @@
 //   in a fixed order. Each client runs exactly TICKS_PER_ROUND steps of its simulation
 //   round by round. Same rounds + same start value = same game on every device.
 
-export const PROTOCOL = 5;          // increase on incompatible changes; server rejects foreign versions
+export const PROTOCOL = 6;          // increase on incompatible changes; server rejects foreign versions
 export const ROUND_MS = 100;         // one round = 100 ms
 export const TICKS_PER_ROUND = 2;    // simulation runs at 20 steps per second
 export const SYNC_EACH = 5;         // clients report their checksum every 5 rounds (= heartbeat of the simulation)

@@ -7,6 +7,7 @@ import { freeId, short } from './workshop.js';
 import { navbarWorld } from './world_pages.js';
 import { navbarUi, experienceSection, factionUi } from './ui_pages.js';
 import { lifePage, modelLifeFields } from './life_pages.js';
+import { behaviorPage, behaviorSection, BEHAVIOR_SUBS } from './behavior_pages.js';
 
 const CLASS_ICON = { infantry: 'humans', vehicle: 'vehicle', air: 'air' };
 const FUNCTION_COLOR = { hq: '#f2c14e', power: '#5aa9ff', production: '#7cb0ff', resource: '#e0b240', research: '#a98bff', defense: '#ff8080', superweapon: '#ff5a3c', movement: '#5fd38d', misc: '#9a9aa3' };
@@ -19,7 +20,14 @@ export function NAVBAR(w, navbar) {
   const number = x => x == null ? null : el('span', { class: 'da-nav-number' }, String(x));
   const entry = (active, ic, name, right, onclick, extra = '') => el('button', { class: 'da-nav' + (active ? ' on' : '') + extra, onclick }, ic, el('span', { class: 'da-nav-name' }, name), right);
   navbar.append(el('div', { class: 'da-navbar-title' }, 'SPIELREGELN'));
-  for (const [id, name, ic, z] of [['resources', 'Ressourcen', 'resource', n(p.data.resources)], ['combat', 'Kampf', 'armor'], ['keywords', 'Stichwörter', 'tag', n(p.data.keywords)], ['weapons', 'Waffen', 'weapon', n(p.data.weapons)], ['slots', 'Ausrüstungsplätze', 'overlays', n(p.data.slots)], ['experience', 'Erfahrung', 'star', (p.data.experience?.tiers || []).length || null], ['models', 'Modelle', 'cube', n(p.data.models)], ['life', 'Lebendigkeit', 'particles', n(p.data.life?.profiles)]]) {
+  for (const [id, name, ic, z] of [['resources', 'Ressourcen', 'resource', n(p.data.resources)], ['combat', 'Kampf', 'armor'], ['keywords', 'Stichwörter', 'tag', n(p.data.keywords)], ['weapons', 'Waffen', 'weapon', n(p.data.weapons)], ['slots', 'Ausrüstungsplätze', 'overlays', n(p.data.slots)], ['experience', 'Erfahrung', 'star', (p.data.experience?.tiers || []).length || null], ['models', 'Modelle', 'cube', n(p.data.models)], ['life', 'Lebendigkeit', 'particles', n(p.data.life?.profiles)], ['behavior', 'Verhalten', 'brain']]) {
+    if (id === 'behavior') {   // like Kampf: opens into its sub pages
+      const isOpen = s.area === 'behavior';
+      navbar.append(entry(false, icon(ic, 18), name, el('span', { class: 'da-nav-arrow' }, icon('chevron_right', 14)), () => w.go({ area: 'behavior', sub: s.area === 'behavior' ? s.sub : 'guide' }), isOpen ? ' isOpen' : ''));
+      if (isOpen) navbar.append(el('div', { class: 'da-sub' }, ...BEHAVIOR_SUBS.map(([u, un]) => entry((s.sub || 'guide') === u, null, un,
+        number(u === 'profiles' ? n(p.data.behavior?.profiles) : u === 'stances' ? n(p.data.behavior?.stances) : null), () => w.go({ area: 'behavior', sub: u })))));
+      continue;
+    }
     if (id === 'combat') {
       const isOpen = s.area === 'combat';
       navbar.append(entry(false, icon(ic, 18), name, el('span', { class: 'da-nav-arrow' }, icon('chevron_right', 14)), () => w.go({ area: 'combat', sub: s.area === 'combat' ? s.sub : 'table' }), isOpen ? ' isOpen' : ''));
@@ -197,6 +205,10 @@ export const PAGES = {
 
   life(w, main, insp) {
     lifePage(w, main, insp);
+  },
+
+  behavior(w, main, insp) {
+    behaviorPage(w, main, insp);
   },
 
   // ---------- Faction ----------
@@ -385,7 +397,8 @@ function entryInspector(w, eb, insp, cat, id) {
       builtIn(w, eb, id),
       el('h4', {}, 'Einzel-Ausrüstung'), B('Kann nehmen', 'equipment', (v, s) => w.chips(v, Object.entries(e.equipment || {}).map(([k, o]) => [k, `${o.name} (${w.p.data.slots?.[o.slot]?.name || o.slot})`]), s, '+ Ausrüstung', k => e.equipment?.[k]?.name || k)),
       calculate(w, eb, id),
-      ...experienceSection(w, eb, id, x, B));
+      ...experienceSection(w, eb, id, x, B),
+      ...behaviorSection(w, x, B));
     insp.append(el('h4', {}, 'Wirkung'), ...(x.weapons || []).map(wid => { const a = w.p.data.weapons[wid]; return a ? el('div', { class: 'tk-effect' }, el('b', {}, `${a.name} · ${dps(a)} DPS · ${a.range} m`), effectAgainst(w, a)) : null; }),
       (x.weapons || []).length ? null : el('p', { class: 'ed-small' }, 'Unbewaffnet.'));
   } else if (cat === 'building') {
@@ -544,6 +557,7 @@ function jumpToTo(w, place) {
   if (place === 'combat') return w.go({ area: 'combat', sub: 'table' });
   if (place.startsWith(w.p.paths.ui || 'ui')) { const st = place.match(/stimmung (\w+)/); return w.go({ area: 'ui', sub: st ? 'moods' : place.includes(' hud') ? 'hud' : 'moods', choice: st?.[1] || null }); }
   if (place.startsWith(w.p.paths.experience || 'experience')) return w.go({ area: 'experience' });
+  if (place.startsWith('verhalten') || place.startsWith(w.p.paths.behavior || 'data/behavior')) return w.go({ area: 'behavior', sub: place.includes('haltung') ? 'stances' : place.includes('profil') ? 'profiles' : 'guide' });
   if (place.startsWith('welt ')) { const [, a, id] = place.split(' '); const sub = { 'größe': 'maps', 'höhe': 'maps', bewegung: 'movementTypes', boden: 'terrains', umwandlung: 'transformations', tageszeit: 'daytime', wetter: 'weather', klima: 'climates' }[a] || 'maps'; return w.go({ area: 'world', sub, choice: sub === 'daytime' || a === 'höhe' ? null : id || null }); }
   if (m && w.p.factions.has(m[1])) {
     const sub = { einheit: 'units', 'gebäude': 'building', forschung: 'techTree', 'ausrüstung': 'equipment' }[m[3]] || (place.includes('start') ? 'overview' : m[2] ? 'generals' : 'overview');

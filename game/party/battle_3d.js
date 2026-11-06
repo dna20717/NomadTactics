@@ -1079,7 +1079,7 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
     towers.update(dt, now, atm.on ? 1 - dayNow : 0);
     { const night = atm.on ? 1 - dayNow : 0, t2 = Math.max(0, Math.min(1, (night - 0.3) / 0.45)); lamps = t2 * t2 * (3 - 2 * t2); }
     unitMat.userData.night.value = lamps; beamMat.opacity = lamps * 0.26;
-    tfx.update(dt, now, { night: lamps, sky: now3.sky, wet: atm.on ? ({ rain: 1, storm: 1, snow: 0.25 }[atm.weather] || 0) : 0 });
+    tfx.update(dt, now, { camDist: cam.dist, night: lamps, sky: now3.sky, wet: atm.on ? ({ rain: 1, storm: 1, snow: 0.25 }[atm.weather] || 0) : 0 });
     let beamN = 0;
     const t = Math.min(1, (now - beforeTime) / ROUND_MS);
     const pos = (u) => { const v = before?.get(u.id); return v ? [v[0] + (u.x - v[0]) * t, v[1] + (u.y - v[1]) * t] : [u.x, u.y]; };

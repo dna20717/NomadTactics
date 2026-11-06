@@ -18,5 +18,6 @@
  "world": "data/world.json",
  "ui": "data/ui.json",
  "experience": "data/experience.json",
- "life": "data/life.json"
+ "life": "data/life.json",
+ "behavior": "data/behavior.json"
 }

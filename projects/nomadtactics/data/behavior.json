@@ -1,0 +1,88 @@
+{
+ "standardStance": "aggressive",
+ "stances": {
+  "aggressive": {
+   "name": "Aggressiv",
+   "short": "Angriff",
+   "symbol": "flash",
+   "description": "Verfolgt jeden Feind, der in Sicht kommt, bis zur dreifachen Sichtweite, und bleibt danach dort stehen, wo der Kampf endete. Wie bei Generals.",
+   "chase": 300,
+   "fire": "free"
+  },
+  "guard": {
+   "name": "Wachsam",
+   "short": "Wache",
+   "symbol": "auge",
+   "description": "Verfolgt Feinde bis zur Sichtweite und kehrt danach auf den eigenen Platz zurück.",
+   "chase": 100,
+   "returns": true,
+   "fire": "free"
+  },
+  "hold": {
+   "name": "Stellung halten",
+   "short": "Stellung",
+   "symbol": "lock",
+   "description": "Bleibt stehen und schießt nur auf das, was in Reichweite kommt. Weicht weder Panzern noch Artillerie aus.",
+   "chase": 0,
+   "returns": true,
+   "fire": "free",
+   "dodges": false
+  },
+  "holdFire": {
+   "name": "Feuer zurückhalten",
+   "short": "Ruhe",
+   "symbol": "muted",
+   "description": "Schießt nur, wenn du ein Ziel befiehlst. Gut für Hinterhalte und getarnte Einheiten.",
+   "chase": 0,
+   "returns": true,
+   "fire": "order"
+  },
+  "cautious": {
+   "name": "Vorsichtig",
+   "short": "Vorsicht",
+   "symbol": "heart",
+   "description": "Verfolgt nur ein kleines Stück und zieht sich zum Landeplatz zurück, sobald das Leben unter die Rückzugs-Schwelle des Profils fällt.",
+   "chase": 60,
+   "returns": true,
+   "fire": "free",
+   "retreat": true
+  }
+ },
+ "profiles": {
+  "panzer": {
+   "name": "Panzer",
+   "description": "Schwere Fahrzeuge: suchen sich Ziele, gegen die ihre Kanone wirkt, nehmen Gefahren ernst und walzen Infanterie platt.",
+   "weights": {"counter": 40, "threat": 30, "finish": 20, "near": 30, "buildings": -40},
+   "retreatAt": 30,
+   "crush": {"crushes": true}
+  },
+  "spaeher": {
+   "name": "Späher",
+   "description": "Schnelle Radfahrzeuge mit MG: jagen Infanterie und angeschlagene Ziele, weichen Artillerie aus und walzen.",
+   "weights": {"counter": 50, "threat": 20, "finish": 30, "near": 40, "buildings": -60},
+   "retreatAt": 40,
+   "crush": {"crushes": true},
+   "dodgeArtillery": true
+  },
+  "artillerie": {
+   "name": "Artillerie",
+   "description": "Werfer und Haubitzen: schießen auf das, wogegen ihre Raketen am meisten ausrichten, und mögen Gebäude.",
+   "weights": {"counter": 60, "threat": 10, "finish": 10, "near": 10, "buildings": 20},
+   "retreatAt": 40
+  },
+  "infanterie": {
+   "name": "Infanterie",
+   "description": "Fußtruppen: gehen im Gefecht in Deckung, springen vor walzenden Fahrzeugen zur Seite und laufen aus Einschlägen.",
+   "weights": {"counter": 40, "threat": 40, "finish": 20, "near": 30, "buildings": -50},
+   "retreatAt": 25,
+   "cover": {"seek": true, "radius": 12},
+   "crush": {"dodges": true, "reaction": 600},
+   "dodgeArtillery": true
+  },
+  "drohne": {
+   "name": "Drohne",
+   "description": "Begleitdrohnen: helfen dem Wirt, bevorzugen fast tote Ziele in der Nähe.",
+   "weights": {"counter": 50, "threat": 20, "finish": 30, "near": 40, "buildings": -80}
+  }
+ }
+}

@@ -90,6 +90,7 @@
   background: var(--hud-bg2); border: var(--hud-button-border); border-radius: var(--hud-radius-small); overflow: hidden; }
 .rk:hover:not(.empty):not(.off) { border-color: var(--hud-acc); background: var(--hud-acc-soft); }
 .rk.empty { opacity: 0.25; cursor: default; } .rk.off { opacity: 0.4; cursor: not-allowed; }
+.rk.active, .circle-k.active { border-color: var(--hud-acc); background: var(--hud-acc-soft); box-shadow: inset 0 0 0 1px var(--hud-acc); }
 .rk.expensive .rp { color: var(--hud-hostile); }
 .rk .ri { color: var(--hud-acc); display: flex; z-index: 1; }
 .rk .ri svg { width: 1.45em; height: 1.45em; }

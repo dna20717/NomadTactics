@@ -125,6 +125,7 @@ export function hudForBattle({ app, views, send, meSeat, playerList, canvas }) {
     }
     if (b.kind === 'attack') { send({ t: 'command', b: { kind: 'attack', ids: ids(b.units), target: b.target.id } }); return true; }
     if (b.kind === 'halt') { send({ t: 'command', b: { kind: 'halt', ids: ids(b.units) } }); return true; }
+    if (b.kind === 'stance') { send({ t: 'command', b: { kind: 'stance', ids: ids(b.units), stance: b.stance } }); return true; }
     return false; // build, cancel, rally point, abilities: not in this mode yet
   }
 
@@ -200,6 +201,9 @@ export function hudForBattle({ app, views, send, meSeat, playerList, canvas }) {
       },
     },
     minimap, abilities: [],
+    // stances (behaviour without orders) from data/behavior.json and the stance of one unit in the simulation
+    stances: () => { const B = setup.behavior?.stances || {}; return Object.entries(B).map(([id, st]) => ({ id, name: st.name || id, short: st.short, symbol: st.symbol, description: st.description })); },
+    stanceOf: (p) => { const s = sim(), u = s?.byId.get(p.id); return u ? s.stances.ids[u.st] : null; },
     portrait, livePane,
     project: (x, y, z) => active().projectWorld(x, y, z),
     flat: () => active().kind === '2d',
@@ -219,6 +223,7 @@ export function hudForBattle({ app, views, send, meSeat, playerList, canvas }) {
         lossT = performance.now();
         hud.message(`${t.name} verloren.`, { x: e.x * M, z: e.y * M }, { kind: 'hostile', voice: !t.building, speak: hud.radio('lost') });
       } else if (e.kind === 'dead' && s.types[e.type]?.building && e.seat !== me) hud.message('Feindlicher Landeplatz zerstört!', { x: e.x * M, z: e.y * M }, { kind: 'good', voice: true });
+      else if (e.kind === 'retreat' && e.seat === me) { const u = s.types[s.byId.get(e.id)?.type]; hud.message(`${u?.name || 'Einheit'}: ${hud.radio('retreat')}`, { x: e.x * M, z: e.y * M }, { kind: 'warn', voice: true }); }
       else if (e.kind === 'out') {
         const name = e.seat === PRACTICE_SEAT ? PRACTICE.name : playerList().find((p) => p.seat === e.seat)?.name ?? 'Jemand';
         hud.message(e.seat === me ? 'Du bist raus.' : `${name} ist raus.`, null, { kind: e.seat === me ? 'hostile' : 'good', voice: true });

@@ -25,7 +25,7 @@
 //                                                    | ui (standard) | ui.moods | ui.hud | ui.radio | experience (tiers) | experience.sources | world.*
 //   nt rule <area> <id> <field> '<json>'             set one field  ·  nt rule combat.table <damageType> <armor> <number>
 //   nt rule-remove <area> <id>                       delete
-//   nt rule-rename <kind> <old> <new>                kind: weapon | keyword | resource | model | armor | class | damageType | slot
+//   nt rule-rename <kind> <old> <new>                kind: weapon | keyword | resource | model | armor | class | damageType | slot | life | behavior | stance
 // Options: --project <folder> (default projects/nomadtactics), --dry (write nothing, only show)
 import fs from 'node:fs';
 import path from 'node:path';
@@ -52,7 +52,8 @@ const catFrom = (eb, id) => eb.category(id) || error(`„${id}“ gibt es in ${e
 const AREAS = { resources: ['resources'], keywords: ['keywords'], weapons: ['weapons'], models: ['models'], slots: ['slots'], 'combat.damageTypes': ['combat', 'damageTypes'], 'combat.armors': ['combat', 'armors'], 'combat.classes': ['combat', 'classes'], 'combat.table': ['combat', 'table'],
   ...Object.fromEntries(['maps', 'maps.sizes', 'height', 'movementTypes', 'terrains', 'transformations', 'daytime', 'weather', 'weatherSequence', 'climates'].map(b => ['world.' + b, ['world', ...b.split('.')]])),
   ui: ['ui'], 'ui.moods': ['ui', 'moods'], 'ui.hud': ['ui', 'hud'], 'ui.radio': ['ui', 'radio'],
-  experience: ['experience'], 'experience.sources': ['experience', 'sources'], 'life.profiles': ['life', 'profiles'] };
+  experience: ['experience'], 'experience.sources': ['experience', 'sources'], 'life.profiles': ['life', 'profiles'],
+  behavior: ['behavior'], 'behavior.profiles': ['behavior', 'profiles'], 'behavior.stances': ['behavior', 'stances'] };
 const area = b => {
   const [kind, ...sub] = AREAS[b] || error(`Bereich „${b}“ gibt es nicht: ${Object.keys(AREAS).join(', ')}`);
   if (!p.paths[kind]) { p.paths[kind] = p.def[kind] = `data/${kind}.json`; changed.add('project.json'); }
@@ -152,7 +153,7 @@ const B = {
   },
   'rule-remove'([b, id]) { const o = area(b); if (!o[id]) error(`${b}/${id} gibt es nicht`); delete o[id]; console.log(`${b}/${id} gelöscht`); write(); },
   'rule-rename'([kind, old, new_]) {
-    const target = { weapon: 'weapons', keyword: 'keywords', resource: 'resources', model: 'models', armor: 'combat.armors', class: 'combat.classes', damageType: 'combat.damageTypes', slot: 'slots' }[kind] || error('Art: weapon | keyword | resource | model | armor | class | damageType | slot');
+    const target = { weapon: 'weapons', keyword: 'keywords', resource: 'resources', model: 'models', armor: 'combat.armors', class: 'combat.classes', damageType: 'combat.damageTypes', slot: 'slots', life: 'life.profiles', behavior: 'behavior.profiles', stance: 'behavior.stances' }[kind] || error('Art: weapon | keyword | resource | model | armor | class | damageType | slot | life | behavior | stance');
     const o = area(target); if (!o[old]) error(`„${old}“ gibt es nicht`); if (o[new_]) error(`„${new_}“ gibt es schon`);
     const n = {}; for (const [k, v] of Object.entries(o)) n[k === old ? new_ : k] = v; for (const k of Object.keys(o)) delete o[k]; Object.assign(o, n);
     renameGlobal(p, kind, old, new_);
@@ -171,7 +172,7 @@ const B = {
     const t = target.split('/'), fid = p.factions.has(t[0]) ? t[0] : null;
     const SUB = { units: 'units', building: 'building', techTree: 'techTree', generals: 'generals', equipment: 'equipment', overview: 'overview' };
     const go = fid ? { area: 'faction', faction: fid, sub: SUB[t[1]] || 'overview', choice: t[2] || null, general: opt('--general') || null }
-      : t[0] === 'combat' ? { area: 'combat', sub: t[1] || 'table', choice: t[2] || null } : t[0] === 'world' ? { area: 'world', sub: t[1] || 'maps', choice: t[2] || null } : t[0] === 'ui' ? { area: 'ui', sub: t[1] || 'moods', choice: t[2] || null } : { area: t[0], choice: t[1] || null };
+      : t[0] === 'combat' ? { area: 'combat', sub: t[1] || 'table', choice: t[2] || null } : t[0] === 'world' ? { area: 'world', sub: t[1] || 'maps', choice: t[2] || null } : t[0] === 'ui' ? { area: 'ui', sub: t[1] || 'moods', choice: t[2] || null } : t[0] === 'behavior' ? { area: 'behavior', sub: t[1] || 'guide', choice: t[2] || null } : { area: t[0], choice: t[1] || null };
     const b = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
     const s = await b.newPage({ viewport: { width: 1440, height: 900 } });
     s.on('pageerror', e => console.log('Seitenfehler:', e.message));

@@ -27,6 +27,7 @@ import { icon } from '../../icons.js';
 
 const STANDARD = { mood: 'terminal', marker: 'corners', march: 'selection', drag: 'frame', multiple: 'single', voice: true, scale: 1, colors: 'team' };
 const GRID = ['q', 'w', 'e', 'r', 'a', 's', 'd', 'f', 'z', 'x', 'c', 'v'];
+const STANCE_KEYS = ['a', 's', 'd', 'f', 'z'];
 const COLORS_IVF = { me: '#4fa3ff', allied: '#5fd68a', foe: '#ff5a4a' };
 const ACK = ['Verstanden.', 'Bin unterwegs.', 'Jawohl.', 'Wird gemacht.', 'Bestätigt.'];
 const RADIO = { ready: '{name} bereit.', promoted: 'Beförderung! {name} ist jetzt {stufe}.', lost: 'Einheit verloren.', money: 'Nicht genug Geld.', idle: '{gebaeude} im Leerlauf.',
@@ -208,7 +209,7 @@ class Hud {
         <label>Funkstimme</label>${seg('voice', [[true, 'An'], [false, 'Aus']])}
         <label>UI-Größe <small>${Math.round(e.scale * 100)} %</small></label><input type="range" min="0.8" max="1.5" step="0.05" value="${e.scale}">
         <div class="inp-foot"><button class="standard">Standard der Werkstatt</button><button class="layout">Layout zurücksetzen</button></div>
-        <p class="inp-help">Alt halten = alle Marschlinien · Strg+1–9 Gruppe speichern (darf Gruppen enthalten) · 1–9 wählen, zweimal = hinspringen · Shift+Zahl dazu · Strg+A alle Kampfeinheiten · , Leerlauf-Gebäude · . Leerlauf-Einheit · H Halt · Doppelklick = alle gleichen Typs · Rechtsklick: Befehl / Sammelpunkt · Rechte Taste halten: Kreismenü</p>`;
+        <p class="inp-help">Alt halten = alle Marschlinien · Strg+1–9 Gruppe speichern (darf Gruppen enthalten) · 1–9 wählen, zweimal = hinspringen · Shift+Zahl dazu · Strg+A alle Kampfeinheiten · , Leerlauf-Gebäude · . Leerlauf-Einheit · H Halt · A S D F Z Haltung (Angriff, Wache, Stellung, Ruhe, Vorsicht) · Doppelklick = alle gleichen Typs · Rechtsklick: Befehl / Sammelpunkt · Rechte Taste halten: Kreismenü</p>`;
       c.querySelectorAll('[data-k]').forEach(b => b.onclick = () => { const v = b.dataset.v; this.set(b.dataset.k, v === 'true' ? true : v === 'false' ? false : v); });
       c.querySelector('input').oninput = ev => { this.e.scale = +ev.target.value; this.set('scale', +ev.target.value); };
       c.querySelector('.layout').onclick = () => this.fs.reset();
@@ -371,6 +372,11 @@ class Hud {
       { taste: 'w', name: 'Live-Fenster', short: 'Live', symbol: 'auge', on: () => us.slice(0, 2).forEach(u => A.livePane(u)), info: 'Bild-im-Bild, das der Einheit folgt' },
       { taste: 'e', name: 'Zur Basis', short: 'Basis', symbol: 'flag', on: () => { const b = A.basis(); this.commandsDrive(b.x, b.z); this.acknowledge(us, this.radio('retreat')); }, info: 'Alle zurück zum Sammelplatz an der Basis' },
       { taste: 'r', name: 'Ausrüstung', short: 'Rüsten', symbol: 'armor', off: true, info: 'Kommt mit der Werkstatt (Plätze, Drohnen, Trupp-Upgrades)' },
+      // stances (behaviour without orders, data/behavior.json): second row of the grid
+      ...(A.stances?.() || []).slice(0, 5).map((st, i) => ({ taste: STANCE_KEYS[i], name: st.name, short: st.short || st.name.split(' ')[0], symbol: st.symbol || 'flag',
+        active: us.length > 0 && us.every(u => A.stanceOf?.(u) === st.id),
+        on: () => { A.command({ kind: 'stance', units: us, stance: st.id }); this.acknowledge(us, st.name + '.'); },
+        info: `Haltung: ${st.description || ''}` })),
     ];
     return [];
   }
@@ -545,7 +551,7 @@ class Hud {
     const k = this.circle; k.innerHTML = ''; const R = 74 * this.e.scale;
     act.forEach((a, i) => {
       const w = -Math.PI / 2 + i / act.length * Math.PI * 2;
-      const b = el('button', 'circle-k' + (a.off ? ' off' : ''));
+      const b = el('button', 'circle-k' + (a.off ? ' off' : '') + (a.active ? ' active' : ''));
       b.innerHTML = `<span class="ai"></span><span class="kn"></span><kbd>${a.taste.toUpperCase()}</kbd>${a.count ? `<em>${a.count}</em>` : ''}`;
       b.querySelector('.ai').appendChild(icon(a.symbol, 18)); b.querySelector('.kn').textContent = a.short || a.name;
       b.style.left = (Math.cos(w) * R) + 'px'; b.style.top = (Math.sin(w) * R) + 'px';
@@ -603,6 +609,7 @@ class Hud {
       }
     }
     // Werte aktualisieren
+    if (mode === 'u') for (const a of act) c.querySelector(`[data-taste="${a.taste}"]`)?.classList.toggle('active', !!a.active);
     if (mode === 'g') {
       for (const a of act) {
         const b = c.querySelector(`[data-taste="${a.taste}"]`); if (!b) continue;

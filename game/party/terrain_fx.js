@@ -31,6 +31,8 @@ export function surfaceOf(id, t) { return t?.surface || FALLBACK[id]?.surface ||
 export function scatterOf(id, t) { return t?.scatter || FALLBACK[id]?.scatter || {}; }
 
 const WATER_Y = -0.15;
+const TILE = 32;          // scatter tiles (m)
+const FAR_SMALL = 190;    // camera further away than this (m): no tufts and stones (sub-pixel anyway)
 const hashf = (a, b) => ((Math.imul(a * 92837111 ^ b * 689287499, 2654435761) >>> 0) % 100000) / 100000;
 
 export function createTerrainFx(THREE, scene) {
@@ -161,7 +163,7 @@ diffuseColor.a = 1.0;
     return out;
   }
   const GEO = {
-    tufts: () => boxes([[0, 0, 0, 0.1, 0.55, 0.1], [0.13, 0, 0.05, 0.09, 0.4, 0.09], [-0.1, 0, 0.1, 0.09, 0.45, 0.09], [0.03, 0, -0.13, 0.09, 0.34, 0.09], [-0.08, 0, -0.07, 0.08, 0.28, 0.08], [0.12, 0, -0.1, 0.08, 0.24, 0.08]]),
+    tufts: () => boxes([[0, 0, 0, 0.1, 0.55, 0.1], [0.13, 0, 0.06, 0.09, 0.38, 0.09], [-0.1, 0, -0.08, 0.09, 0.32, 0.09]]),
     stones: () => boxes([[0, 0, 0, 0.42, 0.24, 0.34], [0.1, 0.18, 0.04, 0.24, 0.12, 0.2]]),
     fences: () => boxes([[-0.95, 0, 0, 0.12, 1.05, 0.12, 0x6b5136], [0, 0, 0, 0.12, 1.05, 0.12, 0x6b5136], [0.95, 0, 0, 0.12, 1.05, 0.12, 0x6b5136],
       [0, 0.38, 0, 2.0, 0.09, 0.06, 0x8a6a46], [0, 0.78, 0, 2.0, 0.09, 0.06, 0x8a6a46]]),
@@ -181,7 +183,7 @@ diffuseColor.a = 1.0;
     const wet = (k) => !!terrains[ids[m.ground[k]]]?.water;
     const blocked = (k) => ids[m.ground[k]] === 'bebaut' || wet(k) || m.ramp[k];
     const lists = { tufts: [], stones: [], fences: [], lamps: [], wrecks: [] };
-    const share = amount >= 1 ? 1 : amount > 0.5 ? 0.55 : 0.18;   // fewer tufts and stones on weaker devices
+    const share = amount >= 1 ? 0.8 : amount > 0.5 ? 0.4 : 0.12;   // fewer tufts and stones on weaker devices
     for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
       const k = j * n + i, id = ids[m.ground[k]], t = terrains[id], sc = scatterOf(id, t);
       if (blocked(k)) continue;
@@ -210,10 +212,14 @@ diffuseColor.a = 1.0;
     }
     // lamps: keep a little distance from each other (a row every ~8 m reads as a street)
     lists.lamps = spaced(lists.lamps, 7.5); lists.wrecks = spaced(lists.wrecks, 12);
+    // one InstancedMesh per kind and tile of TILE m: the camera skips tiles out of view (frustum culling)
     for (const what of SCATTER) {
-      const L = lists[what]; stats[what] = L.length;
-      if (!L.length) continue;
-      const im = new THREE.InstancedMesh(GEO[what](), what === 'wrecks' ? wreckMat : scatterMat, L.length);
+      const all = lists[what]; stats[what] = all.length;
+      if (!all.length) continue;
+      const geo = GEO[what](), tiles = new Map();
+      for (const it of all) { const tk = Math.floor(it.x / TILE) + Math.floor(it.z / TILE) * 1000; if (!tiles.has(tk)) tiles.set(tk, []); tiles.get(tk).push(it); }
+      for (const L of tiles.values()) {
+      const im = new THREE.InstancedMesh(geo, what === 'wrecks' ? wreckMat : scatterMat, L.length);
       im.castShadow = SHADOW[what]; im.receiveShadow = true;
       L.forEach((it, idx) => {
         it.y = groundAt(it.x, it.z); it.mesh = im; it.idx = idx; it.kind = what; it.crushed = 0;
@@ -224,7 +230,9 @@ diffuseColor.a = 1.0;
         crushGrid.get(key).push(it);
       });
       im.instanceMatrix.needsUpdate = true; if (im.instanceColor) im.instanceColor.needsUpdate = true;
-      meshes[what] = im; group.add(im);
+      im.computeBoundingSphere();
+      (meshes[what] = meshes[what] || []).push(im); group.add(im);
+      }
     }
     // lamp heads glow at night (bloom picks them up), with a warm pool of light on the road below
     if (lists.lamps.length) {
@@ -433,6 +441,8 @@ diffuseColor.a = mix(mix(0.55, 0.88, vDeep), 0.97, foam);`)
     if (o.sky) uni.uSky.value.copy(o.sky);
     uni.uWet.value += ((o.wet || 0) - uni.uWet.value) * Math.min(1, dt * 0.4);
     if (!on) return;
+    const near = !(o.camDist > FAR_SMALL);
+    for (const k of ['tufts', 'stones']) for (const im of meshes[k] || []) im.visible = near;
     // forget units that are gone
     if (Math.random() < dt) for (const [id, p] of lastPos) if (now - p[2] > 2000) lastPos.delete(id);
     // lamps: dark by day, warm at night

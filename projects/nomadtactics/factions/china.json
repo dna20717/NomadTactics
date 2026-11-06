@@ -259,7 +259,8 @@
    "sight": 24,
    "weapons": ["raketenbatterie"],
    "equipment": ["loudspeaker"],
-   "keywords": {"wheel": true, "aufbauen": 3}
+   "keywords": {"wheel": true, "aufbauen": 3},
+   "behavior": "artillerie"
   },
   "gatlingpanzer": {
    "name": "Gatlingpanzer",
@@ -274,7 +275,8 @@
    "sight": 24,
    "weapons": ["gatling"],
    "equipment": ["loudspeaker"],
-   "keywords": {"track": true, "fahrtfeuer": true}
+   "keywords": {"track": true, "fahrtfeuer": true},
+   "behavior": "spaeher"
   },
   "overlord": {
    "name": "Overlord",

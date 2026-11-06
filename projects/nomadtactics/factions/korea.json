@@ -230,7 +230,8 @@
    "sight": 24,
    "weapons": ["bordkanone"],
    "keywords": {"transport": 6, "track": true, "schwimmt": true, "fahrtfeuer": true, "schiessscharten": true, "rauchwand": 12},
-   "equipment": ["aktivschutz", "waermebild"]
+   "equipment": ["aktivschutz", "waermebild"],
+   "behavior": "spaeher"
   },
   "kampfpanzer": {
    "name": "Kampfpanzer",
@@ -260,7 +261,8 @@
    "sight": 24,
    "weapons": ["haubitze"],
    "equipment": ["waermebild"],
-   "keywords": {"track": true, "aufbauen": 2}
+   "keywords": {"track": true, "aufbauen": 2},
+   "behavior": "artillerie"
   },
   "flugabwehrpanzer": {
    "name": "Flugabwehrpanzer",
