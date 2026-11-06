@@ -53,6 +53,13 @@
    "speed": {"infantry": 0, "wheel": 0, "track": 0, "schwimmt": 60},
    "water": "deep",
    "description": "Nur wer schwimmt, kommt hinüber."
+  },
+  "bebaut": {
+   "name": "Bebaut",
+   "color": "#77746e",
+   "speed": {"infantry": 0, "wheel": 0, "track": 0, "schwimmt": 0},
+   "sightBlocker": true,
+   "description": "Grundfläche eines Gebäudes (Hochhaus, Block). Niemand fährt hindurch; nach einem Einsturz bleibt der Schutthaufen im Weg."
   }
  },
  "transformations": {

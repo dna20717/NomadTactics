@@ -10,6 +10,7 @@ import * as THREE from 'three';
 import { V, PROTOTYPES, landingPad, tree } from '../tactics/voxel/models.js';
 import { voxelGeometry, voxelMaterial, vehicleMaterial } from '../tactics/voxel/mesh.js';
 import { readVox } from '../tactics/voxel/vox.js';
+import { createTowers } from './towers.js';
 import { ROUND_MS } from '../../engine/net/protocol.js';
 
 const M = 1 / 1000;          // world units (mm) → metres
@@ -49,6 +50,24 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
   // earth thrown up, burning wrecks, the camera shakes with nearby blasts
   let boom = 1, shake = 0;
   const excite = (b) => { boom = Math.max(1, b); };
+  // towers on the map (props, optics only; their ground „bebaut“ is what the simulation sees)
+  const towers = createTowers(THREE, scene, { groundAt, puff, chip, jolt, light });
+  let towersOf = null, dayNow = 1;
+  // a rocket strike from beyond the board (launcher show): arcs in, explodes, hurts towers
+  let strikes = [];
+  function strike(x, z, delay = 0) {
+    const now = performance.now() + delay, a = Math.random() * TAU;
+    const fx = x + Math.cos(a) * 160, fz = z + Math.sin(a) * 160;
+    strikes.push({ x, z, fx, fz, at: now, hit: now + 2200, shot: false });
+  }
+  function boomAt(x, z, size = 1) {
+    const y = groundAt(x, z), now = performance.now();
+    effects.push({ kind: 'flash', x, y: y + 1, z, r: 4.5 * size, t0: now, dur: 900, big: true });
+    for (let i = 0; i < Math.round(12 * size * boom); i++) puff(x + (Math.random() - 0.5) * 6, y + 1, z + (Math.random() - 0.5) * 6, 1.5 + Math.random() * 2.5, i % 3 ? 0x4a4540 : 0x6d665e);
+    for (let i = 0; i < Math.round(16 * size); i++) chip(x, y + 0.5, z, i % 2 ? 0x5a4a36 : 0x6f6a60, 1.6);
+    light(x, y + 4, z, 5 * size);
+    jolt(x, z, 0.7 * size);
+  }
   function jolt(x, z, amount) {
     if (boom <= 1) return;
     const d = Math.hypot(x - cam.tx, z - cam.tz);
@@ -125,6 +144,7 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
     fill.intensity = 0.45 * (0.3 + 0.7 * day);
     now3.fall += ((w.amount || 0) - now3.fall) * k;
     gradeStep(dt, day, elev);
+    dayNow = day;
   }
   // rain, snow or dust: boxes falling in a box around the camera target
   const FALL_MAX = 2400;
@@ -493,6 +513,7 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
         const big = e.splash > 0 || e.projectile === 2 || e.projectile === 3;
         const fr = (big ? Math.max(1.6, e.splash * M * 0.8) : 0.35) * (boom > 1 ? 1.3 : 1);
         effects.push({ kind: 'flash', x, y: y + 0.4, z, r: fr, t0: now, dur: big ? 320 * Math.min(1.5, boom) : 120 });
+        towers.hit(x, z, big ? 6 : 1, e.x * M, e.y * M);
         if (big) {
           for (let i = 0; i < Math.round(4 * boom); i++) puff(x, y + 0.5, z, 0.8 + Math.random() * 0.8 * boom, 0x6d665e);
           if (boom > 1) { for (let i = 0; i < 8; i++) chip(x, y + 0.3, z, Math.random() < 0.5 ? 0x5a4a36 : 0x6f5c42, 0.6); light(x, y + 2, z, 1.6); jolt(x, z, 0.25); }
@@ -504,7 +525,7 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
         effects.push({ kind: 'flash', x, y: y + 1, z, r: r * (boom > 1 && t?.cls !== 'infantry' ? 1.5 : 1), t0: now, dur: (t?.building ? 1100 : 600) * Math.min(1.6, boom), big: true });
         for (let i = 0; i < Math.round((t?.cls === 'infantry' ? 2 : 14) * boom); i++) puff(x + (Math.random() - 0.5) * r, y + 1, z + (Math.random() - 0.5) * r, 1.2 + Math.random() * 1.6 * boom, 0x3d3833);
         light(x, y + 3, z, (t?.building ? 6 : 3) * boom);
-        if (t?.cls !== 'infantry') jolt(x, z, t?.building ? 1.2 : 0.6);
+        if (t?.cls !== 'infantry') { jolt(x, z, t?.building ? 1.2 : 0.6); towers.hit(x, z, t?.building ? 30 : 5); }
         if (t && t.cls !== 'infantry') {
           const key = sourceOf(sim, e.type);
           const seat = playerList().find((p) => p.seat === e.seat);
@@ -679,6 +700,13 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
     buildWorld(sim);
     placeCamera();
     drawFall(dt);
+    if (towersOf !== sim) { towers.build(sim.map.props || [], sim.map.size); towersOf = sim; strikes = []; }
+    for (const k of strikes) {
+      if (!k.shot && now >= k.at) { k.shot = true; effects.push({ kind: 'shot', p: 3, x: k.fx, y: groundAt(k.fx, k.fz) + 30, z: k.fz, tx: k.x, ty: groundAt(k.x, k.z) + 1, tz: k.z, t0: now, dur: k.hit - k.at }); }
+      if (now >= k.hit) { k.done = true; boomAt(k.x, k.z); towers.hit(k.x, k.z, 18, k.fx, k.fz); }
+    }
+    strikes = strikes.filter((k) => !k.done);
+    towers.update(dt, now, atm.on ? 1 - dayNow : 0);
     const t = Math.min(1, (now - beforeTime) / ROUND_MS);
     const pos = (u) => { const v = before?.get(u.id); return v ? [v[0] + (u.x - v[0]) * t, v[1] + (u.y - v[1]) * t] : [u.x, u.y]; };
     const colours = Object.fromEntries(playerList().map((x) => [x.seat, colourOf(x)]));
@@ -843,5 +871,5 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
   function show(on) { shown = on; if (!on) canvas.style.display = 'none'; }
 
   return { draw, drain, reset, project, unproject, pixelsPerMm, pan, zoom, rotate, centreOn, home, show, setModels, kind: '3d', renderer,
-    scene, camera, projectWorld, target, groundAt, inset, yawOf, atmosphere, quality, cam, excite, imageFx };
+    scene, camera, projectWorld, target, groundAt, inset, yawOf, atmosphere, quality, cam, excite, imageFx, towers, strike };
 }

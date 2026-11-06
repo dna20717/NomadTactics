@@ -1,0 +1,25 @@
+/* „Now Playing“ chip (game/party/music.js): small and quiet, opens for a few seconds when a track starts */
+.np { position: fixed; z-index: 30; display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px 0 4px; border-radius: 999px;
+  background: rgba(16, 17, 20, .5); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, .08);
+  color: #f4f1ea; font: 12px/1 Inter, system-ui, sans-serif; opacity: .7; transition: opacity .24s, max-width .4s cubic-bezier(.2, .8, .2, 1);
+  max-width: 58px; overflow: hidden; white-space: nowrap; cursor: default; user-select: none; -webkit-user-select: none; }
+.np.open, .np:hover { opacity: 1; max-width: 340px; }
+.np.off { opacity: .45; }
+.np-btn { flex: none; width: 24px; height: 24px; border: 0; border-radius: 50%; display: grid; place-items: center; padding: 0; cursor: pointer;
+  background: transparent; color: inherit; }
+.np-btn:hover { background: rgba(255, 255, 255, .12); }
+.np-bars { flex: none; display: flex; align-items: flex-end; gap: 2px; height: 12px; width: 14px; }
+.np-bars i { display: block; width: 3px; height: 3px; border-radius: 1px; background: #f2c14e; }
+.np.playing .np-bars i { animation: np-bar 1.1s ease-in-out infinite; }
+.np.playing .np-bars i:nth-child(2) { animation-delay: -.4s; animation-duration: .9s; }
+.np.playing .np-bars i:nth-child(3) { animation-delay: -.7s; animation-duration: 1.3s; }
+@keyframes np-bar { 0%, 100% { height: 3px; } 50% { height: 12px; } }
+.np:not(.open):not(:hover) .np-text { opacity: 0; }
+.np-text { transition: opacity .2s; display: flex; flex-direction: column; gap: 2px; padding-left: 2px; }
+.np-text b { font-weight: 600; font-size: 12px; }
+.np-text small { font-size: 10.5px; color: rgba(244, 241, 234, .6); }
+@media (prefers-reduced-motion: reduce) { .np.playing .np-bars i { animation: none; height: 8px; } .np { transition: none; } }
+/* places */
+.np.np-launcher { left: calc(env(safe-area-inset-left, 0px) + 56px); bottom: calc(env(safe-area-inset-bottom, 0px) + 40px); }
+.np.np-game { left: 50%; transform: translateX(-50%); top: calc(env(safe-area-inset-top, 0px) + 6px); }
+@media (max-width: 700px) { .np.np-launcher { left: 16px; bottom: calc(env(safe-area-inset-bottom, 0px) + 150px); } }

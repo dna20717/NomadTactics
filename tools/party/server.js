@@ -16,7 +16,7 @@ import { PROTOCOL } from '../../engine/net/protocol.js';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const RELEASED = ['party.html', 'host.html', 'launcher.html', 'game/', 'engine/', 'projects/nomadtactics/', 'prototypes/nomadtactics/models/'];
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
-  '.json': 'application/json; charset=utf-8', '.vox': 'application/octet-stream', '.woff2': 'font/woff2', '.png': 'image/png', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.txt': 'text/plain; charset=utf-8' };
+  '.json': 'application/json; charset=utf-8', '.vox': 'application/octet-stream', '.woff2': 'font/woff2', '.png': 'image/png', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.txt': 'text/plain; charset=utf-8', '.ogg': 'audio/ogg', '.m4a': 'audio/mp4' };
 
 // ANSI colors (Windows 11 Terminal and console support this)
 function color(text, ...codes) { return process.stdout.isTTY ? `\x1b[${codes.join(';')}m${text}\x1b[0m` : text; }
@@ -66,7 +66,17 @@ export function startServer({ port = 8080, max = 4, quiet = false, host = '0.0.0
     if (!allowed) { res.writeHead(404); return res.end('Nicht gefunden'); }
     fs.readFile(file, (error, data) => {
       if (error) { res.writeHead(404); return res.end('Nicht gefunden'); }
-      res.writeHead(200, { 'content-type': TYPES[path.extname(file)] || 'application/octet-stream', 'cache-control': 'no-cache' });
+      const type = TYPES[path.extname(file)] || 'application/octet-stream';
+      // byte ranges: Safari (iPad) only plays audio when the server answers Range requests
+      const range = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range || '');
+      if (range) {
+        const a = range[1] ? Number(range[1]) : data.length - Number(range[2]);
+        const b = range[1] && range[2] ? Math.min(Number(range[2]), data.length - 1) : data.length - 1;
+        if (a < 0 || a >= data.length || b < a) { res.writeHead(416, { 'content-range': `bytes */${data.length}` }); return res.end(); }
+        res.writeHead(206, { 'content-type': type, 'content-range': `bytes ${a}-${b}/${data.length}`, 'accept-ranges': 'bytes', 'content-length': b - a + 1, 'cache-control': 'no-cache' });
+        return res.end(data.subarray(a, b + 1));
+      }
+      res.writeHead(200, { 'content-type': type, 'accept-ranges': 'bytes', 'cache-control': 'no-cache' });
       res.end(data);
     });
   });

@@ -14,6 +14,7 @@ import { hudForBattle } from './hud_adapter.js';
 import { PRACTICE_SEAT, PRACTICE } from '../../engine/tactics/battle.js';
 import { icon } from '../icons.js';
 import { DATA, gameData } from './game_data.js';
+import { createMusic, nowPlaying } from './music.js';
 
 const q = new URLSearchParams(location.search);
 const ui = document.getElementById('ui');
@@ -101,11 +102,14 @@ function join(name) {
     }
     if (fresh) { app.selection.clear(); for (const v of Object.values(views)) v.reset(); input.reset(); app.hudAdapter?.reset(); app.overSeen = false; }
     app.view = 'game'; app.before = null;
+    // music during the battle, quieter than in the launcher; „Now Playing“ chip top centre (Daniel 06.11.)
+    if (!app.music) { app.music = createMusic({ level: 0.55 }); app.nowPlaying = nowPlaying(app.music, document.body, { className: 'np-game' }); }
+    app.music.start();
     drawUi();
     if (fresh) setTimeout(() => { views['3d']?.home(); views['2d'].centreOn(...ownPad()); }, 0);
   });
   l.on('round', (m) => { if (!app.ls) return; app.ls.round(m); if (app.ls.gap) { app.ls.gap = false; l.cut(); } });
-  l.on('lobby', () => { app.ls = null; app.view = 'lobby'; app.overSeen = false; drawUi(); });
+  l.on('lobby', () => { app.ls = null; app.view = 'lobby'; app.overSeen = false; app.music?.dispose(); app.music = null; app.nowPlaying?.remove(); app.nowPlaying = null; drawUi(); });
   l.on('error', (m) => { app.message = m.text; drawUi(); setTimeout(() => { app.message = ''; drawUi(); }, 3000); });
   l.start();
   drawUi();

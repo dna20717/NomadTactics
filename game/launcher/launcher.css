@@ -89,3 +89,6 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #0e0e10; col
 .ln-hero.fallen { border-color: rgba(226, 82, 74, .55); }
 .ln-hero.fallen .ln-hero-sub { color: #f0928c; }
 @media (max-width: 700px) { .ln-hero { top: auto; bottom: calc(env(safe-area-inset-bottom, 0px) + 150px); right: 16px; } }
+.ln-volume { display: flex; align-items: center; gap: 8px; color: var(--ui-text3); }
+.ln-range.ln-vol { background: var(--ui-field); border: 1px solid var(--ui-border); height: 6px; }
+.ln-hero.scene { border-color: rgba(242, 193, 78, .4); }

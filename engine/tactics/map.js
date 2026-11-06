@@ -6,7 +6,8 @@
 //   { name, size, meter, symmetry: off|rotate_2|rotate_4|mirror_x|mirror_y,
 //     base: { ground, level }, slots: [[x, y], …] (metres, inside the wedge),
 //     shapes: [{ rect: [x0, y0, x1, y1] | circle: [x, y, r] | path: [[x, y], …], width?,
-//                ground?, level?, ramp? }, …] }   later shapes paint over earlier ones.
+//                ground?, level?, ramp? }, …],   later shapes paint over earlier ones.
+//     props?: [{ kind: 'tower', at: [x, y], size, floors, style }] }   optics only, copied by the symmetry
 
 import { root } from './fixed.js';
 
@@ -39,7 +40,9 @@ export function buildMap(def, world) {
     }
   }
   const slots = slotsOf(def, n, cell, sym);
-  return { id: def.id, name: def.name, n, cell, size: n * cell, grounds, ground, level, ramp, slots, symmetry: sym };
+  // props (towers …) are optics for the view; the simulation only sees their ground (e.g. „bebaut“)
+  const props = (def.props || []).flatMap((p, i) => slotsOf({ slots: [p.at] }, n, cell, sym).map(([x, y], k) => ({ ...p, id: `${i}.${k}`, x, y })));
+  return { id: def.id, name: def.name, n, cell, size: n * cell, grounds, ground, level, ramp, slots, props, symmetry: sym };
 }
 
 // Folds a cell into the wedge the shapes are written for

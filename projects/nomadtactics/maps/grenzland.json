@@ -54,6 +54,16 @@
   {"rect": [48, 150, 53, 156], "ground": "rubble"},
   {"circle": [98, 128, 4], "ground": "rubble"},
   {"circle": [176, 70, 4], "ground": "rubble"},
-  {"circle": [160, 96, 5], "ground": "rubble"}
+  {"circle": [160, 96, 5], "ground": "rubble"},
+  {"rect": [176, 158, 186, 168], "ground": "bebaut"},
+  {"rect": [158, 176, 168, 186], "ground": "bebaut"},
+  {"rect": [143, 54, 151, 62], "ground": "bebaut"},
+  {"rect": [26, 68, 34, 76], "ground": "bebaut"}
+ ],
+ "props": [
+  {"kind": "tower", "at": [181, 163], "size": 10, "floors": 22, "style": "glass"},
+  {"kind": "tower", "at": [163, 181], "size": 10, "floors": 18, "style": "glass"},
+  {"kind": "tower", "at": [147, 58], "size": 8, "floors": 13, "style": "panel"},
+  {"kind": "tower", "at": [30, 72], "size": 8, "floors": 7, "style": "brick"}
  ]
 }

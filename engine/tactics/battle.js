@@ -24,6 +24,10 @@ export const PRACTICE = { name: 'Übungsgegner', color: '#9aa3ab' };
 const BUCKET = 8 * MM;                    // spatial buckets for neighbours and targets
 const MAX_IDS = 120;
 const RADIUS = { tank: 2600, werfer: 2400, spaeher: 2100, dozer: 2400, soldat: 450 };
+// Body for pushing apart (06.11.): vehicles are capsules along their heading, a circle of radius r
+// moved ±core forward/back (tank 8 × 4.4 m, launcher 7.6 × 2.8 m …). Targeting keeps RADIUS.
+const BODY = { tank: [2300, 1700], werfer: [1500, 2300], spaeher: [1500, 700], dozer: [2200, 400], soldat: [450, 0] };
+const SEPARATE_PASSES = 2;
 const TURN = { track: 5, wheel: 7, infantry: 40 };
 const SHOT_SPEED = { gewehr: 20000, mg: 20000, granate: 12000, rakete: 2600, laser: 100000, flame: 3000, bomb: 1200 };
 const PROJECTILE = ['gewehr', 'mg', 'granate', 'rakete', 'laser', 'flame', 'bomb'];
@@ -51,6 +55,7 @@ export function compileTypes(setup) {
       speed: whole((u.speed || 3) * MM / TICKS_PER_SECOND),
       sight: whole((u.sight || 20) * MM),
       radius: RADIUS[u.model] ?? (u.class === 'infantry' ? 450 : 2200),
+      body: BODY[u.model]?.[0] ?? (u.class === 'infantry' ? 450 : 2000), core: BODY[u.model]?.[1] ?? (u.class === 'infantry' ? 0 : 1000),
       turn: TURN[movement] ?? 8,
       tough: whole((typeof kw.tough === 'number' ? kw.tough : kw.tough ? 1 : 0) * 100),
       deploys: !!kw.aufbauen,
@@ -426,32 +431,46 @@ export class Battle {
     return this.passable(t, a) && this.passable(t, b) && stepAllowed(this.map, k, a) && stepAllowed(this.map, k, b);
   }
 
-  // Units push each other apart; infantry gives way to vehicles
+  // Units push each other apart; infantry gives way to vehicles.
+  // Vehicles are capsules (three circles along the heading), so long tanks no longer slide into each other
+  // nose first. Two passes per step settle crowds; the order is the unit order (deterministic).
   separate() {
-    for (const a of this.units) {
-      const ta = this.types[a.type];
-      if (ta.building || a.hp <= 0) continue;
-      this.around(a.x, a.y, 6000, (b) => {
-        if (b.id <= a.id || b.hp <= 0) return;
-        const tb = this.types[b.type];
-        if (tb.building) return;
-        const min = ta.radius + tb.radius;
-        const dx = b.x - a.x, dy = b.y - a.y;
-        if (dx > min || dx < -min || dy > min || dy < -min) return;
-        const d = root(dx * dx + dy * dy);
-        if (d >= min) return;
-        const deep = Math.trunc((min - d) / 2) + 1;
-        let nx, ny;
-        if (d > 0) { nx = Math.trunc(dx * deep / d); ny = Math.trunc(dy * deep / d); }
-        else { nx = (a.id & 1) ? deep : -deep; ny = 0; }
-        // weight: the heavier one moves less, standing units yield to moving ones
-        let wa = ta.radius, wb = tb.radius;
-        if (!a.moved && b.moved) wa >>= 1; else if (a.moved && !b.moved) wb >>= 1;
-        const sa = Math.trunc(nx * 2 * wb / (wa + wb)), sb = Math.trunc(nx * 2 * wa / (wa + wb));
-        const ta2 = Math.trunc(ny * 2 * wb / (wa + wb)), tb2 = Math.trunc(ny * 2 * wa / (wa + wb));
-        this.place(a, ta, a.x - sa, a.y - ta2);
-        this.place(b, tb, b.x + sb, b.y + tb2);
-      });
+    for (let pass = 0; pass < SEPARATE_PASSES; pass++) {
+      for (const a of this.units) {
+        const ta = this.types[a.type];
+        if (ta.building || a.hp <= 0) continue;
+        const ea = ta.body + ta.core;
+        this.around(a.x, a.y, 8000, (b) => {
+          if (b.id <= a.id || b.hp <= 0) return;
+          const tb = this.types[b.type];
+          if (tb.building) return;
+          const reach = ea + tb.body + tb.core;
+          const dx = b.x - a.x, dy = b.y - a.y;
+          if (dx > reach || dx < -reach || dy > reach || dy < -reach) return;
+          const min = ta.body + tb.body;
+          // closest pair of body circles (centre, front, back)
+          const ax = ta.core ? Math.trunc(cos(a.h) * ta.core / 1024) : 0, ay = ta.core ? Math.trunc(sin(a.h) * ta.core / 1024) : 0;
+          const bx = tb.core ? Math.trunc(cos(b.h) * tb.core / 1024) : 0, by = tb.core ? Math.trunc(sin(b.h) * tb.core / 1024) : 0;
+          let wx = 0, wy = 0, wq = -1;
+          for (let i = ta.core ? -1 : 0; i <= (ta.core ? 1 : 0); i++) for (let j = tb.core ? -1 : 0; j <= (tb.core ? 1 : 0); j++) {
+            const ex = dx + j * bx - i * ax, ey = dy + j * by - i * ay, q = ex * ex + ey * ey;
+            if (wq < 0 || q < wq) { wq = q; wx = ex; wy = ey; }
+          }
+          if (wq >= min * min) return;
+          const d = root(wq);
+          const deep = Math.trunc((min - d) / 2) + 1;
+          let nx, ny;
+          if (d > 0) { nx = Math.trunc(wx * deep / d); ny = Math.trunc(wy * deep / d); }
+          else { nx = (a.id & 1) ? deep : -deep; ny = 0; }
+          // weight: the heavier one moves less, standing units yield to moving ones
+          let wa = ta.body + ta.core, wb = tb.body + tb.core;
+          if (!a.moved && b.moved) wa >>= 1; else if (a.moved && !b.moved) wb >>= 1;
+          const sa = Math.trunc(nx * 2 * wb / (wa + wb)), sb = Math.trunc(nx * 2 * wa / (wa + wb));
+          const ta2 = Math.trunc(ny * 2 * wb / (wa + wb)), tb2 = Math.trunc(ny * 2 * wa / (wa + wb));
+          this.place(a, ta, a.x - sa, a.y - ta2);
+          this.place(b, tb, b.x + sb, b.y + tb2);
+        });
+      }
     }
   }
 

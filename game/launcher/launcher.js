@@ -11,6 +11,7 @@ import { TICKS_PER_ROUND, ROUND_MS, BLUE } from '../../engine/net/protocol.js';
 import { battleView3d } from '../party/battle_3d.js';
 import { DATA, gameData } from '../party/game_data.js';
 import { icon } from '../icons.js';
+import { createMusic, nowPlaying, musicVolume, setMusicVolume, PLAYLIST } from '../party/music.js';
 
 const root = document.getElementById('launcher');
 const cv = document.getElementById('field');
@@ -93,6 +94,11 @@ function optionsPanel() {
     el('label', {}, 'Grafik-Qualität'),
     seg([['beautiful', 'Schön'], ['medium', 'Mittel'], ['fast', 'Schnell']], q, (v) => { write(QUALITY_KEY, v); view.quality(v); }),
     el('div', { class: 'ln-hint' }, 'Gilt für Diorama und Gefecht. Am iPad lieber Mittel oder Schnell.'),
+    el('label', {}, 'Lautstärke der Musik'),
+    el('div', { class: 'ln-volume' }, icon('muted', 14),
+      el('input', { type: 'range', min: 0, max: 100, step: 1, value: musicVolume(), class: 'ln-range ln-vol', id: 'ln-volume', oninput: (e) => setMusicVolume(Number(e.target.value)) }),
+      icon('loudspeaker', 14)),
+    el('div', { class: 'ln-hint' }, `Musik: „${PLAYLIST[0].title}“ von ${PLAYLIST[0].artist} (${PLAYLIST[0].credit}, ${PLAYLIST[0].license}). Im Spiel etwas leiser.`),
     el('label', {}, 'Größe der Oberfläche im Spiel'),
     seg([[0.9, '90 %'], [1, '100 %'], [1.15, '115 %'], [1.3, '130 %']], hud.scale ?? 1, (v) => { hud.scale = v; write(HUD_KEY, JSON.stringify(hud)); }),
   );
@@ -136,7 +142,7 @@ function newBattle() {
   const seed = (Math.random() * 0x7fffffff) | 0;
   sim = new Battle(seed, SIDES.map((s) => s.seat), setup);
   app.ls = { sim };
-  round = 0; overAt = 0; before = null; hero.id = 0;
+  round = 0; overAt = 0; before = null; hero.id = 0; director.nextStrike = 0; if (director.mode === 'tower') director.mode = 'hero';
   view.reset();
 }
 // AI: every 3 s each side sends its idle units at the nearest enemy landing pad; they fight whatever they meet
@@ -201,20 +207,68 @@ function pickHero(now) {
   heroChip.show();
   return best;
 }
+// Director (06.11.): a wide shot at the start („Totale“), then the hero; every third fallen hero another wide
+// shot; every 45–70 s a rocket strike on a standing tower with its own shot (towers also fall by themselves when
+// the fighting gets too close – then the camera goes there too, if it is not busy).
+const director = { mode: overview ? 'wide' : 'wide', until: 0, tower: null, heroes: 0, nextStrike: 0 };
+function shotWide(now, ms) { director.mode = 'wide'; director.until = now + ms; app.marked = 0; heroChip.label('Totale', 'Grenzland · vier Armeen'); }
+function shotTower(now, t, text) {
+  director.mode = 'tower'; director.tower = t; director.until = now + 15000; app.marked = 0; heroChip.label(text, 'Hochhaus');
+  // look from outside the city (away from the board centre), a little from the side of the fall
+  const size = sim.map.size / 1000, ox = t.x - size / 2, oz = t.z - size / 2, len = Math.hypot(ox, oz) || 1;
+  const side = [-t.dir[1], t.dir[0]], s2 = side[0] * ox + side[1] * oz > 0 ? 1 : -1;
+  const vx = ox / len * 0.7 + side[0] * s2 * 0.5, vz = oz / len * 0.7 + side[1] * s2 * 0.5;
+  director.yaw = Math.atan2(vx, vz);
+}
+app.director = director;
+app.strikeNow = () => launchStrike(performance.now());
+app.shot = (t) => { shotTower(performance.now(), t, 'Einsturz'); director.until = 1e15; };
+app.towers = () => view.towers.list;
+function launchStrike(now) {
+  const standing = view.towers.standing();
+  if (!standing.length) return;
+  // prefer towers close to the fighting
+  const t = standing[(Math.random() * standing.length) | 0];
+  for (let i = 0; i < 7; i++) view.strike(t.x + (Math.random() - 0.5) * t.size * 0.8, t.z + (Math.random() - 0.5) * t.size * 0.8, i * 420);
+  shotTower(now, t, 'Luftschlag');
+}
 function camera(dt, now) {
   const c = view.cam, size = sim.map.size / 1000;
+  if (!director.nextStrike) director.nextStrike = now + 22000;
+  if (!overview && now > director.nextStrike) { director.nextStrike = now + 45000 + Math.random() * 25000; if (director.mode !== 'tower') launchStrike(now); }
+  // a tower starts to fall on its own: go there unless something else is on
+  if (!overview && director.mode === 'hero') {
+    const falling = view.towers.list.find((t) => t.state === 'warn');
+    if (falling) shotTower(now, falling, 'Einsturz');
+  }
   if (now - auto.since < 6000) return;
   const k = 1 - Math.exp(-dt * 1.4), kSlow = 1 - Math.exp(-dt * 0.5);
-  if (overview) {
-    c.yaw += dt * 0.035;
+  if (overview || director.mode === 'wide') {
+    c.yaw += dt * 0.04;
     c.tx += (size / 2 - c.tx) * kSlow; c.tz += (size / 2 - c.tz) * kSlow;
-    c.dist += (300 - c.dist) * kSlow; c.pitch += (0.66 - c.pitch) * kSlow;
+    c.dist += (330 - c.dist) * kSlow; c.pitch += (0.7 - c.pitch) * kSlow;
+    if (!overview && now > director.until) { director.mode = 'hero'; hero.id = 0; }
+    if (director.mode !== 'hero') return;
+  }
+  if (director.mode === 'tower') {
+    const t = director.tower;
+    let dy = director.yaw - c.yaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy));
+    c.yaw += dy * k + dt * 0.02; director.yaw += dt * 0.02;
+    // look a bit above the base, from further away so the whole height and the fall fit in
+    const fx = t.x + t.dir[0] * 12, fz = t.z + t.dir[1] * 12;
+    c.tx += (fx - c.tx) * k; c.tz += (fz - c.tz) * k;
+    c.dist += (165 - c.dist) * kSlow; c.pitch += (0.42 - c.pitch) * kSlow;
+    if (now > director.until) { director.mode = 'hero'; hero.id = 0; }
     return;
   }
   const u = hero.id ? sim.byId.get(hero.id) : null;
   if (u && u.hp > 0) { hero.x = u.x / 1000; hero.z = u.y / 1000; }
   else if (hero.id && !hero.fell) { hero.fell = now; app.marked = 0; heroChip.fallen(); }
-  if (!hero.id || (hero.fell && now - hero.fell > 2600)) { hero.id = 0; pickHero(now); }
+  if (!hero.id || (hero.fell && now - hero.fell > 2600)) {
+    hero.id = 0;
+    if (++director.heroes % 3 === 0) { shotWide(now, 9000); return; }
+    pickHero(now);
+  }
   c.yaw += dt * 0.05;
   // wide screens: the hero sits right of the menu (focus moved to the camera's left)
   const shift = innerWidth >= 700 ? c.dist * 0.2 : 0;
@@ -235,6 +289,11 @@ const heroChip = (() => {
       box.className = 'ln-hero on';
       box.replaceChildren(el('span', { class: 'ln-dot', style: `background:${side().color}` }), el('b', {}, hero.name),
         el('span', { class: 'ln-hero-sub' }, `${side().name} · `, el('span', { id: 'ln-hero-time' }, '0:00'), ' · ', el('span', { id: 'ln-hero-shots' }, '0'), ' Schuss'));
+    },
+    label(title, sub) {
+      if (overview) return;
+      box.className = 'ln-hero on scene';
+      box.replaceChildren(icon(title === 'Totale' ? 'map' : 'building', 13), el('b', {}, title), el('span', { class: 'ln-hero-sub' }, sub));
     },
     fallen() { box.className = 'ln-hero on fallen'; box.querySelector('.ln-hero-sub')?.replaceChildren(`Gefallen nach ${age()} · ${hero.shots} Schuss`); },
     tick(now) {
@@ -271,6 +330,11 @@ function loop() {
 
 // ---------- start ----------
 drawMenu();
+// music with the „Now Playing“ chip bottom left (starts with the first tap or key, browser rule)
+const music = createMusic({ level: 1 });
+nowPlaying(music, document.body, { className: 'np-launcher' });
+music.start();
+app.music = music;
 gameData().then(async (d) => {
   online = d.online; app.commit = d.commit;
   const s = await loadSkirmish(d.json, { faction: 'usa', map: 'grenzland', mode: 'skirmish' });
@@ -289,9 +353,10 @@ gameData().then(async (d) => {
   // start in the middle of things: a few waves already landed and on their way
   for (let i = 0; i < 420; i++) { if (i % 30 === 0) orders(); for (let k = 0; k < TICKS_PER_ROUND; k++) sim.step(); sim.events.length = 0; }
   round = 420;
-  const c = view.cam, size = sim.map.size / 1000, first = pickHero(performance.now());
-  c.yaw = 0.5; c.pitch = overview ? 0.66 : 0.8; c.dist = overview ? 300 : 72;
-  if (first && !overview) { c.tx = hero.x; c.tz = hero.z; } else { c.tx = size / 2; c.tz = size / 2; }
+  // intro: the whole battlefield first, then down to the first hero
+  const c = view.cam, size = sim.map.size / 1000;
+  c.yaw = 0.5; c.pitch = 0.62; c.dist = 380; c.tx = size / 2; c.tz = size / 2;
+  shotWide(performance.now(), 10000);
   drawMenu();
   app.ready = true;
 }).catch((e) => { root.append(el('div', { class: 'ln-error' }, 'Spieldaten fehlen: ' + e.message)); });
