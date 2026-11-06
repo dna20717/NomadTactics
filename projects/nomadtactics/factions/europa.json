@@ -92,7 +92,7 @@
    "model": "europa_artilleriezentrum"
   },
   "luftwaffenstuetzpunkt": {
-   "name": "Luftwaffenstützpunkt",
+   "name": "Fliegerhorst",
    "function": "production",
    "cost": {"money": 1500},
    "buildTime": 16,
