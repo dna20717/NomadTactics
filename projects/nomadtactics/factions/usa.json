@@ -10,7 +10,7 @@
   "hauptquartier": {
    "name": "Hauptquartier",
    "function": "hq",
-   "model": "kaserne",
+   "model": "usa_hauptquartier",
    "cost": {"money": 2000},
    "buildTime": 40,
    "health": 3000,
@@ -32,12 +32,13 @@
    "power": 10,
    "requires": ["hauptquartier"],
    "pos": [-1, 1],
-   "description": "Explodiert heftig, wenn es zerstört wird."
+   "description": "Explodiert heftig, wenn es zerstört wird.",
+   "model": "usa_kraftwerk"
   },
   "kaserne": {
    "name": "Kaserne",
    "function": "production",
-   "model": "kaserne",
+   "model": "usa_kaserne",
    "cost": {"money": 600},
    "buildTime": 12,
    "health": 1500,
@@ -60,7 +61,8 @@
    "power": -1,
    "produces": ["versorger"],
    "requires": ["kraftwerk"],
-   "pos": [-0.5, 2]
+   "pos": [-0.5, 2],
+   "model": "usa_depot"
   },
   "waffenfabrik": {
    "name": "Fahrzeugfabrik",
@@ -73,7 +75,8 @@
    "power": -3,
    "produces": ["spaeher", "stryker", "kampfpanzer", "booker", "paladin", "lenkwerfer", "mlrs"],
    "requires": ["depot"],
-   "pos": [-0.5, 3]
+   "pos": [-0.5, 3],
+   "model": "usa_waffenfabrik"
   },
   "flugfeld": {
    "name": "Luftwaffenstützpunkt",
@@ -86,7 +89,8 @@
    "power": -4,
    "produces": ["apache", "blackhawk", "chinook", "f16", "f35", "a10", "reaper"],
    "requires": ["waffenfabrik"],
-   "pos": [1, 4]
+   "pos": [1, 4],
+   "model": "usa_flugfeld"
   },
   "forschungszentrum": {
    "name": "Waffen- und Forschungszentrum",
@@ -98,7 +102,8 @@
    "size": [6, 6],
    "power": -3,
    "requires": ["waffenfabrik"],
-   "pos": [-0.5, 4]
+   "pos": [-0.5, 4],
+   "model": "usa_forschungszentrum"
   },
   "radarstation": {
    "name": "Radarstation",
@@ -112,7 +117,8 @@
    "keywords": {"scout": true},
    "requires": ["depot"],
    "pos": [0.5, 2],
-   "description": "Zeigt die Minikarte und deckt Getarnte in der Nähe auf."
+   "description": "Zeigt die Minikarte und deckt Getarnte in der Nähe auf.",
+   "model": "usa_radarstation"
   },
   "feldlazarett": {
    "name": "Feldlazarett",
@@ -126,7 +132,8 @@
    "keywords": {"lazarett": 5},
    "requires": ["kaserne"],
    "pos": [-2.5, 2],
-   "description": "Heilt Infanterie in der Nähe."
+   "description": "Heilt Infanterie in der Nähe.",
+   "model": "usa_feldlazarett"
   },
   "abwehrlaser": {
    "name": "Abwehrlaser",
@@ -139,7 +146,8 @@
    "power": -2,
    "weapons": ["laser"],
    "requires": ["kaserne"],
-   "pos": [-2.5, 3]
+   "pos": [-2.5, 3],
+   "model": "usa_abwehrlaser"
   },
   "raketenabwehr": {
    "name": "Raketenabwehr",
@@ -152,7 +160,8 @@
    "power": -2,
    "weapons": ["abfangrakete"],
    "requires": ["kaserne"],
-   "pos": [-1.5, 3]
+   "pos": [-1.5, 3],
+   "model": "usa_raketenabwehr"
   },
   "ionenkanone": {
    "name": "Ionenkanone",
@@ -166,7 +175,8 @@
    "weapons": ["ionenstrahl"],
    "requires": ["forschungszentrum", "satellitennetz"],
    "pos": [0, 6],
-   "description": "Einmal alle 5 Minuten: Ein Strahl aus dem Orbit."
+   "description": "Einmal alle 5 Minuten: Ein Strahl aus dem Orbit.",
+   "model": "usa_ionenkanone"
   },
   "landeplatz": {
    "name": "Landeplatz",

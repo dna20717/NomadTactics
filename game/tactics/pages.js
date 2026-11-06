@@ -405,7 +405,7 @@ function entryInspector(w, eb, insp, cat, id) {
     insp.append(el('h4', {}, 'Wirkung'), ...(x.weapons || []).map(wid => { const a = w.p.data.weapons[wid]; return a ? el('div', { class: 'tk-effect' }, el('b', {}, `${a.name} · ${dps(a)} DPS · ${a.range} m`), effectAgainst(w, a)) : null; }),
       (x.weapons || []).length ? null : el('p', { class: 'ed-small' }, 'Unbewaffnet.'));
   } else if (cat === 'building') {
-    insp.append(F('Beschreibung', 'description', 'textarea'), W('Funktion', 'function', Object.entries(FUNCTIONS)), W('Modell', 'model', Object.entries(w.p.data.models).map(([k, m]) => [k, m.name]), '— kein Modell —'),
+    insp.append(F('Beschreibung', 'description', 'textarea'), W('Funktion', 'function', Object.entries(FUNCTIONS)), W('Modell', 'model', Object.entries(w.p.data.models).map(([k, m]) => [k, m.name]), '— kein Modell —'), previewOf(w, w.p.data.models[x.model], 200),
       el('h4', {}, 'Werte'), B('Kosten', 'cost', (v, s) => w.costEditor(v, resources, s)), F('Bauzeit (s)', 'buildTime', 'number'), F('Leben', 'health', 'number'),
       W('Rüstung', 'armor', Object.entries(K.armors).map(([k, r]) => [k, r.name])),
       B('Größe (Felder)', 'size', (v, s) => el('span', { class: 'ed-row' }, ...[0, 1].map(i => { const f = el('input', { type: 'number', min: 1, class: 'ed-field small', value: v?.[i] ?? '' }); f.addEventListener('change', () => { const n = [...(v || [1, 1])]; n[i] = +f.value || 1; s(n); }); return f; }))),

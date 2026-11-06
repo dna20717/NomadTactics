@@ -40,7 +40,8 @@ const PROTO_TYPE = { tank: 'tank', werfer: 'werfer', spaeher: 'spaeher', soldat:
 const FALLBACK_MODEL = { daniel_tank: 'tank' };                        // .vox-Modelle ohne Prototyp
 const SYMBOL = { squad: 'humans', spaeher: 'target', tank: 'vehicle', werfer: 'rakete', dozer: 'build' };
 const HEIGHT = { squad: 1.9, spaeher: 2.3, tank: 2.8, werfer: 3.2, dozer: 2.8 };
-const simType = model => { const q = MODELS[model]?.source || ''; return q.startsWith('prototype:') ? PROTO_TYPE[q.slice(10)] : FALLBACK_MODEL[model]; };
+// kit models (06.11.) carry their size class in `footprint` (tank, werfer, spaeher, soldat, dozer)
+const simType = model => { const q = MODELS[model]?.source || ''; return q.startsWith('prototype:') ? PROTO_TYPE[q.slice(10)] : PROTO_TYPE[MODELS[model]?.footprint] || FALLBACK_MODEL[model]; };
 const shortName = n => n.length <= 9 ? n : n.split(/[\s-]/)[0].length <= 9 ? n.split(/[\s-]/)[0] : n.slice(0, 8) + '.';
 const swText = (id, w) => (KEYWORDS[id]?.name || id) + (w !== true && w != null ? `(${w})` : '');
 const DATA = {}, Q = EXPERIENCE.sources || {};

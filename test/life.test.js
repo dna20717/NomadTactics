@@ -11,7 +11,7 @@ const loader = { json: async (d) => JSON.parse(fs.readFileSync(path.join(root, d
 
 test('Modell nimmt sein Profil, lifeOver überschreibt, ohne Profil steht es still', async () => {
   const p = await loadTactics(loader);
-  const tank = lifeOf(p.data.life, p.data.models.tank);
+  const tank = lifeOf(p.data.life, p.data.models.abrams);
   assert.equal(tank.id, 'tracked'); assert.equal(tank.drive, 'track'); assert.ok(tank.stages.length >= 2);
   const over = lifeOf(p.data.life, { life: 'tracked', lifeOver: { kick: 9 } });
   assert.equal(over.kick, 9); assert.equal(over.spring, tank.spring);
@@ -30,8 +30,8 @@ test('Prüfung meldet falsche Werte und Verweise', async () => {
   const p = await loadTactics(loader);
   assert.equal(validateTactics(p).filter((m) => m.kind === 'error').length, 0);
   p.data.life.profiles.tracked.kick = 99;
-  p.data.models.tank.life = 'gibtsnicht';
-  p.data.models.werfer.scale = 7;
+  p.data.models.abrams.life = 'gibtsnicht';
+  p.data.models.himars.scale = 7;
   const e = validateTactics(p).filter((m) => m.kind === 'error').map((m) => m.text).join(' | ');
   assert.match(e, /Rückstoß Rumpf/); assert.match(e, /gibtsnicht/); assert.match(e, /Voxel-Größe/);
 });
@@ -39,9 +39,9 @@ test('Prüfung meldet falsche Werte und Verweise', async () => {
 test('Umbenennen zieht die Modelle mit, Löschen räumt auf', async () => {
   const p = await loadTactics(loader);
   renameLife(p, 'tracked', 'kette');
-  assert.equal(p.data.models.tank.life, 'kette');
+  assert.equal(p.data.models.abrams.life, 'kette');
   renameLife(p, 'kette', null);
-  assert.equal(p.data.models.tank.life, undefined);
+  assert.equal(p.data.models.abrams.life, undefined);
 });
 
 test('Beschädigte Modelle verlieren Würfel, schwerere Stufen mehr, der Boden bleibt', () => {
@@ -75,7 +75,7 @@ test('Fahrzeug-Baukasten: Listen stimmen, jedes Modell baut, Räder und Türme s
   for (const [id, m] of kits) {
     const k = buildKit(m.source.slice(4), m.kit, m.paint);
     const soldier = m.source === 'kit:soldier';
-    const type = m.source.slice(4), small = soldier || (type === 'uav');
+    const type = m.source.slice(4), small = soldier || type === 'uav' || type === 'building';
     assert.ok(k.hull.size > (small ? 60 : 500), id);
     if (type === 'heli') assert.ok(k.rotors.length >= 2, `${id}: Rotoren`);
     if (soldier) { assert.equal(k.legs?.at.length, 2, `${id}: Beine`); assert.equal(k.scale, 0.1); }

@@ -1,12 +1,4 @@
 {
- "tank": {"name": "Kampfpanzer", "source": "prototype:tank", "life": "tracked"},
- "werfer": {"name": "Raketenwerfer", "source": "prototype:werfer", "life": "wheeled"},
- "spaeher": {"name": "Spähwagen", "source": "prototype:spaeher", "life": "wheeled"},
- "soldat": {"name": "Soldat", "source": "prototype:soldat", "life": "infantry"},
- "dozer": {"name": "Dozer", "source": "prototype:dozer", "life": "tracked"},
- "drone": {"name": "Begleitdrohne", "source": "prototype:drone", "life": "drone"},
- "kaserne": {"name": "Kaserne", "source": "prototype:kaserne", "life": "building"},
- "highrise": {"name": "Hochhaus", "source": "prototype:highrise"},
  "daniel_tank": {"name": "Daniels Panzer", "source": "../../prototypes/nomadtactics/models/daniel_tank.vox", "life": "tracked", "scale": 0.8},
  "pad": {"name": "Landeplatz", "source": "prototype:pad", "life": "building"},
  "kit_dozer": {"name": "Bautrupp (Planierraupe)", "source": "kit:dozer", "paint": "site", "kit": {}, "life": "tracked", "footprint": "dozer"},
@@ -251,5 +243,321 @@
   "life": "tracked",
   "footprint": "tank"
  },
- "ua_saboteur": {"name": "Saboteurin", "source": "kit:soldier", "paint": "ukraine_u", "kit": {"headgear": "cap", "mask": true, "vest": false}, "life": "infantry", "footprint": "soldat"}
+ "ua_saboteur": {"name": "Saboteurin", "source": "kit:soldier", "paint": "ukraine_u", "kit": {"headgear": "cap", "mask": true, "vest": false}, "life": "infantry", "footprint": "soldat"},
+ "usa_hauptquartier": {"name": "Hauptquartier (USA)", "source": "kit:building", "paint": "usa", "kit": {"style": "hq", "width": 40, "depth": 40, "look": "modern", "height": 7}, "life": "building"},
+ "usa_kraftwerk": {"name": "Fusionskraftwerk (USA)", "source": "kit:building", "paint": "usa", "kit": {"style": "power_fusion", "width": 25, "depth": 25, "look": "modern"}, "life": "building"},
+ "usa_kaserne": {"name": "Kaserne (USA)", "source": "kit:building", "paint": "usa", "kit": {"style": "barracks", "width": 30, "depth": 25, "look": "modern", "height": 5}, "life": "building"},
+ "usa_depot": {
+  "name": "Versorgungsdepot (USA)",
+  "source": "kit:building",
+  "paint": "usa",
+  "kit": {"style": "depot", "width": 35, "depth": 30, "look": "modern", "height": 6},
+  "life": "building"
+ },
+ "usa_waffenfabrik": {
+  "name": "Fahrzeugfabrik (USA)",
+  "source": "kit:building",
+  "paint": "usa",
+  "kit": {"style": "factory", "width": 45, "depth": 35, "look": "modern", "height": 7},
+  "life": "building"
+ },
+ "usa_flugfeld": {
+  "name": "Luftwaffenstützpunkt (USA)",
+  "source": "kit:building",
+  "paint": "usa",
+  "kit": {"style": "airfield", "width": 50, "depth": 40, "look": "modern", "height": 4},
+  "life": "building"
+ },
+ "usa_forschungszentrum": {
+  "name": "Waffen- und Forschungszentrum (USA)",
+  "source": "kit:building",
+  "paint": "usa",
+  "kit": {"style": "research", "width": 30, "depth": 30, "look": "modern", "height": 7},
+  "life": "building"
+ },
+ "usa_radarstation": {"name": "Radarstation (USA)", "source": "kit:building", "paint": "usa", "kit": {"style": "radar", "width": 20, "depth": 20, "look": "modern", "height": 5}, "life": "building"},
+ "usa_feldlazarett": {
+  "name": "Feldlazarett (USA)",
+  "source": "kit:building",
+  "paint": "usa",
+  "kit": {"style": "hospital", "width": 25, "depth": 20, "look": "modern", "height": 5},
+  "life": "building"
+ },
+ "usa_abwehrlaser": {
+  "name": "Abwehrlaser (USA)",
+  "source": "kit:building",
+  "paint": "usa",
+  "kit": {"style": "tower", "width": 10, "depth": 10, "look": "modern", "height": 6, "weapon": "laser"},
+  "life": "building"
+ },
+ "usa_raketenabwehr": {
+  "name": "Raketenabwehr (USA)",
+  "source": "kit:building",
+  "paint": "usa",
+  "kit": {"style": "tower", "width": 10, "depth": 10, "look": "modern", "height": 6, "weapon": "rockets"},
+  "life": "building"
+ },
+ "usa_ionenkanone": {"name": "Ionenkanone (USA)", "source": "kit:building", "paint": "usa", "kit": {"style": "ion", "width": 30, "depth": 30, "look": "modern"}, "life": "building"},
+ "china_kommandozentrale": {
+  "name": "Kommandozentrale (China)",
+  "source": "kit:building",
+  "paint": "china",
+  "kit": {"style": "hq", "width": 40, "depth": 40, "look": "industrial", "height": 7},
+  "life": "building"
+ },
+ "china_atomkraftwerk": {
+  "name": "Atomkraftwerk (China)",
+  "source": "kit:building",
+  "paint": "china",
+  "kit": {"style": "power_nuclear", "width": 25, "depth": 25, "look": "industrial"},
+  "life": "building"
+ },
+ "china_kaserne": {
+  "name": "Kaserne (China)",
+  "source": "kit:building",
+  "paint": "china",
+  "kit": {"style": "barracks", "width": 25, "depth": 20, "look": "industrial", "height": 5},
+  "life": "building"
+ },
+ "china_versorgungszentrum": {
+  "name": "Versorgungszentrum (China)",
+  "source": "kit:building",
+  "paint": "china",
+  "kit": {"style": "depot", "width": 30, "depth": 30, "look": "industrial", "height": 6},
+  "life": "building"
+ },
+ "china_panzerfabrik": {
+  "name": "Panzerfabrik (China)",
+  "source": "kit:building",
+  "paint": "china",
+  "kit": {"style": "factory", "width": 40, "depth": 40, "look": "industrial", "height": 7},
+  "life": "building"
+ },
+ "china_raketenkomplex": {
+  "name": "Raketenkomplex (China)",
+  "source": "kit:building",
+  "paint": "china",
+  "kit": {"style": "factory", "width": 40, "depth": 35, "look": "industrial", "height": 7},
+  "life": "building"
+ },
+ "china_luftwaffenbasis": {
+  "name": "Luftwaffenbasis (China)",
+  "source": "kit:building",
+  "paint": "china",
+  "kit": {"style": "airfield", "width": 40, "depth": 30, "look": "industrial", "height": 4},
+  "life": "building"
+ },
+ "china_forschungszentrum": {
+  "name": "Forschungszentrum (China)",
+  "source": "kit:building",
+  "paint": "china",
+  "kit": {"style": "research", "width": 30, "depth": 25, "look": "industrial", "height": 7},
+  "life": "building"
+ },
+ "china_radarstation": {
+  "name": "Radarstation (China)",
+  "source": "kit:building",
+  "paint": "china",
+  "kit": {"style": "radar", "width": 20, "depth": 20, "look": "industrial", "height": 5},
+  "life": "building"
+ },
+ "china_bunker": {
+  "name": "Bunker (China)",
+  "source": "kit:building",
+  "paint": "china",
+  "kit": {"style": "bunker", "width": 15, "depth": 15, "look": "industrial", "weapon": "mg"},
+  "life": "building"
+ },
+ "china_gatlingturm": {
+  "name": "Gatling-Turm (China)",
+  "source": "kit:building",
+  "paint": "china",
+  "kit": {"style": "tower", "width": 10, "depth": 10, "look": "industrial", "height": 6, "weapon": "gatling"},
+  "life": "building"
+ },
+ "china_propagandaturm": {"name": "Propagandaturm (China)", "source": "kit:building", "paint": "china", "kit": {"style": "mast", "width": 10, "depth": 10, "look": "industrial"}, "life": "building"},
+ "china_atomraketensilo": {"name": "Atomraketensilo (China)", "source": "kit:building", "paint": "china", "kit": {"style": "silo", "width": 30, "depth": 30, "look": "industrial"}, "life": "building"},
+ "ukraine_feldkommando": {
+  "name": "Feldkommando (Ukraine)",
+  "source": "kit:building",
+  "paint": "ukraine",
+  "kit": {"style": "hq", "width": 35, "depth": 35, "look": "improvised", "height": 7},
+  "life": "building"
+ },
+ "ukraine_kaserne": {
+  "name": "Improvisierte Kaserne (Ukraine)",
+  "source": "kit:building",
+  "paint": "ukraine",
+  "kit": {"style": "barracks", "width": 25, "depth": 20, "look": "improvised", "height": 5},
+  "life": "building"
+ },
+ "ukraine_versorgungszentrum": {
+  "name": "Mobiles Versorgungszentrum (Ukraine)",
+  "source": "kit:building",
+  "paint": "ukraine",
+  "kit": {"style": "depot", "width": 40, "depth": 30, "look": "improvised", "height": 6},
+  "life": "building"
+ },
+ "ukraine_werkstatt": {
+  "name": "Werkstatt (Ukraine)",
+  "source": "kit:building",
+  "paint": "ukraine",
+  "kit": {"style": "workshop", "width": 40, "depth": 35, "look": "improvised", "height": 6},
+  "life": "building"
+ },
+ "ukraine_fahrzeugdepot": {
+  "name": "Fahrzeugdepot (Ukraine)",
+  "source": "kit:building",
+  "paint": "ukraine",
+  "kit": {"style": "factory", "width": 45, "depth": 35, "look": "improvised", "height": 7},
+  "life": "building"
+ },
+ "ukraine_drohnenzentrum": {
+  "name": "Drohnenzentrum (Ukraine)",
+  "source": "kit:building",
+  "paint": "ukraine",
+  "kit": {"style": "dronehub", "width": 25, "depth": 25, "look": "improvised", "height": 5},
+  "life": "building"
+ },
+ "ukraine_kommunikationsstation": {
+  "name": "Kommunikationsstation (Ukraine)",
+  "source": "kit:building",
+  "paint": "ukraine",
+  "kit": {"style": "comms", "width": 20, "depth": 20, "look": "improvised", "height": 5},
+  "life": "building"
+ },
+ "ukraine_feldlazarett": {
+  "name": "Feldlazarett (Ukraine)",
+  "source": "kit:building",
+  "paint": "ukraine",
+  "kit": {"style": "hospital", "width": 25, "depth": 20, "look": "improvised", "height": 5},
+  "life": "building"
+ },
+ "ukraine_tunnelnetz": {"name": "Tunnelnetz (Ukraine)", "source": "kit:building", "paint": "ukraine", "kit": {"style": "tunnel", "width": 15, "depth": 15, "look": "improvised"}, "life": "building"},
+ "ukraine_stellung": {
+  "name": "MG-Stellung (Ukraine)",
+  "source": "kit:building",
+  "paint": "ukraine",
+  "kit": {"style": "emplacement", "width": 10, "depth": 10, "look": "improvised", "weapon": "mg"},
+  "life": "building"
+ },
+ "ukraine_flakstellung": {
+  "name": "Flakstellung (Ukraine)",
+  "source": "kit:building",
+  "paint": "ukraine",
+  "kit": {"style": "emplacement", "width": 10, "depth": 10, "look": "improvised", "weapon": "flak"},
+  "life": "building"
+ },
+ "ukraine_schwarzmarkt": {
+  "name": "Schwarzmarkt (Ukraine)",
+  "source": "kit:building",
+  "paint": "ukraine",
+  "kit": {"style": "market", "width": 30, "depth": 25, "look": "improvised", "height": 5},
+  "life": "building"
+ },
+ "ukraine_raketensilo": {
+  "name": "Raketenhagel-Silo (Ukraine)",
+  "source": "kit:building",
+  "paint": "ukraine",
+  "kit": {"style": "rocketsilo", "width": 30, "depth": 30, "look": "improvised"},
+  "life": "building"
+ },
+ "europa_nato_kommando": {
+  "name": "NATO-Kommando (Europa)",
+  "source": "kit:building",
+  "paint": "europa",
+  "kit": {"style": "hq", "width": 40, "depth": 40, "look": "modern", "height": 7},
+  "life": "building"
+ },
+ "europa_kraftwerk": {
+  "name": "Kraftwerk (Europa)",
+  "source": "kit:building",
+  "paint": "europa",
+  "kit": {"style": "power_plant", "width": 25, "depth": 25, "look": "modern", "height": 7},
+  "life": "building"
+ },
+ "europa_kaserne": {
+  "name": "Kaserne (Europa)",
+  "source": "kit:building",
+  "paint": "europa",
+  "kit": {"style": "barracks", "width": 25, "depth": 20, "look": "modern", "height": 5},
+  "life": "building"
+ },
+ "europa_versorgungsdepot": {
+  "name": "Versorgungsdepot (Europa)",
+  "source": "kit:building",
+  "paint": "europa",
+  "kit": {"style": "depot", "width": 30, "depth": 30, "look": "modern", "height": 6},
+  "life": "building"
+ },
+ "europa_panzerfabrik": {
+  "name": "Panzerfabrik (Europa)",
+  "source": "kit:building",
+  "paint": "europa",
+  "kit": {"style": "factory", "width": 40, "depth": 40, "look": "modern", "height": 7},
+  "life": "building"
+ },
+ "europa_artilleriezentrum": {
+  "name": "Artilleriezentrum (Europa)",
+  "source": "kit:building",
+  "paint": "europa",
+  "kit": {"style": "factory", "width": 40, "depth": 35, "look": "modern", "height": 7},
+  "life": "building"
+ },
+ "europa_luftwaffenstuetzpunkt": {
+  "name": "Luftwaffenstützpunkt (Europa)",
+  "source": "kit:building",
+  "paint": "europa",
+  "kit": {"style": "airfield", "width": 30, "depth": 30, "look": "modern", "height": 4},
+  "life": "building"
+ },
+ "europa_forschungszentrum": {
+  "name": "Forschungszentrum (Europa)",
+  "source": "kit:building",
+  "paint": "europa",
+  "kit": {"style": "research", "width": 25, "depth": 25, "look": "modern", "height": 7},
+  "life": "building"
+ },
+ "europa_radarstation": {
+  "name": "Radarstation (Europa)",
+  "source": "kit:building",
+  "paint": "europa",
+  "kit": {"style": "radar", "width": 20, "depth": 20, "look": "modern", "height": 5},
+  "life": "building"
+ },
+ "europa_feldlazarett": {
+  "name": "Feldlazarett (Europa)",
+  "source": "kit:building",
+  "paint": "europa",
+  "kit": {"style": "hospital", "width": 25, "depth": 20, "look": "modern", "height": 5},
+  "life": "building"
+ },
+ "europa_artilleriestellung": {
+  "name": "Artilleriestellung (Europa)",
+  "source": "kit:building",
+  "paint": "europa",
+  "kit": {"style": "emplacement", "width": 15, "depth": 15, "look": "modern", "weapon": "howitzer"},
+  "life": "building"
+ },
+ "europa_flugabwehrstellung": {
+  "name": "Flugabwehrstellung (Europa)",
+  "source": "kit:building",
+  "paint": "europa",
+  "kit": {"style": "emplacement", "width": 10, "depth": 10, "look": "modern", "weapon": "rockets"},
+  "life": "building"
+ },
+ "europa_grenzbunker": {
+  "name": "Grenzbunker (Europa)",
+  "source": "kit:building",
+  "paint": "europa",
+  "kit": {"style": "bunker", "width": 15, "depth": 15, "look": "modern", "weapon": "mg"},
+  "life": "building"
+ },
+ "europa_marschflugkoerper": {
+  "name": "Marschflugkörper-Batterie (Europa)",
+  "source": "kit:building",
+  "paint": "europa",
+  "kit": {"style": "cruise", "width": 30, "depth": 30, "look": "modern"},
+  "life": "building"
+ }
 }

@@ -16,7 +16,7 @@
    "armor": "building",
    "size": [8, 8],
    "pos": [0, 0],
-   "model": "kaserne",
+   "model": "europa_nato_kommando",
    "power": 5,
    "produces": ["bautrupp"],
    "keywords": {"scout": true}
@@ -31,7 +31,8 @@
    "size": [5, 5],
    "pos": [-2, 1],
    "power": 8,
-   "requires": ["nato_kommando"]
+   "requires": ["nato_kommando"],
+   "model": "europa_kraftwerk"
   },
   "kaserne": {
    "name": "Kaserne",
@@ -42,7 +43,7 @@
    "armor": "building",
    "size": [5, 4],
    "pos": [-1, 1],
-   "model": "kaserne",
+   "model": "europa_kaserne",
    "power": -1,
    "produces": ["blauhelme", "fremdenlegion", "ksk", "kampfingenieure"],
    "requires": ["nato_kommando"],
@@ -59,7 +60,8 @@
    "pos": [1, 1],
    "power": -1,
    "produces": ["versorger"],
-   "requires": ["nato_kommando"]
+   "requires": ["nato_kommando"],
+   "model": "europa_versorgungsdepot"
   },
   "panzerfabrik": {
    "name": "Panzerfabrik",
@@ -72,7 +74,8 @@
    "pos": [0, 2],
    "power": -3,
    "produces": ["fennek", "boxer", "kampfpanzer", "leclerc", "challenger2"],
-   "requires": ["kaserne", "versorgungsdepot"]
+   "requires": ["kaserne", "versorgungsdepot"],
+   "model": "europa_panzerfabrik"
   },
   "artilleriezentrum": {
    "name": "Artilleriezentrum",
@@ -85,7 +88,8 @@
    "power": -3,
    "produces": ["pzh2000", "caesar", "mlrs"],
    "requires": ["panzerfabrik"],
-   "pos": [1, 2]
+   "pos": [1, 2],
+   "model": "europa_artilleriezentrum"
   },
   "luftwaffenstuetzpunkt": {
    "name": "Luftwaffenstützpunkt",
@@ -98,7 +102,8 @@
    "pos": [1, 3],
    "power": -2,
    "produces": ["tiger", "nh90", "chinook", "eurofighter", "rafale", "eurodrone"],
-   "requires": ["panzerfabrik"]
+   "requires": ["panzerfabrik"],
+   "model": "europa_luftwaffenstuetzpunkt"
   },
   "forschungszentrum": {
    "name": "Forschungszentrum",
@@ -110,7 +115,8 @@
    "size": [5, 5],
    "pos": [-1, 3],
    "power": -3,
-   "requires": ["panzerfabrik"]
+   "requires": ["panzerfabrik"],
+   "model": "europa_forschungszentrum"
   },
   "radarstation": {
    "name": "Radarstation",
@@ -124,7 +130,8 @@
    "keywords": {"scout": true},
    "requires": ["versorgungsdepot"],
    "pos": [2, 1],
-   "description": "Zeigt die Minikarte und deckt Getarnte in der Nähe auf."
+   "description": "Zeigt die Minikarte und deckt Getarnte in der Nähe auf.",
+   "model": "europa_radarstation"
   },
   "feldlazarett": {
    "name": "Feldlazarett",
@@ -138,7 +145,8 @@
    "keywords": {"lazarett": 5},
    "requires": ["kaserne"],
    "pos": [-2, 3],
-   "description": "Heilt Infanterie in der Nähe."
+   "description": "Heilt Infanterie in der Nähe.",
+   "model": "europa_feldlazarett"
   },
   "artilleriestellung": {
    "name": "Artilleriestellung",
@@ -151,7 +159,8 @@
    "pos": [-2, 2],
    "power": -2,
    "weapons": ["haubitze"],
-   "requires": ["kaserne"]
+   "requires": ["kaserne"],
+   "model": "europa_artilleriestellung"
   },
   "flugabwehrstellung": {
    "name": "Flugabwehrstellung",
@@ -164,7 +173,8 @@
    "pos": [-3, 2],
    "power": -2,
    "weapons": ["abfangrakete"],
-   "requires": ["kaserne"]
+   "requires": ["kaserne"],
+   "model": "europa_flugabwehrstellung"
   },
   "grenzbunker": {
    "name": "Grenzbunker",
@@ -177,7 +187,8 @@
    "pos": [-3, 3],
    "power": 0,
    "requires": ["kaserne"],
-   "keywords": {"garnison": 6, "tough": 5, "nachtsicht": true}
+   "keywords": {"garnison": 6, "tough": 5, "nachtsicht": true},
+   "model": "europa_grenzbunker"
   },
   "marschflugkoerper": {
    "name": "Marschflugkörper-Batterie",
@@ -194,7 +205,8 @@
     "forschungszentrum",
     "vernetztefeuerleitung"
    ],
-   "description": "Einmal alle 5 Minuten: eine Salve Präzisionsraketen."
+   "description": "Einmal alle 5 Minuten: eine Salve Präzisionsraketen.",
+   "model": "europa_marschflugkoerper"
   }
  },
  "units": {

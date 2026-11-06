@@ -35,6 +35,8 @@ export const SKINS = [0xd9a37c, 0xb5835e, 0x7d5539];
 for (const [i, c] of SKINS.entries()) { PAL[`skin${i}`] = [c]; SURFACE[`skin${i}`] = 3; }
 Object.assign(PAL, { boots: [0x2e2924, 0x352f29], unblue: [0x4a8fd4, 0x5196da], kepi: [0xf1efe8, 0xe8e6de], kepiTop: [0x2a3550], scope: [0x1d1f22] });
 Object.assign(SURFACE, { boots: 3, unblue: 5, kepi: 5, kepiTop: 5, scope: 2 });
+Object.assign(PAL, { sandbag: [0xb19d73, 0xa69268, 0xbaa67c], cross: [0x2f9e4f], hazard: [0xe2b232, 0x2a2a26] });
+Object.assign(SURFACE, { roof: 3, sandbag: 3, cross: 5, hazard: 5 });
 const shade = (c, f) => { const r = Math.min(255, ((c >> 16) & 255) * f), g = Math.min(255, ((c >> 8) & 255) * f), b = Math.min(255, (c & 255) * f); return (r << 16) | (g << 8) | b; };
 const registered = new Set();
 function register(id) {
@@ -550,9 +552,154 @@ function uavRotors(p) {
   return [{ W: rotorModel(p.style === 'cruise' ? 2 : 3, p.style === 'cruise' ? 2 : 3, { kind: 'black' }), at: [0, 3 * S, (zb - 1) * S], axis: 'z', rate: 50, turn: 'x' }];
 }
 
+// ---------- buildings (0.4-m voxels): one builder, a recipe per function, look per nation ----------
+// Params: style (hq, barracks, factory, airfield, power_fusion, power_nuclear, power_plant, depot, research, radar, hospital,
+//   tower, bunker, emplacement, ion, silo, rocketsilo, cruise, tunnel, market, mast, dronehub, comms, workshop),
+//   width/depth (voxels), height, look (modern | industrial | improvised), weapon (for towers: laser, gatling, mg, flak, rockets, howitzer).
+// Kinds: 'concrete', 'roof', 'sandbag', 'asphalt', 'white', 'cross' (green first-aid cross, never a red cross), 'hazard', plus paint kinds.
+function bld(p) {
+  const [W, s] = newModel();
+  const w = p.width, d = p.depth, hw = w >> 1, hd = d >> 1, x0 = -hw, x1 = x0 + w - 1, z0 = -hd, z1 = z0 + d - 1;
+  const look = p.look, wall = look === 'improvised' ? 'c' : 'concrete', trim = look === 'industrial' ? 'acc' : 'c';
+  const block = (a0, a1, y0, y1, b0, b1, k = wall) => box(s, a0, a1, y0, y1, b0, b1, k);
+  const windows = (a0, a1, y, b0, b1, every = 3) => {   // window band on all four outer walls of a block
+    for (let x = a0 + 1; x < a1; x++) if ((x - a0) % every === 1) { s(x, y, b1, 'glass'); s(x, y, b0, 'glass'); }
+    for (let z = b0 + 1; z < b1; z++) if ((z - b0) % every === 1) { s(a0, y, z, 'glass'); s(a1, y, z, 'glass'); }
+  };
+  const flatRoof = (a0, a1, y, b0, b1) => { block(a0, a1, y, y, b0, b1, 'roof'); for (let x = a0; x <= a1; x++) { s(x, y + 1, b0, wall); s(x, y + 1, b1, wall); } for (let z = b0; z <= b1; z++) { s(a0, y + 1, z, wall); s(a1, y + 1, z, wall); } };
+  const pitched = (a0, a1, y, b0, b1, k = 'roof') => { const half = (a1 - a0) >> 1; for (let i = 0; i <= half; i++) block(a0 + i, a1 - i, y + i, y + i, b0, b1, k); };
+  const sawtooth = (a0, a1, y, b0, b1) => { for (let z = b0; z <= b1; z += 4) for (let i = 0; i < 3; i++) block(a0, a1, y + i, y + i, z + i, Math.min(b1, z + 3), i === 2 ? 'glass' : 'roof'); };
+  const arched = (a0, a1, y, b0, b1, k = 'c') => { const r = (a1 - a0) / 2, c = (a0 + a1) / 2; for (let x = a0; x <= a1; x++) { const h = Math.round(Math.sqrt(Math.max(0, r * r - (x - c) * (x - c))) * 0.9); block(x, x, y, y + h, b0, b1, k); } };
+  const door = (a0, a1, y1, z) => block(a0, a1, 1, y1, z, z, 'black');
+  const chimney = (x, z, h, y = 1) => { block(x, x + 1, y, y + h, z, z + 1, 'concrete'); s(x, y + h, z, 'hazard'); s(x + 1, y + h, z + 1, 'hazard'); };
+  const mast = (x, z, y, h) => { for (let i = 0; i < h; i++) s(x, y + i, z, 'metall'); s(x, y + h, z, 'tail'); };
+  const flag = (x, z, y) => { mast(x, z, y, 6); block(x + 1, x + 3, y + 4, y + 5, z, z, 'team'); };
+  const tank = (cx, cz, r, h, k = 'white', y = 1) => { for (let x = -r; x <= r; x++) for (let z = -r; z <= r; z++) if (x * x + z * z <= r * r + r) block(cx + x, cx + x, y, y + h - 1, cz + z, cz + z, k); for (let x = -r + 1; x <= r - 1; x++) for (let z = -r + 1; z <= r - 1; z++) if (x * x + z * z < r * r) s(cx + x, y + h, cz + z, 'roof'); };
+  const dome = (cx, cz, r, y, k = 'white') => { for (let x = -r; x <= r; x++) for (let z = -r; z <= r; z++) for (let h = 0; h <= r; h++) if (x * x + z * z + h * h <= r * r + r) s(cx + x, y + h, cz + z, k); };
+  const sandbags = (a0, a1, b0, b1, h = 2) => { for (let y = 1; y <= h; y++) { for (let x = a0; x <= a1; x++) { s(x, y, b0, 'sandbag'); s(x, y, b1, 'sandbag'); } for (let z = b0; z <= b1; z++) { s(a0, y, z, 'sandbag'); s(a1, y, z, 'sandbag'); } } };
+  const container = (x, z, along = true, k = 'c1', y = 1) => along ? block(x, x + 2, y, y + 2, z, z + 5, k) : block(x, x + 5, y, y + 2, z, z + 2, k);
+  const crates = (a0, b0, n) => { for (let i = 0; i < n; i++) block(a0 + (i % 3) * 2, a0 + (i % 3) * 2 + 1, 1, 1 + (i % 2), b0 + Math.floor(i / 3) * 2, b0 + Math.floor(i / 3) * 2 + 1, i % 2 ? 'holz' : 'c1'); };
+  const teamBand = (a0, a1, y, b0, b1) => { for (let x = a0; x <= a1; x++) { s(x, y, b0, 'team'); s(x, y, b1, 'team'); } for (let z = b0; z <= b1; z++) { s(a0, y, z, 'team'); s(a1, y, z, 'team'); } };
+  // foundation plate
+  block(x0 - 1, x1 + 1, 0, 0, z0 - 1, z1 + 1, look === 'improvised' ? 'sandbag' : 'asphalt');
+  const H = p.height, st = p.style;
+  let turret = null, pivot = null, spin = false;
+  if (st === 'hq') {
+    block(x0, x1, 1, H, z0, z1); windows(x0, x1, 3, z0, z1); windows(x0, x1, 6, z0, z1);
+    const t0 = x0 + 3, t1 = x1 - 3, u0 = z0 + 3, u1 = z1 - 3; block(t0, t1, H + 1, H + 4, u0, u1); windows(t0, t1, H + 3, u0, u1, 2);
+    flatRoof(t0, t1, H + 5, u0, u1); teamBand(x0, x1, H, z0, z1);
+    door(-2, 2, 3, z1); mast(t1 - 1, u0 + 1, H + 6, 8); flag(t0 + 1, u0 + 1, H + 6);
+    dome(t0 + 3, u1 - 2, 2, H + 6, 'white');
+    if (look === 'improvised') { sandbags(x0 - 1, x1 + 1, z0 - 1, z1 + 1, 2); block(x0, x1, H + 1, H + 1, z0, z1, 'c1'); }
+  } else if (st === 'barracks') {
+    block(x0, x1, 1, H, z0, z1); windows(x0, x1, 3, z0, z1, 2);
+    if (look === 'improvised') { block(x0, x1, H + 1, H + 1, z0, z1, 'c1'); sandbags(x0 - 1, x1 + 1, z0 - 1, z1 + 1, 2); container(x1 - 2, z0 - 7, true); }
+    else pitched(x0 - 1, x1 + 1, H + 1, z0 - 1, z1 + 1, look === 'industrial' ? 'acc' : 'roof');
+    teamBand(x0, x1, H, z0, z1); door(-1, 1, 3, z1); flag(x1 + 2, z1 + 1, 1);
+  } else if (st === 'factory' || st === 'workshop') {
+    block(x0, x1, 1, H, z0, z1); teamBand(x0, x1, H, z0, z1);
+    if (st === 'workshop' || look === 'improvised') { arched(x0, x1, H + 1, z0, z1, 'c1'); crates(x1 + 2, z0, 6); container(x0 - 4, z0, true, 'brown'); }
+    else sawtooth(x0, x1, H + 1, z0, z1);
+    door(x0 + 2, x1 - 2, H - 2, z1); for (let x = x0 + 2; x <= x1 - 2; x++) s(x, H - 1, z1, 'hazard');
+    chimney(x0 + 1, z0 + 1, H + 8); chimney(x0 + 4, z0 + 1, H + 6);
+    for (let i = 0; i < 10; i++) s(x1 - 1, H + 2 + i, z0 + 1, 'yellow'); for (let i = 0; i < 8; i++) s(x1 - 1 - i, H + 11, z0 + 1, 'yellow');
+  } else if (st === 'airfield') {
+    block(x0, x1, 1, 1, z0, z1, 'asphalt'); for (let z = z0 + 1; z <= z1 - 1; z += 3) s(0, 2, z, 'white');
+    const hx = x0 + 1, hw2 = Math.min(14, Math.round(w * 0.4)); arched(hx, hx + hw2, 1, z0 + 2, z0 + 2 + Math.round(d * 0.45), 'c');
+    door(hx + 2, hx + hw2 - 2, 4, z0 + 2 + Math.round(d * 0.45));
+    const tx = x1 - 4, tz = z1 - 4; block(tx, tx + 2, 1, H + 4, tz, tz + 2, 'concrete'); block(tx - 1, tx + 3, H + 5, H + 6, tz - 1, tz + 3, 'glass'); block(tx - 1, tx + 3, H + 7, H + 7, tz - 1, tz + 3, 'roof');
+    s(tx + 1, H + 8, tz + 1, 'team'); mast(tx + 1, tz + 1, H + 9, 4);
+  } else if (st === 'power_fusion') {
+    block(x0, x1, 1, 3, z0, z1, 'concrete'); dome(0, 0, Math.min(hw, hd) - 1, 4, 'glass'); teamBand(x0, x1, 3, z0, z1);
+    for (const [x, z] of [[x0, z0], [x1, z0], [x0, z1], [x1, z1]]) block(x, x, 4, H, z, z, 'metall');
+    s(0, 4 + Math.min(hw, hd), 0, 'lamp');
+  } else if (st === 'power_nuclear') {
+    const r = Math.min(hw, hd) - 1; for (let y = 1; y <= H + 6; y++) { const rr = Math.round(r - Math.sin(y / (H + 6) * Math.PI) * r * 0.3); for (let x = -rr; x <= rr; x++) for (let z = -rr; z <= rr; z++) { const q = x * x + z * z; if (q <= rr * rr + rr && q >= (rr - 1) * (rr - 1)) s(x + x0 + r + 1, y, z, y > H + 4 ? 'hazard' : 'concrete'); } }
+    dome(x1 - 3, z1 - 3, 3, 1, 'white'); teamBand(x1 - 6, x1, 2, z1 - 6, z1);
+  } else if (st === 'power_plant') {
+    block(x0, x1, 1, H, z0, z1); windows(x0, x1, 3, z0, z1); flatRoof(x0, x1, H + 1, z0, z1); teamBand(x0, x1, H, z0, z1);
+    chimney(x0 + 1, z0 + 1, H + 10); chimney(x1 - 2, z0 + 1, H + 8); tank(x1 - 2, z1 - 2, 2, 4, 'metall', H + 2);
+  } else if (st === 'depot' || st === 'market') {
+    block(x0, x0 + Math.round(w * 0.5), 1, H, z0, z1); pitched(x0 - 1, x0 + Math.round(w * 0.5) + 1, H + 1, z0, z1, st === 'market' ? 'c1' : 'roof');
+    teamBand(x0, x0 + Math.round(w * 0.5), H, z0, z1); door(x0 + 2, x0 + Math.round(w * 0.5) - 2, H - 1, z1);
+    crates(x0 + Math.round(w * 0.5) + 2, z0, 9); container(x1 - 2, z1 - 6, true, 'brown');
+    if (st === 'depot') { tank(x1 - 2, z0 + 2, 2, 5, 'white'); tank(x1 - 6, z0 + 2, 2, 5, 'white'); }
+    else for (let i = 0; i < 3; i++) { block(x1 - 3 - i * 4, x1 - 1 - i * 4, 1, 3, z1 - 2, z1, 'c1'); block(x1 - 3 - i * 4, x1 - 1 - i * 4, 4, 4, z1 - 3, z1 + 1, i % 2 ? 'acc' : 'team'); }
+  } else if (st === 'research') {
+    block(x0, x1, 1, H, z0, z1); windows(x0, x1, 3, z0, z1, 2); windows(x0, x1, 5, z0, z1, 2); flatRoof(x0, x1, H + 1, z0, z1); teamBand(x0, x1, H, z0, z1);
+    dome(x0 + 3, z0 + 3, 3, H + 2, 'white'); mast(x1 - 2, z1 - 2, H + 2, 7); door(-1, 1, 3, z1);
+    block(x1 - 4, x1 - 2, H + 2, H + 2, z0 + 1, z0 + 3, 'glass');
+  } else if (st === 'radar' || st === 'comms') {
+    block(x0, x1, 1, 3, z0, z1, 'concrete'); teamBand(x0, x1, 3, z0, z1); door(-1, 0, 2, z1);
+    for (let y = 4; y <= H + 4; y++) { s(-1, y, -1, 'metall'); s(1, y, 1, 'metall'); if (y % 2) { s(0, y, 0, 'metall'); } }
+    const [T, set] = newModel();
+    if (st === 'radar') { for (let x = -4; x <= 4; x++) for (let y = 0; y <= 3; y++) set(x, y + 1, 2 - Math.round(Math.abs(x) * 0.3), 'white'); set(0, 0, 0, 'metall'); set(0, 1, 1, 'metall'); spin = true; }
+    else { for (let x = -2; x <= 2; x++) for (let y = -2; y <= 2; y++) if (x * x + y * y <= 5) set(x, y + 3, 1, 'white'); set(0, 0, 0, 'metall'); set(0, 1, 0, 'metall'); set(0, 3, 2, 'metall'); }
+    turret = T; pivot = [0, H + 5, 0];
+    if (st === 'comms') for (let y = 4; y <= H + 10; y++) s(x1, y, z0, 'metall');
+  } else if (st === 'hospital') {
+    block(x0, x1, 1, H, z0, z1, 'white'); windows(x0, x1, 3, z0, z1, 2); block(x0, x1, H + 1, H + 1, z0, z1, 'white');
+    // green first-aid cross on the roof and the front (the red cross is a protected sign)
+    const cy = H + 2; block(-1, 1, cy, cy, -4, 4, 'cross'); block(-4, 4, cy, cy, -1, 1, 'cross');
+    block(-1, 1, H - 3, H - 1, z1 + 1, z1 + 1, 'cross'); s(-2, H - 2, z1 + 1, 'cross'); s(2, H - 2, z1 + 1, 'cross');
+    teamBand(x0, x1, H - 4, z0, z1); door(-1, 1, 3, z1); pitched(x1 + 2, x1 + 8, 1, z0, z0 + 6, 'c1');
+  } else if (st === 'tower') {
+    block(x0, x1, 1, H, z0, z1, look === 'improvised' ? 'sandbag' : 'concrete'); teamBand(x0, x1, H, z0, z1);
+    const [T, set] = newModel(); turretFor(p.weapon, set); turret = T; pivot = [0, H + 1, 0];
+  } else if (st === 'bunker' || st === 'emplacement') {
+    const h = st === 'bunker' ? 3 : 2;
+    for (let y = 1; y <= h; y++) block(x0 + y - 1, x1 - y + 1, y, y, z0 + y - 1, z1 - y + 1, st === 'bunker' ? 'concrete' : 'sandbag');
+    if (st === 'bunker') { for (let x = x0 + 2; x <= x1 - 2; x++) s(x, 2, z1, 'black'); block(x0 + 2, x1 - 2, h + 1, h + 1, z0 + 2, z1 - 2, 'c'); s(0, h + 2, 0, 'team'); }
+    else s(x0, 2, z0, 'team');
+    if (p.weapon && p.weapon !== 'none') { const [T, set] = newModel(); turretFor(p.weapon, set); turret = T; pivot = [0, h + 1, 0]; }
+  } else if (st === 'ion') {
+    block(x0, x1, 1, 3, z0, z1, 'concrete'); teamBand(x0, x1, 3, z0, z1);
+    for (let y = 4; y <= H + 10; y++) block(-1, 1, y, y, -1, 1, y % 4 === 0 ? 'lamp' : 'metall');
+    const r = Math.min(hw, hd) - 1; for (let a = 0; a < 64; a++) { const x = Math.round(Math.cos(a / 64 * Math.PI * 2) * r), z = Math.round(Math.sin(a / 64 * Math.PI * 2) * r); s(x, H + 10, z, 'metall'); s(x, H + 11, z, a % 8 === 0 ? 'lamp' : 'white'); }
+  } else if (st === 'silo' || st === 'rocketsilo') {
+    block(x0, x1, 1, 2, z0, z1, 'concrete'); for (let x = x0; x <= x1; x++) for (let z = z0; z <= z1; z++) if ((x + z) % 4 === 0 && (x === x0 || x === x1 || z === z0 || z === z1)) s(x, 2, z, 'hazard');
+    if (st === 'silo') { block(x0 + 2, -1, 3, 3, z0 + 2, z1 - 2, 'metall'); block(1, x1 - 2, 3, 3, z0 + 2, z1 - 2, 'metall'); block(-1, 0, 4, 4, z0 + 2, z1 - 2, 'hazard'); s(0, 5, 0, 'team'); }
+    else for (let i = 0; i < 4; i++) { const x = x0 + 2 + i * 3; for (let y = 3; y <= 3 + H; y++) block(x, x + 1, y, y, -1, 0, y === 3 + H ? 'acc' : 'c'); }
+    tank(x1 - 2, z1 + 3, 2, 3, 'white'); teamBand(x0, x1, 2, z0, z1);
+  } else if (st === 'cruise') {
+    block(x0, x1, 1, 1, z0, z1, 'asphalt');
+    for (let i = 0; i < 3; i++) { const x = x0 + 2 + i * 6; block(x, x + 3, 2, 3, z0 + 2, z1 - 2, 'c'); for (let z = z0 + 2; z <= z1 - 2; z++) { s(x + 1, 4 + Math.round((z - z0) * 0.3), z, 'c1'); s(x + 2, 4 + Math.round((z - z0) * 0.3), z, 'c1'); } s(x + 1, 3, z1 - 2, 'team'); }
+  } else if (st === 'tunnel') {
+    for (let y = 1; y <= 3; y++) block(x0 + y - 1, x1 - y + 1, y, y, z0 + y - 1, z1 - y + 1, y === 3 ? 'c' : 'sandbag');
+    block(-1, 1, 1, 2, z1 - 1, z1, 'black'); s(0, 4, 0, 'team');
+  } else if (st === 'mast') {
+    block(x0, x1, 1, 1, z0, z1, 'concrete');
+    for (let y = 2; y <= H + 6; y++) s(0, y, 0, 'metall');
+    for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) block(dx, dx, H + 3, H + 4, dz, dz, 'hd');
+    block(-1, 1, H + 7, H + 7, -1, 1, 'acc'); s(0, H + 8, 0, 'team');
+  } else if (st === 'dronehub') {
+    block(x0, x1, 1, H, z0, Math.round(z0 + d * 0.5)); arched(x0, x1, H + 1, z0, Math.round(z0 + d * 0.5), 'c1'); teamBand(x0, x1, H, z0, Math.round(z0 + d * 0.5));
+    for (const x of [x0 + 2, x1 - 3]) { block(x, x + 2, 1, 1, z1 - 3, z1 - 1, 'asphalt'); s(x + 1, 2, z1 - 2, 'white'); }
+    mast(x1, z0, H + 1, 6);
+  } else {   // fallback: plain block
+    block(x0, x1, 1, H, z0, z1); flatRoof(x0, x1, H + 1, z0, z1); teamBand(x0, x1, H, z0, z1);
+  }
+  lights(s, [Math.max(1, hw - 1)], 2, z1 + 1, z0 - 1);
+  return { hull: W, turret, pivot, spin };
+}
+// turrets of defence buildings (pivot at the roof)
+function turretFor(weapon, s) {
+  box(s, -2, 2, 0, 1, -2, 2, 'c');
+  s(0, 2, -1, 'team');
+  if (weapon === 'laser') { box(s, -1, 1, 2, 3, -1, 1, 'c1'); for (let z = 2; z <= 6; z++) s(0, 3, z, z === 6 ? 'lamp' : 'metall'); }
+  else if (weapon === 'gatling') { box(s, -1, 1, 2, 3, -1, 1, 'c1'); for (let z = 2; z <= 5; z++) { s(-1, 2, z, 'metall'); s(1, 2, z, 'metall'); s(0, 3, z, 'metall'); } }
+  else if (weapon === 'flak') { for (const x of [-1, 1]) for (let i = 0; i <= 4; i++) s(x, 2 + i, 1 + i, 'metall'); }
+  else if (weapon === 'rockets') { box(s, -2, 2, 2, 4, -1, 2, 'c1'); for (let x = -2; x <= 2; x += 2) for (let y = 2; y <= 4; y += 2) s(x, y, 3, 'black'); }
+  else if (weapon === 'howitzer') { box(s, -2, 2, 2, 3, -2, 2, 'c1'); for (let z = 3; z <= 9; z++) s(0, 3 + Math.round((z - 3) * 0.3), z, z === 9 ? 'hd' : 'metall'); }
+  else { box(s, -1, 1, 2, 2, -1, 1, 'c1'); for (let z = 2; z <= 5; z++) s(0, 2, z, 'metall'); }
+}
+
 // ---------- types: defaults, builder, which params the workshop shows ----------
 const TRACKED = { trackH: 5, trackW: 4 };
 export const KIT_TYPES = {
+  building: { name: 'Gebäude', life: 'building', scale: 0.4,
+    defaults: { style: 'barracks', width: 25, depth: 20, height: 6, look: 'modern', weapon: 'none' },
+    build: (p) => bld(p) },
   heli: { name: 'Hubschrauber', life: 'drone',
     defaults: { length: 50, width: 9, height: 8, style: 'transport', rotorR: 20, blades: 4, gear: 'wheels' },
     build: (p) => ({ hull: heliHull(p), rotors: heliRotors(p) }) },
@@ -633,6 +780,9 @@ export const KIT_FIELDS = {
   style_jet: ['Bauart', 'choice', { fighter: 'Jäger', stealth: 'Tarnkappe', attack: 'Erdkampf (A-10)', bomber: 'Bomber' }],
   style_uav: ['Bauart', 'choice', { male: 'Langstrecke mit Propeller', wing: 'Nurflügler', cruise: 'Einweg-Drohne', quad: 'Quadrocopter' }],
   tail: ['Leitwerk', 'choice', { inv: 'V umgekehrt + Flosse', v: 'V' }],
+  style_building: ['Bauart', 'choice', { hq: 'Hauptquartier', barracks: 'Kaserne', factory: 'Fabrik', workshop: 'Werkstatt', airfield: 'Flugfeld', power_fusion: 'Fusionskraftwerk', power_nuclear: 'Atomkraftwerk', power_plant: 'Kraftwerk', depot: 'Depot', market: 'Markt', research: 'Forschung', radar: 'Radar', comms: 'Funkstation', hospital: 'Lazarett', tower: 'Turm', bunker: 'Bunker', emplacement: 'Stellung', ion: 'Ionenkanone', silo: 'Atomsilo', rocketsilo: 'Raketensilo', cruise: 'Raketenbatterie', tunnel: 'Tunnel', mast: 'Mast', dronehub: 'Drohnenhangar' }],
+  depth: ['Tiefe (Würfel)', 'number'], look: ['Bauweise', 'choice', { modern: 'Modern', industrial: 'Industrie', improvised: 'Improvisiert' }],
+  weapon_building: ['Waffe', 'choice', { none: 'Keine', laser: 'Laser', gatling: 'Gatling', mg: 'MG', flak: 'Flak', rockets: 'Raketen', howitzer: 'Haubitze' }],
   payload: ['Last', 'choice', { none: 'Keine', camera: 'Kamera', rockets: 'Raketen', repair: 'Reparatur', bomb: 'Sprengladung' }],
 };
 
@@ -646,7 +796,7 @@ export function buildKit(type, params = {}, paintId = 'usa') {
   const b = T.build(p);
   const seed = [...key].reduce((a, c) => (a * 31 + c.charCodeAt(0)) | 0, 7) & 1023;
   const out = { hull: paint(b.hull, paintId, seed), turret: b.turret ? paint(b.turret, paintId, seed + 1) : null, pivot: b.pivot || null, scale: b.scale || T.scale || KIT_SCALE,
-    rotors: (b.rotors || []).map((r) => ({ ...r, W: paint(r.W, paintId) })), hover: b.hover || 0,
+    rotors: (b.rotors || []).map((r) => ({ ...r, W: paint(r.W, paintId) })), hover: b.hover || 0, spin: !!b.spin,
     wheels: b.wheels ? { ...b.wheels, W: paint(b.wheels.W, paintId) } : null, trackMid: T.life === 'tracked' ? (p.trackH || 5) * KIT_SCALE / 2 : 0,
     legs: b.legs ? { ...b.legs, W: paint(b.legs.W, paintId, seed + 2) } : null };
   cache.set(key, out);

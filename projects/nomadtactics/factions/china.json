@@ -16,7 +16,7 @@
    "armor": "building",
    "size": [8, 8],
    "pos": [0, 0],
-   "model": "kaserne",
+   "model": "china_kommandozentrale",
    "power": 5,
    "produces": ["bautrupp"]
   },
@@ -31,7 +31,8 @@
    "pos": [-2, 1],
    "power": 12,
    "requires": ["kommandozentrale"],
-   "description": "Viel Strom für wenig Geld. Wird es zerstört, explodiert es und beschädigt alles im Umkreis."
+   "description": "Viel Strom für wenig Geld. Wird es zerstört, explodiert es und beschädigt alles im Umkreis.",
+   "model": "china_atomkraftwerk"
   },
   "kaserne": {
    "name": "Kaserne",
@@ -42,7 +43,7 @@
    "armor": "building",
    "size": [5, 4],
    "pos": [-1, 1],
-   "model": "kaserne",
+   "model": "china_kaserne",
    "power": -1,
    "produces": ["rekrut", "grenadiere", "panzerjaeger", "spezialkraefte"],
    "requires": ["kommandozentrale"],
@@ -59,7 +60,8 @@
    "pos": [1, 1],
    "power": -1,
    "produces": ["versorger"],
-   "requires": ["kommandozentrale"]
+   "requires": ["kommandozentrale"],
+   "model": "china_versorgungszentrum"
   },
   "panzerfabrik": {
    "name": "Panzerfabrik",
@@ -72,7 +74,8 @@
    "pos": [0, 2],
    "power": -3,
    "produces": ["mengshi", "zbl08", "ztl11", "kampfpanzer", "type99a", "type15", "plz05"],
-   "requires": ["kaserne", "versorgungszentrum"]
+   "requires": ["kaserne", "versorgungszentrum"],
+   "model": "china_panzerfabrik"
   },
   "raketenkomplex": {
    "name": "Raketenkomplex",
@@ -86,7 +89,8 @@
    "produces": ["phl16"],
    "requires": ["panzerfabrik"],
    "pos": [1, 2],
-   "description": "Baut die Raketenartillerie. Herz der chinesischen Armee."
+   "description": "Baut die Raketenartillerie. Herz der chinesischen Armee.",
+   "model": "china_raketenkomplex"
   },
   "luftwaffenbasis": {
    "name": "Luftwaffenbasis",
@@ -99,7 +103,8 @@
    "pos": [1, 3],
    "power": -3,
    "produces": ["z10", "z19", "z20", "j10", "j20", "h6", "wing_loong", "gj11"],
-   "requires": ["panzerfabrik"]
+   "requires": ["panzerfabrik"],
+   "model": "china_luftwaffenbasis"
   },
   "forschungszentrum": {
    "name": "Forschungszentrum",
@@ -112,7 +117,8 @@
    "pos": [-1, 3],
    "power": -2,
    "requires": ["panzerfabrik"],
-   "description": "Forschung und Propaganda."
+   "description": "Forschung und Propaganda.",
+   "model": "china_forschungszentrum"
   },
   "radarstation": {
    "name": "Radarstation",
@@ -126,7 +132,8 @@
    "keywords": {"scout": true},
    "requires": ["versorgungszentrum"],
    "pos": [2, 2],
-   "description": "Zeigt die Minikarte und deckt Getarnte in der Nähe auf."
+   "description": "Zeigt die Minikarte und deckt Getarnte in der Nähe auf.",
+   "model": "china_radarstation"
   },
   "bunker": {
    "name": "Bunker",
@@ -139,7 +146,8 @@
    "pos": [-2, 2],
    "power": 0,
    "requires": ["kaserne"],
-   "keywords": {"garnison": 5, "tough": 4}
+   "keywords": {"garnison": 5, "tough": 4},
+   "model": "china_bunker"
   },
   "gatlingturm": {
    "name": "Gatling-Turm",
@@ -152,7 +160,8 @@
    "pos": [-3, 2],
    "power": -2,
    "weapons": ["gatling"],
-   "requires": ["kaserne"]
+   "requires": ["kaserne"],
+   "model": "china_gatlingturm"
   },
   "propagandaturm": {
    "name": "Propagandaturm",
@@ -166,7 +175,8 @@
    "power": -1,
    "requires": ["forschungszentrum"],
    "description": "Eigene Einheiten in der Nähe heilen langsam und schießen schneller.",
-   "keywords": {"repaired": 2}
+   "keywords": {"repaired": 2},
+   "model": "china_propagandaturm"
   },
   "atomraketensilo": {
    "name": "Atomraketensilo",
@@ -180,7 +190,8 @@
    "power": -10,
    "weapons": ["atomrakete"],
    "requires": ["forschungszentrum", "uranreaktor"],
-   "description": "Einmal alle 6 Minuten. Riesige Fläche, verseucht den Boden eine Weile."
+   "description": "Einmal alle 6 Minuten. Riesige Fläche, verseucht den Boden eine Weile.",
+   "model": "china_atomraketensilo"
   }
  },
  "units": {

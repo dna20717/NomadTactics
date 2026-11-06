@@ -18,12 +18,13 @@
    "size": [7, 7],
    "produces": ["techniker"],
    "keywords": {"stromlos": true, "tunnel": true, "tough": 10, "abgeschirmt": true},
-   "pos": [0, 0]
+   "pos": [0, 0],
+   "model": "ukraine_feldkommando"
   },
   "kaserne": {
    "name": "Improvisierte Kaserne",
    "function": "production",
-   "model": "kaserne",
+   "model": "ukraine_kaserne",
    "cost": {"money": 400},
    "buildTime": 8,
    "health": 1100,
@@ -46,7 +47,8 @@
    "requires": ["feldkommando"],
    "keywords": {"stromlos": true, "collects": 20, "abgeschirmt": true},
    "pos": [1, 1],
-   "description": "Zieht langsam Schrott aus dem Boden und nimmt Wracks an."
+   "description": "Zieht langsam Schrott aus dem Boden und nimmt Wracks an.",
+   "model": "ukraine_versorgungszentrum"
   },
   "werkstatt": {
    "name": "Werkstatt",
@@ -59,7 +61,8 @@
    "produces": ["pickup", "drohnentransporter"],
    "requires": ["kaserne", "versorgungszentrum"],
    "keywords": {"stromlos": true, "abgeschirmt": true},
-   "pos": [0, 2]
+   "pos": [0, 2],
+   "model": "ukraine_werkstatt"
   },
   "fahrzeugdepot": {
    "name": "Fahrzeugdepot",
@@ -72,7 +75,8 @@
    "produces": ["kozak", "schrottpanzer", "bohdana", "gvozdika"],
    "requires": ["werkstatt"],
    "keywords": {"abgeschirmt": true},
-   "pos": [-1, 3]
+   "pos": [-1, 3],
+   "model": "ukraine_fahrzeugdepot"
   },
   "drohnenzentrum": {
    "name": "Drohnenzentrum",
@@ -86,7 +90,8 @@
    "requires": ["werkstatt"],
    "keywords": {"tarnung": true},
    "pos": [0, 3],
-   "description": "Unauffällige Halle, aus der die Schwärme starten."
+   "description": "Unauffällige Halle, aus der die Schwärme starten.",
+   "model": "ukraine_drohnenzentrum"
   },
   "kommunikationsstation": {
    "name": "Kommunikationsstation",
@@ -100,7 +105,8 @@
    "requires": ["kaserne"],
    "keywords": {"scout": true},
    "pos": [2, 2],
-   "description": "Fordert Hubschrauber und Jets von Flugplätzen im Hinterland an. Hier kommen auch die westlichen Lieferungen an."
+   "description": "Fordert Hubschrauber und Jets von Flugplätzen im Hinterland an. Hier kommen auch die westlichen Lieferungen an.",
+   "model": "ukraine_kommunikationsstation"
   },
   "feldlazarett": {
    "name": "Feldlazarett",
@@ -113,7 +119,8 @@
    "keywords": {"lazarett": 5},
    "requires": ["kaserne"],
    "pos": [-2, 1],
-   "description": "Heilt Infanterie in der Nähe."
+   "description": "Heilt Infanterie in der Nähe.",
+   "model": "ukraine_feldlazarett"
   },
   "tunnelnetz": {
    "name": "Tunnelnetz",
@@ -126,7 +133,8 @@
    "weapons": ["sturmgewehr"],
    "requires": ["kaserne"],
    "keywords": {"stromlos": true, "tunnel": true, "garnison": 10, "abgeschirmt": true, "tarnfeld": 15},
-   "pos": [-2, 2]
+   "pos": [-2, 2],
+   "model": "ukraine_tunnelnetz"
   },
   "stellung": {
    "name": "MG-Stellung",
@@ -139,7 +147,8 @@
    "weapons": ["mg"],
    "requires": ["kaserne"],
    "keywords": {"stromlos": true, "tarnung": true, "abgeschirmt": true},
-   "pos": [-1, 2]
+   "pos": [-1, 2],
+   "model": "ukraine_stellung"
   },
   "flakstellung": {
    "name": "Flakstellung",
@@ -152,7 +161,8 @@
    "weapons": ["flak"],
    "requires": ["kaserne"],
    "keywords": {"stromlos": true, "abgeschirmt": true},
-   "pos": [-3, 2]
+   "pos": [-3, 2],
+   "model": "ukraine_flakstellung"
   },
   "schwarzmarkt": {
    "name": "Schwarzmarkt",
@@ -165,7 +175,8 @@
    "requires": ["werkstatt"],
    "keywords": {"stromlos": true, "collects": 15, "abgeschirmt": true},
    "pos": [1, 3],
-   "description": "Erforscht Verbesserungen und tauscht ein wenig Geld pro Minute."
+   "description": "Erforscht Verbesserungen und tauscht ein wenig Geld pro Minute.",
+   "model": "ukraine_schwarzmarkt"
   },
   "raketensilo": {
    "name": "Raketenhagel-Silo",
@@ -179,7 +190,8 @@
    "requires": ["schwarzmarkt"],
    "keywords": {"stromlos": true, "abgeschirmt": true},
    "pos": [1, 5],
-   "description": "Einmal alle 4,5 Minuten: 30 Raketen auf ein Gebiet."
+   "description": "Einmal alle 4,5 Minuten: 30 Raketen auf ein Gebiet.",
+   "model": "ukraine_raketensilo"
   }
  },
  "units": {

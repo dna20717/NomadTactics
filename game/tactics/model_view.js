@@ -106,7 +106,7 @@ async function build(v) {
   // stand on the plate: flying models hover a little above it
   const ex = extent(m);
   g.position.y = m.hover || 0;
-  v.group = g; v.parts = parts; v.extent = ex;
+  v.group = g; v.parts = parts; v.extent = ex; v.spin = !!m.spin;
   const size = Math.max(ex.radius * 1.15, ex.height * 0.9, 0.6);
   v.plateR = size * 1.05;
   v.home = { dist: size * 2.3 + 1 }; v.dist = v.home.dist; v.lookY = Math.min(ex.height * 0.45, size) + (m.hover || 0) * 0.5;
@@ -135,7 +135,7 @@ function draw(v, now, rect) {
     for (const wl of P.wheels) { wl.spin.rotation.x = (t * speed / wl.r); if (wl.front) wl.steer.rotation.y = (wl.side < 0 ? Math.PI : 0) + Math.sin(t * 0.7) * 0.3; }
     for (const lg of P.legs) lg.o.rotation.x = Math.sin(t * speed * Math.PI / 0.75) * 0.5 * lg.side;
     for (const ro of P.rotors) ro.o.rotation[ro.axis] = t * ro.rate;
-    if (P.turret) P.turret.rotation.y = Math.sin(t * 0.5) * 0.8;
+    if (P.turret) P.turret.rotation.y = v.spin ? t * 1.2 : Math.sin(t * 0.5) * 0.8;
   }
   scene.add(v.group);
   plate.scale.set(v.plateR, 1, v.plateR);
