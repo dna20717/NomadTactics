@@ -45,6 +45,15 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
   // ---------- atmosphere: time of day, weather, climate (optics only, the simulation never sees this) ----------
   // Standard = noon, clear, temperate: exactly the look the battle had before.
   const atm = { hour: 12, weather: 'clear', climate: 'gemaessigt', on: false };
+  // boom: how much it crashes (launcher 1.8, battle 1 = unchanged): bigger flashes, more smoke and chips,
+  // earth thrown up, burning wrecks, the camera shakes with nearby blasts
+  let boom = 1, shake = 0;
+  const excite = (b) => { boom = Math.max(1, b); };
+  function jolt(x, z, amount) {
+    if (boom <= 1) return;
+    const d = Math.hypot(x - cam.tx, z - cam.tz);
+    shake = Math.min(1.4, shake + amount * Math.max(0, 1 - d / 90) * (boom - 0.6));
+  }
   const SKY_STOPS = [[0, 0x070d1a], [4.6, 0x0d1730], [5.6, 0x5a5a7a], [6.4, 0xeaa27a], [7.6, 0xd6e4e8], [16.6, 0xd6e4e8], [17.8, 0xf3a06a], [18.6, 0x7a5a78], [19.6, 0x0f1830], [24, 0x070d1a]];
   // per weather: share of direct light, how much the sky turns grey (and to which colour), fog distance, particles
   const WEATHER = {
@@ -416,7 +425,7 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
   const fireGeo = new THREE.IcosahedronGeometry(1, 1);
   const fire = new THREE.InstancedMesh(fireGeo, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }), 300);
   fire.frustumCulled = false; scene.add(fire);
-  const smoke = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1 }), 600);
+  const smoke = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1 }), 1000);
   smoke.frustumCulled = false; smoke.castShadow = false; scene.add(smoke);
   const chips = new THREE.InstancedMesh(new THREE.BoxGeometry(V, V, V), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9 }), 800);
   chips.frustumCulled = false; chips.castShadow = true; scene.add(chips);
@@ -435,20 +444,25 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
       } else if (e.kind === 'impact') {
         const x = e.x * M, z = e.y * M, y = groundAt(x, z);
         const big = e.splash > 0 || e.projectile === 2 || e.projectile === 3;
-        effects.push({ kind: 'flash', x, y: y + 0.4, z, r: big ? Math.max(1.6, e.splash * M * 0.8) : 0.35, t0: now, dur: big ? 320 : 120 });
-        if (big) for (let i = 0; i < 4; i++) puff(x, y + 0.5, z, 0.8 + Math.random() * 0.8, 0x6d665e);
+        const fr = (big ? Math.max(1.6, e.splash * M * 0.8) : 0.35) * (boom > 1 ? 1.3 : 1);
+        effects.push({ kind: 'flash', x, y: y + 0.4, z, r: fr, t0: now, dur: big ? 320 * Math.min(1.5, boom) : 120 });
+        if (big) {
+          for (let i = 0; i < Math.round(4 * boom); i++) puff(x, y + 0.5, z, 0.8 + Math.random() * 0.8 * boom, 0x6d665e);
+          if (boom > 1) { for (let i = 0; i < 8; i++) chip(x, y + 0.3, z, Math.random() < 0.5 ? 0x5a4a36 : 0x6f5c42, 0.6); light(x, y + 2, z, 1.6); jolt(x, z, 0.25); }
+        }
       } else if (e.kind === 'dead') {
         const t = sim.types[e.type];
         const x = e.x * M, z = e.y * M, y = groundAt(x, z);
         const r = t?.cls === 'infantry' ? 0.8 : t?.building ? 9 : 3.4;
-        effects.push({ kind: 'flash', x, y: y + 1, z, r, t0: now, dur: t?.building ? 1100 : 600, big: true });
-        for (let i = 0; i < (t?.cls === 'infantry' ? 2 : 14); i++) puff(x + (Math.random() - 0.5) * r, y + 1, z + (Math.random() - 0.5) * r, 1.2 + Math.random() * 1.6, 0x3d3833);
-        light(x, y + 3, z, t?.building ? 6 : 3);
+        effects.push({ kind: 'flash', x, y: y + 1, z, r: r * (boom > 1 && t?.cls !== 'infantry' ? 1.5 : 1), t0: now, dur: (t?.building ? 1100 : 600) * Math.min(1.6, boom), big: true });
+        for (let i = 0; i < Math.round((t?.cls === 'infantry' ? 2 : 14) * boom); i++) puff(x + (Math.random() - 0.5) * r, y + 1, z + (Math.random() - 0.5) * r, 1.2 + Math.random() * 1.6 * boom, 0x3d3833);
+        light(x, y + 3, z, (t?.building ? 6 : 3) * boom);
+        if (t?.cls !== 'infantry') jolt(x, z, t?.building ? 1.2 : 0.6);
         if (t && t.cls !== 'infantry') {
           const key = sourceOf(sim, e.type);
           const seat = playerList().find((p) => p.seat === e.seat);
           wrecks.push({ key, x, y, z, yaw: yawOf(e.h), t0: now, colour: colourOf(seat), building: !!t.building });
-          for (let i = 0; i < (t.building ? 50 : 26); i++) chip(x, y + 1.2, z, t.building ? 0x9a968c : 0x4e5236);
+          for (let i = 0; i < Math.round((t.building ? 50 : 26) * boom); i++) chip(x, y + 1.2, z, t.building ? 0x9a968c : 0x4e5236, boom);
         }
       } else if (e.kind === 'wave') {
         effects.push({ kind: 'ring', x: e.x * M, y: groundAt(e.x * M, e.y * M) + 0.6, z: e.y * M, r: 16, t0: now, dur: 1200 });
@@ -460,13 +474,13 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
     }
     sim.events.length = 0;
     if (effects.length > 700) effects = effects.slice(-700);
-    if (debris.length > 1200) debris = debris.slice(-1200);
+    if (debris.length > 1800) debris = debris.slice(-1800);
     wrecks = wrecks.filter((w) => now - w.t0 < 30000);
   }
   function puff(x, y, z, s, colour) { debris.push({ kind: 'smoke', x, y, z, vx: (Math.random() - 0.5) * 0.8, vy: 1.2 + Math.random(), vz: (Math.random() - 0.5) * 0.8, s, c: colour, t0: performance.now(), dur: 1800 + Math.random() * 1400 }); }
-  function chip(x, y, z, colour) {
-    const a = Math.random() * TAU, v = 3 + Math.random() * 6;
-    debris.push({ kind: 'chip', x, y, z, vx: Math.cos(a) * v, vy: 4 + Math.random() * 7, vz: Math.sin(a) * v, rx: Math.random() * 6, c: colour, t0: performance.now(), dur: 2600 + Math.random() * 1500 });
+  function chip(x, y, z, colour, power = 1) {
+    const a = Math.random() * TAU, v = (3 + Math.random() * 6) * Math.sqrt(power);
+    debris.push({ kind: 'chip', x, y, z, vx: Math.cos(a) * v, vy: (4 + Math.random() * 7) * Math.sqrt(power), vz: Math.sin(a) * v, rx: Math.random() * 6, c: colour, t0: performance.now(), dur: 2600 + Math.random() * 1500 });
   }
   function light(x, y, z, s) { const f = flashes.reduce((a, b) => (a.t0 < b.t0 ? a : b)); f.l.position.set(x, y, z); f.t0 = performance.now(); f.s = s; }
   function colourOf(p) { return p?.color ? parseInt(p.color.slice(1), 16) : 0x999999; }
@@ -476,6 +490,10 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
     const cp = Math.cos(cam.pitch), sp = Math.sin(cam.pitch);
     camera.position.set(cam.tx + Math.sin(cam.yaw) * cp * cam.dist, groundAt(cam.tx, cam.tz) + sp * cam.dist, cam.tz + Math.cos(cam.yaw) * cp * cam.dist);
     camera.lookAt(cam.tx, groundAt(cam.tx, cam.tz), cam.tz);
+    if (shake > 0.01) {
+      const a = shake * shake * 0.9;
+      camera.position.x += (Math.random() - 0.5) * a; camera.position.y += (Math.random() - 0.5) * a * 0.6; camera.position.z += (Math.random() - 0.5) * a;
+    }
     camera.updateMatrixWorld();
     // the shadow follows the view; snap to texels so it does not shimmer while panning
     const ext = Math.min(140, Math.max(60, cam.dist * 0.9));
@@ -604,6 +622,13 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
     canvas.style.display = 'block';
     if (canvas.width !== Math.round(W * renderer.getPixelRatio())) { renderer.setSize(W, H, false); camera.aspect = W / H; camera.updateProjectionMatrix(); }
     applyAtmosphere(dt);
+    shake = Math.max(0, shake - dt * 2.2);
+    // burning wrecks (boom > 1): black smoke column and a few sparks for 15 s
+    if (boom > 1) for (const w of wrecks) {
+      const age = (performance.now() - w.t0) / 1000;
+      if (age > 15 || Math.random() > dt * (w.building ? 14 : 7)) continue;
+      puff(w.x + (Math.random() - 0.5) * 1.5, w.y + 1.5, w.z + (Math.random() - 0.5) * 1.5, 0.9 + Math.random() * 1.2, age < 4 && Math.random() < 0.35 ? 0xff8a3a : 0x2a2724);
+    }
     buildWorld(sim);
     placeCamera();
     drawFall(dt);
@@ -641,11 +666,11 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
         const cs = Math.cos(s.yaw), sn = Math.sin(s.yaw);
         put(part(key, 'turret', colour), wx + px * cs + pz * sn, s.y + py, wz - px * sn + pz * cs, s.tyaw);
       }
-      if (sel.has(u.id) && ringN < 256 && !app.hud) {
+      if (((sel.has(u.id) && !app.hud) || app.marked === u.id) && ringN < 256) {   // marked: the launcher's hero
         o3.position.set(wx, s.y + 0.12, wz); o3.rotation.set(0, 0, 0); const r = (ty.radius + 500) * M; o3.scale.set(r, 1, r); o3.updateMatrix();
         rings.setMatrixAt(ringN++, o3.matrix);
       }
-      if (ty.building || (!app.hud && (u.hp < ty.hp || sel.has(u.id)))) bars.push([u, ty, wx, s.y, wz]);
+      if (ty.building || app.marked === u.id || (!app.hud && (u.hp < ty.hp || sel.has(u.id)))) bars.push([u, ty, wx, s.y, wz]);
       u.view = s; // for the HUD adapter: smoothed height and heading
     }
     for (const id of smooth.keys()) if (!seen.has(id)) smooth.delete(id);
@@ -724,7 +749,7 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
     let sn = 0, cn = 0;
     for (const b of debris) {
       const q = (now - b.t0) / b.dur;
-      if (b.kind === 'smoke' && sn < 600) {
+      if (b.kind === 'smoke' && sn < 1000) {
         b.x += b.vx * dt; b.y += b.vy * dt; b.z += b.vz * dt; b.vy *= 0.985;
         const s = b.s * (0.6 + q * 1.6) * (q > 0.75 ? (1 - q) * 4 : 1);
         o3.position.set(b.x, b.y, b.z); o3.rotation.set(q, q * 1.3, 0); o3.scale.setScalar(Math.max(0.01, s)); o3.updateMatrix();
@@ -771,5 +796,5 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
   function show(on) { shown = on; if (!on) canvas.style.display = 'none'; }
 
   return { draw, drain, reset, project, unproject, pixelsPerMm, pan, zoom, rotate, centreOn, home, show, setModels, kind: '3d', renderer,
-    scene, camera, projectWorld, target, groundAt, inset, yawOf, atmosphere, quality, cam };
+    scene, camera, projectWorld, target, groundAt, inset, yawOf, atmosphere, quality, cam, excite };
 }

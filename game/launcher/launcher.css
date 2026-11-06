@@ -76,3 +76,16 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #0e0e10; col
   .ln-foot { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { .ln-entry { transition: none; } }
+
+/* hero chip: whom the camera follows */
+.ln-hero { position: absolute; top: calc(env(safe-area-inset-top, 0px) + 18px); right: calc(env(safe-area-inset-right, 0px) + 18px); display: flex; align-items: center; gap: 8px;
+  padding: 7px 12px; border-radius: 999px; background: rgba(16, 17, 20, .55); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, .08); color: #f4f1ea; font-size: 12.5px; opacity: 0; transform: translateY(-6px); pointer-events: none;
+  transition: opacity var(--ui-t3) var(--ui-curve), transform var(--ui-t3) var(--ui-curve); }
+.ln-hero.on { opacity: .85; transform: none; }
+.ln-hero b { font-weight: 600; }
+.ln-hero .ln-dot { width: 9px; height: 9px; border-radius: 50%; box-shadow: 0 0 0 2px rgba(0, 0, 0, .35); }
+.ln-hero-sub { color: rgba(244, 241, 234, .65); font-variant-numeric: tabular-nums; }
+.ln-hero.fallen { border-color: rgba(226, 82, 74, .55); }
+.ln-hero.fallen .ln-hero-sub { color: #f0928c; }
+@media (max-width: 700px) { .ln-hero { top: auto; bottom: calc(env(safe-area-inset-bottom, 0px) + 150px); right: 16px; } }

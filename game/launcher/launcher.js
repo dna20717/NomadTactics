@@ -1,6 +1,7 @@
 // NomadTactics – Launcher: the start page. Behind the menu a diorama runs: an endless AI battle on the map
-// „Kreuzung“ with the real simulation (offline, four sides, waves), drawn by the same renderer as the battle
-// (game/party/battle_3d.js), so every look improvement shows up here first.
+// „Grenzland“ (M, 384 m) with the real simulation (offline, four sides, big waves), drawn by the same renderer as
+// the battle (game/party/battle_3d.js, here with boom 1.8), so every look improvement shows up here first.
+// The camera follows a hero unit until it is destroyed, then the next one (Daniel, 06.11.).
 // Live dials (time of day, weather, climate) are optics only and exist only here (Daniel, 05.11.).
 // Menu: Spiel (/party) · Werkstatt (/workshop, online only) · Optionen (name, quality, HUD size).
 
@@ -132,7 +133,7 @@ function newBattle() {
   const seed = (Math.random() * 0x7fffffff) | 0;
   sim = new Battle(seed, SIDES.map((s) => s.seat), setup);
   app.ls = { sim };
-  round = 0; overAt = 0; before = null;
+  round = 0; overAt = 0; before = null; hero.id = 0;
   view.reset();
 }
 // AI: every 3 s each side sends its idle units at the nearest enemy landing pad; they fight whatever they meet
@@ -149,6 +150,15 @@ function orders() {
       const d = (u.x - from.x) ** 2 + (u.y - from.y) ** 2;
       if (d < bd) { bd = d; best = u; }
     }
+    // every third group picks any enemy pad, so the fronts cross on the whole board
+    const pads = sim.units.filter((u) => u.seat !== side.seat && u.hp > 0 && sim.types[u.type].building);
+    if (pads.length > 1 && Math.random() < 0.33) best = pads[(Math.random() * pads.length) | 0];
+    // no enemy pad left: hunt the nearest enemy unit
+    if (!best) for (const u of sim.units) {
+      if (u.seat === side.seat || u.hp <= 0) continue;
+      const d = (u.x - from.x) ** 2 + (u.y - from.y) ** 2;
+      if (d < bd) { bd = d; best = u; }
+    }
     if (best) sim.command(side.seat, { kind: 'attack', ids: idle.map((u) => u.id), target: best.id });
   }
 }
@@ -157,28 +167,81 @@ function oneRound() {
   round++;
   before = new Map(sim.units.map((u) => [u.id, [u.x, u.y]]));
   for (let i = 0; i < TICKS_PER_ROUND; i++) sim.step();
+  for (const e of sim.events) if (e.kind === 'shot' && e.src === hero.id) hero.shots++;
   view.drain(sim, false);
   beforeTime = performance.now();
-  if (sim.over && !overAt) overAt = performance.now();
+  // endless: once only one landing pad is left (or the match is over), a new battle starts 12 s later
+  const pads = sim.units.reduce((n, u) => n + (sim.types[u.type].building && u.hp > 0 ? 1 : 0), 0);
+  if ((sim.over || pads <= 1) && !overAt) overAt = performance.now();
 }
 
-// camera: slow orbit, the focus drifts a little towards the fighting; dragging takes over for a moment
-const auto = { yaw: 0.5, since: -1e9 };
+// camera: follows a hero until it is destroyed, stays a moment on the wreck, then picks the next one.
+// Hero = a vehicle in the thick of it (has a target, enemies close by), tanks first.
+// ?overview shows the whole board instead (slow orbit). Dragging takes over for 6 s.
+const overview = new URLSearchParams(location.search).has('overview');
+const auto = { since: -1e9 };
+const hero = { id: 0, since: 0, shots: 0, fell: 0, x: 0, z: 0, name: '', seat: 0 };
+const HERO_RANK = { kampfpanzer: 5, lenkwerfer: 4, spaeher: 3 };
+function pickHero(now) {
+  const fighting = sim.units.filter((u) => u.hp > 0 && !sim.types[u.type].building);
+  if (!fighting.length) return null;
+  let best = null, bs = -1e18;
+  for (const u of fighting) {
+    const t = sim.types[u.type];
+    let near = 0;
+    for (const v of fighting) if (v.seat !== u.seat && Math.abs(v.x - u.x) < 60000 && Math.abs(v.y - u.y) < 60000) near++;
+    const score = (HERO_RANK[u.type] ?? (t.cls === 'infantry' ? 0 : 2)) * 10 + (u.tgt ? 25 : 0) + Math.min(near, 12) * 3 + Math.random() * 8;
+    if (score > bs) { bs = score; best = u; }
+  }
+  app.marked = best.id;
+  Object.assign(hero, { id: best.id, since: now, shots: 0, fell: 0, name: sim.types[best.type].name || best.type, seat: best.seat, x: best.x / 1000, z: best.y / 1000 });
+  heroChip.show();
+  return best;
+}
 function camera(dt, now) {
   const c = view.cam, size = sim.map.size / 1000;
   if (now - auto.since < 6000) return;
-  c.yaw += dt * 0.035;
-  let ax = 0, az = 0, n = 0;
-  for (const u of sim.units) if (!sim.types[u.type].building && u.hp > 0) { ax += u.x; az += u.y; n++; }
-  let fx = n ? 0.7 * size / 2 + 0.3 * ax / n / 1000 : size / 2, fz = n ? 0.7 * size / 2 + 0.3 * az / n / 1000 : size / 2;
-  // wide screens: the board sits right of the menu (move the focus to the camera's left)
-  const shift = innerWidth >= 700 ? c.dist * 0.16 : 0;
-  fx -= Math.cos(c.yaw) * shift; fz += Math.sin(c.yaw) * shift;
-  const k = 1 - Math.exp(-dt * 0.3);
+  const k = 1 - Math.exp(-dt * 1.4), kSlow = 1 - Math.exp(-dt * 0.5);
+  if (overview) {
+    c.yaw += dt * 0.035;
+    c.tx += (size / 2 - c.tx) * kSlow; c.tz += (size / 2 - c.tz) * kSlow;
+    c.dist += (300 - c.dist) * kSlow; c.pitch += (0.66 - c.pitch) * kSlow;
+    return;
+  }
+  const u = hero.id ? sim.byId.get(hero.id) : null;
+  if (u && u.hp > 0) { hero.x = u.x / 1000; hero.z = u.y / 1000; }
+  else if (hero.id && !hero.fell) { hero.fell = now; app.marked = 0; heroChip.fallen(); }
+  if (!hero.id || (hero.fell && now - hero.fell > 2600)) { hero.id = 0; pickHero(now); }
+  c.yaw += dt * 0.05;
+  // wide screens: the hero sits right of the menu (focus moved to the camera's left)
+  const shift = innerWidth >= 700 ? c.dist * 0.2 : 0;
+  const fx = hero.x - Math.cos(c.yaw) * shift, fz = hero.z + Math.sin(c.yaw) * shift;
   c.tx += (fx - c.tx) * k; c.tz += (fz - c.tz) * k;
-  c.dist += (DIST() - c.dist) * k; c.pitch += (PITCH - c.pitch) * k;
+  c.dist += ((innerWidth < 700 ? 95 : 72) - c.dist) * kSlow; c.pitch += (0.8 - c.pitch) * kSlow;
 }
-const DIST = () => (innerWidth < 700 ? 320 : 285), PITCH = 0.66;
+// small chip top right: whom the camera follows, for how long, how many shots
+const heroChip = (() => {
+  const box = el('div', { class: 'ln-hero', id: 'ln-hero' });
+  document.body.append(box);
+  let t = 0;
+  const side = () => SIDES.find((x) => x.seat === hero.seat) || SIDES[0];
+  const age = () => { const s = Math.floor((performance.now() - hero.since) / 1000); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
+  return {
+    show() {
+      if (overview) return;
+      box.className = 'ln-hero on';
+      box.replaceChildren(el('span', { class: 'ln-dot', style: `background:${side().color}` }), el('b', {}, hero.name),
+        el('span', { class: 'ln-hero-sub' }, `${side().name} · `, el('span', { id: 'ln-hero-time' }, '0:00'), ' · ', el('span', { id: 'ln-hero-shots' }, '0'), ' Schuss'));
+    },
+    fallen() { box.className = 'ln-hero on fallen'; box.querySelector('.ln-hero-sub')?.replaceChildren(`Gefallen nach ${age()} · ${hero.shots} Schuss`); },
+    tick(now) {
+      if (now - t < 250 || hero.fell || !hero.id) return; t = now;
+      const a = document.getElementById('ln-hero-time'), b = document.getElementById('ln-hero-shots');
+      if (a) a.textContent = age();
+      if (b) b.textContent = hero.shots;
+    },
+  };
+})();
 let drag = null;
 cv.addEventListener('pointerdown', (e) => { drag = { x: e.clientX, y: e.clientY }; auto.since = performance.now(); try { cv.setPointerCapture(e.pointerId); } catch {} });
 cv.addEventListener('pointermove', (e) => { if (!drag) return; view.rotate((e.clientX - drag.x) * 0.006); view.cam.pitch = Math.max(0.35, Math.min(1.35, view.cam.pitch + (e.clientY - drag.y) * 0.004)); drag = { x: e.clientX, y: e.clientY }; auto.since = performance.now(); });
@@ -193,10 +256,11 @@ function loop() {
     let n = 0;
     while (acc >= ROUND_MS && n++ < 3) { acc -= ROUND_MS; oneRound(); }
     if (acc > ROUND_MS * 3) acc = 0;
-    if (overAt && now - overAt > 9000) newBattle();
+    if (overAt && now - overAt > 12000) newBattle();
     if (dials.running) { dials.hour = (dials.hour + dt * 24 / DAY_SECONDS) % 24; setAtmosphere(); }
     dialsCard.tick?.();
     camera(dt, now);
+    heroChip.tick(now);
     view.draw(before, beforeTime);
   }
   requestAnimationFrame(loop);
@@ -206,16 +270,25 @@ function loop() {
 drawMenu();
 gameData().then(async (d) => {
   online = d.online; app.commit = d.commit;
-  const s = await loadSkirmish(d.json);
-  // the diorama wants more going on than a real match: waves every 20 s, fewer units per side
-  setup = { ...s, mode: { ...s.mode, waveEvery: 20, maxUnits: 28 } };
+  const s = await loadSkirmish(d.json, { faction: 'usa', map: 'grenzland', mode: 'skirmish' });
+  // the diorama wants a lot more going on than a real match: big waves every 15 s, up to 45 units per side,
+  // rocket launchers in every wave
+  // landing pads hold five times longer, so a round lasts several minutes
+  const faction = structuredClone(s.faction);
+  const padId = s.mode.pad || 'landeplatz';
+  if (faction.building?.[padId]) faction.building[padId].health *= 5;
+  setup = { ...s, faction, mode: { ...s.mode, waveEvery: 15, maxUnits: 45,
+    waves: [{ units: { kampfpanzer: 4, spaeher: 2, soldat: 10, lenkwerfer: 2 } }, { units: { kampfpanzer: 2, spaeher: 2, soldat: 6, lenkwerfer: 1 } }],
+    extra: [{ each: 2, units: { lenkwerfer: 2, kampfpanzer: 1 } }] } };
+  view.excite(1.8);
   view.setModels(s.models);
   newBattle();
   // start in the middle of things: a few waves already landed and on their way
-  for (let i = 0; i < 260; i++) { if (i % 30 === 0) orders(); for (let k = 0; k < TICKS_PER_ROUND; k++) sim.step(); sim.events.length = 0; }
-  round = 260;
-  const c = view.cam, size = sim.map.size / 1000; c.tx = size / 2; c.tz = size / 2; c.dist = DIST(); c.pitch = PITCH; c.yaw = 0.5;
-  for (let i = 0; i < 40; i++) camera(0.1, 1e12);
+  for (let i = 0; i < 420; i++) { if (i % 30 === 0) orders(); for (let k = 0; k < TICKS_PER_ROUND; k++) sim.step(); sim.events.length = 0; }
+  round = 420;
+  const c = view.cam, size = sim.map.size / 1000, first = pickHero(performance.now());
+  c.yaw = 0.5; c.pitch = overview ? 0.66 : 0.8; c.dist = overview ? 300 : 72;
+  if (first && !overview) { c.tx = hero.x; c.tz = hero.z; } else { c.tx = size / 2; c.tz = size / 2; }
   drawMenu();
   app.ready = true;
 }).catch((e) => { root.append(el('div', { class: 'ln-error' }, 'Spieldaten fehlen: ' + e.message)); });

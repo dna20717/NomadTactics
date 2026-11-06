@@ -25,6 +25,14 @@ try {
   const s = await P.evaluate(() => { const sim = window.launcher.ls.sim; return { tick: sim.tick, seats: sim.seats.length, units: sim.units.filter((u) => !sim.types[u.type].building).length, moving: sim.units.filter((u) => u.order).length }; });
   validate(s.tick > t0, `Simulation läuft (${t0} → ${s.tick})`);
   validate(s.seats === 4 && s.units > 8 && s.moving > 0, `vier Seiten, ${s.units} Einheiten, ${s.moving} mit Befehl (KI)`);
+  const h = await P.evaluate(() => { const sim = window.launcher.ls.sim, u = sim.byId.get(window.launcher.marked); return { alive: !!u && u.hp > 0, chip: document.querySelector('#ln-hero.on b')?.textContent, map: sim.map.id, size: sim.map.size / 1000 }; });
+  validate(h.alive && !!h.chip, `Kamera folgt einer Heldeneinheit (${h.chip})`);
+  validate(h.map === 'grenzland' && h.size === 384, `Karte Grenzland, ${h.size} m`);
+  // hero dies → the next one
+  const old = await P.evaluate(() => { const sim = window.launcher.ls.sim, u = sim.byId.get(window.launcher.marked); u.hp = 0; return u.id; });
+  let next = old;
+  for (let i = 0; i < 40 && (next === old || !next); i++) { await pause(250); next = await P.evaluate(() => window.launcher.marked); }
+  validate(next && next !== old, `nach dem Ende des Helden übernimmt der nächste (${old} → ${next})`);
   validate(await P.evaluate(() => { const r = document.querySelector('#scene').getBoundingClientRect(); return r.width > 1000 && getComputedStyle(document.querySelector('#scene')).display !== 'none'; }), '3D-Szene füllt den Bildschirm');
   validate(await P.locator('#ln-play').isVisible() && await P.locator('#ln-options').isVisible(), 'Menü: Spiel und Optionen sichtbar');
   validate(await P.locator('#ln-workshop').count() === 0, 'im Heimnetz ohne Werkstatt-Knopf (die gibt es nur online)');
