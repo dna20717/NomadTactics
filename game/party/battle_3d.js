@@ -17,7 +17,81 @@ const M = 1 / 1000;          // world units (mm) → metres
 const LEVEL = 2.0;           // one map level = 2 m (5 voxels)
 const SKY = 0xd6e4e8;
 const TAU = Math.PI * 2;
+const HOVER = 4.4;            // companion drones fly this high above the ground (m)
 const yawOf = (h) => Math.PI / 2 - (h / 256) * TAU; // sim angle (0 = +x) → rotation about y (model front = +z)
+
+// ---------- fine terrain: smooth ramps and diagonal edges (optics only) ----------
+const FINE = 10;             // 10 × 10 columns per 2 m cell = 0.2 m (half a voxel)
+const FSTEP = 0.2;           // height steps of the fine columns (half a voxel)
+const stepped = (h) => Math.round(h / FSTEP) * FSTEP;
+export function smoothCells(m, top, water) {
+  const n = m.n, fine = new Map();
+  const isWater = (k) => !!water[m.ground[k]];
+  // ramps: each connected ramp is one even slope from the ground next to it below to the ground above
+  // (direction = from the lower neighbours to the higher ones), cut into 0.2 m steps when drawn
+  const seen = new Uint8Array(n * n);
+  for (let k0 = 0; k0 < n * n; k0++) {
+    if (!m.ramp[k0] || seen[k0] || isWater(k0)) continue;
+    const region = [k0]; seen[k0] = 1;
+    for (let q = 0; q < region.length; q++) {
+      const k = region[q], i = k % n, j = (k - i) / n;
+      for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const a = i + di, b = j + dj, c = b * n + a;
+        if (a >= 0 && b >= 0 && a < n && b < n && m.ramp[c] && !seen[c] && !isWater(c)) { seen[c] = 1; region.push(c); }
+      }
+    }
+    // neighbours outside the ramp, by level
+    const border = new Map();
+    for (const k of region) {
+      const i = k % n, j = (k - i) / n;
+      for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const a = i + di, b = j + dj, c = b * n + a;
+        if (a < 0 || b < 0 || a >= n || b >= n || m.ramp[c] || isWater(c)) continue;
+        if (!border.has(m.level[c])) border.set(m.level[c], []);
+        border.get(m.level[c]).push([a + 0.5, b + 0.5]);
+      }
+    }
+    const levels = [...border.keys()].sort((x, y) => x - y);
+    const lo = levels[0] ?? m.level[k0], hi = levels[levels.length - 1] ?? lo;
+    const mean = (l) => { const p = border.get(l) || [[0, 0]]; let x = 0, y = 0; for (const [a, b] of p) { x += a; y += b; } return [x / p.length, y / p.length]; };
+    const [lx, ly] = mean(lo), [hx, hy] = mean(hi);
+    let dx = hx - lx, dy = hy - ly; const len = Math.hypot(dx, dy) || 1; dx /= len; dy /= len;
+    const proj = (l) => { const p = border.get(l) || []; let s = 0; for (const [a, b] of p) s += a * dx + b * dy; return p.length ? s / p.length : 0; };
+    const sLo = proj(lo), sHi = proj(hi), span = sHi - sLo;
+    for (const k of region) {
+      const i = k % n, j = (k - i) / n, f = new Float32Array(FINE * FINE);
+      for (let sy = 0; sy < FINE; sy++) for (let sx = 0; sx < FINE; sx++) {
+        const px = i + (sx + 0.5) / FINE, py = j + (sy + 0.5) / FINE;
+        const t = hi === lo || span <= 0 ? 0 : Math.max(0, Math.min(1, (px * dx + py * dy - sLo) / span));
+        f[sy * FINE + sx] = (lo + t * (hi - lo)) * LEVEL;
+      }
+      fine.set(k, f);
+      top[k] = (lo + (hi - lo) * 0.5) * LEVEL;
+    }
+  }
+  // inner corners of diagonal edges: two orthogonal neighbours and the diagonal one higher → fill a triangle
+  for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
+    const k = j * n + i;
+    if (fine.has(k)) continue;
+    const h = top[k];
+    let f = null;
+    for (const [di, dj] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+      const a = i + di, b = j + dj;
+      if (a < 0 || b < 0 || a >= n || b >= n) continue;
+      const A = j * n + a, B = b * n + i, C = b * n + a;
+      if ((m.ramp[A] && !isWater(A)) || (m.ramp[B] && !isWater(B))) continue;
+      if (!(top[A] > h + 0.1 && top[B] > h + 0.1 && top[C] > h + 0.1)) continue;
+      const fill = Math.min(top[A], top[B]);
+      if (!f) f = new Float32Array(FINE * FINE).fill(h);
+      const cx = di > 0 ? FINE - 1 : 0, cy = dj > 0 ? FINE - 1 : 0;
+      for (let sy = 0; sy < FINE; sy++) for (let sx = 0; sx < FINE; sx++) {
+        if (Math.abs(sx - cx) + Math.abs(sy - cy) <= FINE - 2 && f[sy * FINE + sx] < fill) f[sy * FINE + sx] = fill; // corner half, on the diagonal
+      }
+    }
+    if (f) fine.set(k, f);
+  }
+  return fine;
+}
 
 export function battleView3d({ host, overlay, app, meSeat, playerList, toast, modelsBase }) {
   const canvas = document.createElement('canvas');
@@ -283,23 +357,52 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
       if (w === 'deep') h -= 1.2; else if (w === 'flat') h -= 0.4;
       top[k] = h;
     }
+    // fine cells (06.11., Daniel: diagonal ramps and edges looked odd): ramps become a smooth slope and
+    // inner corners of diagonal edges get a filled triangle, both in 0.4 m columns with 0.2 m steps.
+    // Optics only: the simulation keeps its 2 m cells. fine: cell → 25 raw heights (row-major, sx + sy·5).
+    const fine = smoothCells(m, top, water);
     // tops: one quad per cell, the 0.4 m voxel look comes from a texture (one texel per voxel column)
     const T = 5, tex = n * T;
     const data = new Uint8Array(tex * tex * 4);
     const hashf = (a, b) => ((Math.imul(a * 92837111 ^ b * 689287499, 2654435761) >>> 0) % 1000) / 1000;
     const c = new THREE.Color();
+    // height per texel (fine columns where there are some) and ground per texel: diagonal borders between
+    // two grounds on flat land get the same filled triangle as the edges, so roads and banks run straight
+    const texH = (x, y) => {
+      if (x < 0 || y < 0 || x >= tex || y >= tex) return -99;
+      const i = Math.floor(x / T), j = Math.floor(y / T), f = fine.get(j * n + i);
+      return f ? stepped(f[((y % T) * 2 + 1) * FINE + (x % T) * 2 + 1]) : top[j * n + i];
+    };
+    // ground of a column (lx, ly) of R × R in cell (i, j): a filled corner takes the higher neighbour's ground,
+    // a flat diagonal border takes the other ground (only one side fills: the one with the lower ground index)
+    const groundOf = (i, j, lx, ly, R = T) => {
+      const k = j * n + i, own = m.ground[k], h = top[k];
+      for (const [di, dj] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+        const a = i + di, b = j + dj;
+        if (a < 0 || b < 0 || a >= n || b >= n) continue;
+        const cx = di > 0 ? R - 1 : 0, cy = dj > 0 ? R - 1 : 0;
+        if (Math.abs(lx - cx) + Math.abs(ly - cy) > R - 2) continue;
+        const A = j * n + a, B = b * n + i, C = b * n + a, gA = m.ground[A];
+        const rampAt = (q) => m.ramp[q] && !water[m.ground[q]];
+        if (!rampAt(k) && !rampAt(A) && !rampAt(B) && top[A] > h + 0.1 && top[B] > h + 0.1 && top[C] > h + 0.1) return top[A] <= top[B] ? gA : m.ground[B];
+        if (gA <= own || m.ground[B] !== gA || m.ground[C] !== gA) continue;
+        if (Math.abs(top[A] - h) > 0.05 || Math.abs(top[B] - h) > 0.05 || Math.abs(top[C] - h) > 0.05) continue;
+        return gA;
+      }
+      return own;
+    };
     for (let y = 0; y < tex; y++) for (let x = 0; x < tex; x++) {
       const i = Math.floor(x / T), j = Math.floor(y / T), k = j * n + i;
-      const g = m.grounds[m.ground[k]];
+      const lx = x % T, ly = y % T;
+      const gi = groundOf(i, j, lx, ly), g = m.grounds[gi];
       let v = 0.9 + hashf(x, y) * 0.16;
       // darker ring at the foot of higher neighbours (soft contact shadow of cliffs)
-      const lx = x % T, ly = y % T;
-      const higher = (di, dj) => { const a = i + di, b = j + dj; return a >= 0 && b >= 0 && a < n && b < n && top[b * n + a] > top[k] + 0.5; };
-      if ((lx === 0 && higher(-1, 0)) || (lx === T - 1 && higher(1, 0)) || (ly === 0 && higher(0, -1)) || (ly === T - 1 && higher(0, 1))) v *= 0.72;
+      const h = texH(x, y);
+      if (texH(x - 1, y) > h + 0.5 || texH(x + 1, y) > h + 0.5 || texH(x, y - 1) > h + 0.5 || texH(x, y + 1) > h + 0.5) v *= 0.72;
       if (g === 'forest') v *= 0.82;
       if (g === 'strasse' && (lx + ly * 3 + i) % 11 === 0) v *= 0.9;
       // the texture is sRGB: write the colour as authored, not three's linear working values
-      const hx = hexes[m.ground[k]], f = v * (1 + top[k] * 0.02);
+      const hx = hexes[gi], f = v * (1 + h * 0.02);
       const o = (y * tex + x) * 4;
       data[o] = Math.min(255, ((hx >> 16) & 255) * f); data[o + 1] = Math.min(255, ((hx >> 8) & 255) * f); data[o + 2] = Math.min(255, (hx & 255) * f); data[o + 3] = 255;
     }
@@ -307,8 +410,24 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
     map.magFilter = THREE.NearestFilter; map.minFilter = THREE.LinearMipmapLinearFilter; map.generateMipmaps = true;
     map.colorSpace = THREE.SRGBColorSpace; map.anisotropy = 4; map.needsUpdate = true;
     const tp = [], tu = [], tn = [];
+    const sc = cell / FINE;
     for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
       const h = top[j * n + i], x0 = i * cell, z0 = j * cell, x1 = x0 + cell, z1 = z0 + cell;
+      const f = fine.get(j * n + i);
+      if (f) {
+        // one quad per run of equal height in a row (uv is linear in the position, so runs map exactly)
+        for (let sy = 0; sy < FINE; sy++) for (let sx = 0; sx < FINE;) {
+          const y = stepped(f[sy * FINE + sx]);
+          let ex = sx + 1;
+          while (ex < FINE && stepped(f[sy * FINE + ex]) === y) ex++;
+          const a = x0 + sx * sc, b = z0 + sy * sc, w = (ex - sx) * sc, u0 = (i + sx / FINE) / n, v0 = (j + sy / FINE) / n, u1 = (i + ex / FINE) / n, v1 = (j + (sy + 1) / FINE) / n;
+          sx = ex;
+          tp.push(a, y, b, a, y, b + sc, a + w, y, b + sc, a, y, b, a + w, y, b + sc, a + w, y, b);
+          tu.push(u0, v0, u0, v1, u1, v1, u0, v0, u1, v1, u1, v0);
+          for (let q = 0; q < 6; q++) tn.push(0, 1, 0);
+        }
+        continue;
+      }
       tp.push(x0, h, z0, x0, h, z1, x1, h, z1, x0, h, z0, x1, h, z1, x1, h, z0);
       tu.push(i / n, j / n, i / n, (j + 1) / n, (i + 1) / n, (j + 1) / n, i / n, j / n, (i + 1) / n, (j + 1) / n, (i + 1) / n, j / n);
       for (let q = 0; q < 6; q++) tn.push(0, 1, 0);
@@ -334,6 +453,7 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
         const a = i + di, b = j + dj;
         const hn = a < 0 || b < 0 || a >= n || b >= n ? BASE : top[b * n + a];
         if (hn >= h) continue;
+        if (fine.has(k) || (hn !== BASE && fine.has(b * n + a))) continue; // fine cells draw their own faces
         const x0 = di > 0 ? (i + 1) * cell : i * cell, z0 = dj > 0 ? (j + 1) * cell : j * cell;
         const outside = hn === BASE;
         for (let y = hn; y < h - 1e-4; y += V) {
@@ -342,6 +462,36 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
           c.setHex(outside ? (y1 > h - 0.45 ? base.getHex() : 0x6b5238) : y1 >= h - 0.01 ? base.getHex() : 0x8c7a63).multiplyScalar(sh);
           if (di !== 0) quad([x0, y, z0], [x0, y1, z0], [x0, y1, z0 + cell], [x0, y, z0 + cell], [nx, 0, nz], c.r, c.g, c.b);
           else quad([x0, y, z0], [x0, y1, z0], [x0 + cell, y1, z0], [x0 + cell, y, z0], [nx, 0, nz], c.r, c.g, c.b);
+        }
+      }
+    }
+    // faces of the fine columns: against each other and against coarse neighbours (both directions)
+    const band = (x0, z0, x1, z1, lo, hi, nrm, baseHex, seed) => {
+      // a step of one column: ground colour; higher: earth with a ground-coloured lip on top
+      const lip = Math.max(lo, hi - FSTEP);
+      if (lip > lo + 1e-4) { c.setHex(0x8c7a63).multiplyScalar(0.64 + hashf(seed, 3) * 0.1); quad([x0, lo, z0], [x0, lip, z0], [x1, lip, z1], [x1, lo, z1], nrm, c.r, c.g, c.b); }
+      c.setHex(baseHex).multiplyScalar(0.7 + hashf(seed, 5) * 0.08);
+      quad([x0, lip, z0], [x0, hi, z0], [x1, hi, z1], [x1, lip, z1], nrm, c.r, c.g, c.b);
+    };
+    const heightAt = (ci, cj, sx, sy) => {
+      if (ci < 0 || cj < 0 || ci >= n || cj >= n) return BASE;
+      const f = fine.get(cj * n + ci);
+      return f ? stepped(f[sy * FINE + sx]) : top[cj * n + ci];
+    };
+    for (const [k, f] of fine) {
+      const i = k % n, j = (k - i) / n;
+      for (let sy = 0; sy < FINE; sy++) for (let sx = 0; sx < FINE; sx++) {
+        const h = stepped(f[sy * FINE + sx]), a = i * cell + sx * sc, b = j * cell + sy * sc, baseHex = color[groundOf(i, j, sx, sy, FINE)].getHex();
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          let nx = sx + dx, ny = sy + dy, ci = i, cj = j;
+          if (nx < 0) { ci--; nx += FINE; } else if (nx >= FINE) { ci++; nx -= FINE; }
+          if (ny < 0) { cj--; ny += FINE; } else if (ny >= FINE) { cj++; ny -= FINE; }
+          const other = ci >= 0 && cj >= 0 && ci < n && cj < n ? cj * n + ci : -1;
+          const hn = heightAt(ci, cj, nx, ny);
+          const ex = dx > 0 ? a + sc : a, ez = dy > 0 ? b + sc : b;
+          const [x0, z0, x1, z1] = dx !== 0 ? [ex, b, ex, b + sc] : [a, ez, a + sc, ez];
+          if (hn < h) band(x0, z0, x1, z1, hn, h, [dx, 0, dy], baseHex, k + sx + sy * 7);
+          else if (hn > h && other >= 0 && !fine.has(other)) band(x0, z0, x1, z1, h, hn, [-dx, 0, -dy], color[m.ground[other]].getHex(), other);
         }
       }
     }
@@ -395,7 +545,7 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
       group.add(im);
     });
     scene.add(group);
-    world = { map: sim.map, group, top, n, cell, size, climate: atm.climate };
+    world = { map: sim.map, group, top, fine, n, cell, size, climate: atm.climate };
   }
 
   // flat-shaded quads were pushed in a fixed corner order; flip triangles whose winding disagrees with the normal
@@ -412,6 +562,11 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
   function groundAt(x, z) {
     if (!world) return 0;
     const i = Math.max(0, Math.min(world.n - 1, Math.floor(x / world.cell))), j = Math.max(0, Math.min(world.n - 1, Math.floor(z / world.cell)));
+    const f = world.fine.get(j * world.n + i);
+    if (f) {
+      const sx = Math.max(0, Math.min(FINE - 1, Math.floor((x / world.cell - i) * FINE))), sy = Math.max(0, Math.min(FINE - 1, Math.floor((z / world.cell - j) * FINE)));
+      return Math.max(-0.35, f[sy * FINE + sx]);
+    }
     return Math.max(-0.35, world.top[j * world.n + i]);
   }
 
@@ -423,13 +578,13 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
   }
   function modelFor(key) {
     if (models[key]) return models[key];
-    const entry = { ready: false, pivot: null, hull: null, turret: null, scale: 1 };
+    const entry = { ready: false, pivot: null, hull: null, turret: null, scale: V };
     models[key] = entry;
     if (key === 'pad') { entry.hull = landingPad(31); entry.ready = true; return entry; }
     const src = modelSource?.[key]?.source || `prototype:${key}`;
     if (src.startsWith('prototype:')) {
       const p = PROTOTYPES[src.slice(10)] || PROTOTYPES.tank;
-      entry.hull = p.hull(); entry.turret = p.turret ? p.turret() : null; entry.pivot = p.pivot || null; entry.ready = true;
+      entry.hull = p.hull(); entry.turret = p.turret ? p.turret() : null; entry.pivot = p.pivot || null; entry.scale = p.scale || V; entry.ready = true;
     } else {
       // own .vox model (path relative to the project folder)
       const url = new URL(src, modelsBase).href;
@@ -452,7 +607,7 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
     const W = which === 'turret' ? e.turret : e.hull;
     if (!W) return null;
     const gk = `${key}|${which}|${colour}`;
-    if (!geoCache.has(gk)) geoCache.set(gk, voxelGeometry(W, { team: colour }));
+    if (!geoCache.has(gk)) geoCache.set(gk, voxelGeometry(W, { team: colour, scale: e.scale || V }));
     const cap = im ? im.userData.cap * 2 : 32;
     const fresh = new THREE.InstancedMesh(geoCache.get(gk), wreck ? wreckMat : unitMat, cap);
     fresh.castShadow = true; fresh.receiveShadow = true; fresh.frustumCulled = false;
@@ -464,7 +619,7 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
   const tmpM = new THREE.Matrix4(), o3 = new THREE.Object3D();
   function put(im, x, y, z, yaw, extra = null) {
     if (!im) return;
-    o3.position.set(x, y, z); o3.rotation.set(0, yaw, 0); o3.scale.set(1, 1, 1);
+    o3.position.set(x, y, z); o3.rotation.set(0, yaw, 0, 'XYZ'); o3.scale.set(1, 1, 1);
     if (extra) extra(o3);
     o3.updateMatrix();
     im.setMatrixAt(im.userData.used++, o3.matrix);
@@ -500,6 +655,23 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
   const chips = new THREE.InstancedMesh(new THREE.BoxGeometry(V, V, V), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9 }), 800);
   chips.frustumCulled = false; chips.castShadow = true; scene.add(chips);
   const tmpC = new THREE.Color();
+  // headlights at night (06.11.): the lamps glow in the vehicle shader; on the ground just a faint warm
+  // patch in front of each vehicle (one additive quad, no real lights, no shadows)
+  const beamTex = (() => {
+    const w = 32, h = 64, d = new Uint8Array(w * h * 4);
+    for (let r = 0; r < h; r++) for (let q = 0; q < w; q++) {
+      const v = r / (h - 1), along = 1 - v, x = (q / (w - 1) - 0.5) * 2;
+      const spread = 0.35 + along * 0.65;
+      const a = Math.pow(v, 1.6) * Math.exp(-Math.pow(x / spread, 2) * 3) * Math.min(1, along * 8);
+      const o = (r * w + q) * 4; d[o] = d[o + 1] = d[o + 2] = 255; d[o + 3] = Math.round(a * 255);
+    }
+    const t = new THREE.DataTexture(d, w, h); t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearFilter; t.needsUpdate = true;
+    return t;
+  })();
+  const beamGeo = new THREE.PlaneGeometry(1, 1); beamGeo.rotateX(-Math.PI / 2); beamGeo.translate(0, 0, 0.5);
+  const beamMat = new THREE.MeshBasicMaterial({ map: beamTex, color: 0xffd8a0, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false });
+  const beams = new THREE.InstancedMesh(beamGeo, beamMat, 320); beams.frustumCulled = false; beams.count = 0; beams.renderOrder = 2; scene.add(beams);
+  let lamps = 0;
 
   // ---------- events → effects ----------
   function drain(sim, skip) {
@@ -508,7 +680,8 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
     const me = meSeat();
     for (const e of sim.events) {
       if (e.kind === 'shot') {
-        const y0 = groundAt(e.x * M, e.y * M) + 1.6, y1 = groundAt(e.tx * M, e.ty * M) + 0.8;
+        const airOf = (id) => { const q = sim.byId.get(id); return q && sim.types[q.type]?.air ? HOVER : 0; };
+        const y0 = groundAt(e.x * M, e.y * M) + 1.6 + airOf(e.src), y1 = groundAt(e.tx * M, e.ty * M) + 0.8 + airOf(e.tgt);
         effects.push({ kind: 'shot', p: e.projectile, x: e.x * M, y: y0, z: e.y * M, tx: e.tx * M, ty: y1, tz: e.ty * M, t0: now, dur: Math.max(70, e.time * 50) });
         if (e.projectile >= 2) effects.push({ kind: 'flash', x: e.x * M, y: y0, z: e.y * M, r: e.projectile === 3 ? 0.9 : 1.3, t0: now, dur: 110 });
       } else if (e.kind === 'impact') {
@@ -523,7 +696,13 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
         }
       } else if (e.kind === 'dead') {
         const t = sim.types[e.type];
-        const x = e.x * M, z = e.y * M, y = groundAt(x, z);
+        const x = e.x * M, z = e.y * M, y = groundAt(x, z) + (t?.air ? HOVER - 1 : 0);
+        if (t?.air) { // a drone: small burst in the air, a few parts fall
+          effects.push({ kind: 'flash', x, y: y + 1, z, r: 1.4, t0: now, dur: 420, big: true });
+          for (let i = 0; i < 6; i++) chip(x, y + 1, z, 0x34342e, 0.8);
+          puff(x, y + 1, z, 1.2, 0x3d3833); light(x, y + 1, z, 1.5);
+          continue;
+        }
         const r = t?.cls === 'infantry' ? 0.8 : t?.building ? 9 : 3.4;
         effects.push({ kind: 'flash', x, y: y + 1, z, r: r * (boom > 1 && t?.cls !== 'infantry' ? 1.5 : 1), t0: now, dur: (t?.building ? 1100 : 600) * Math.min(1.6, boom), big: true });
         for (let i = 0; i < Math.round((t?.cls === 'infantry' ? 2 : 14) * boom); i++) puff(x + (Math.random() - 0.5) * r, y + 1, z + (Math.random() - 0.5) * r, 1.2 + Math.random() * 1.6 * boom, 0x3d3833);
@@ -714,6 +893,9 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
     }
     strikes = strikes.filter((k) => !k.done);
     towers.update(dt, now, atm.on ? 1 - dayNow : 0);
+    { const night = atm.on ? 1 - dayNow : 0, t2 = Math.max(0, Math.min(1, (night - 0.3) / 0.45)); lamps = t2 * t2 * (3 - 2 * t2); }
+    unitMat.userData.night.value = lamps; beamMat.opacity = lamps * 0.26;
+    let beamN = 0;
     const t = Math.min(1, (now - beforeTime) / ROUND_MS);
     const pos = (u) => { const v = before?.get(u.id); return v ? [v[0] + (u.x - v[0]) * t, v[1] + (u.y - v[1]) * t] : [u.x, u.y]; };
     const colours = Object.fromEntries(playerList().map((x) => [x.seat, colourOf(x)]));
@@ -734,12 +916,22 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
       const colour = colours[u.seat] ?? 0x999999;
       let s = smooth.get(u.id);
       const yaw = ty.building ? 0 : yawOf(u.h);
-      if (!s) { s = { y: groundAt(wx, wz), yaw, tyaw: yaw }; smooth.set(u.id, s); }
+      const lift = ty.air ? HOVER + Math.sin(now / 420 + u.id) * 0.25 : 0;
+      if (!s) { s = { y: groundAt(wx, wz) + lift, yaw, tyaw: yaw, px: wx, pz: wz, tilt: 0 }; smooth.set(u.id, s); }
       seen.add(u.id);
-      s.y += (groundAt(wx, wz) - s.y) * k;
+      s.y += (groundAt(wx, wz) + lift - s.y) * k;
       s.yaw += angleStep(s.yaw, yaw, k);
       const e = modelFor(key);
-      put(part(key, 'hull', colour), wx, s.y, wz, s.yaw);
+      if (ty.air) { // lean into the flight a little
+        const v = Math.hypot(wx - s.px, wz - s.pz) / Math.max(dt, 1e-3);
+        s.tilt += (Math.min(0.3, v * 0.03) - s.tilt) * k; s.px = wx; s.pz = wz;
+        put(part(key, 'hull', colour), wx, s.y, wz, s.yaw, (o) => { o.rotation.set(s.tilt, s.yaw, 0, 'YXZ'); });
+      } else put(part(key, 'hull', colour), wx, s.y, wz, s.yaw);
+      if (lamps > 0.02 && !ty.building && !ty.air && ty.cls !== 'infantry' && beamN < 320) {
+        const f = (ty.body + ty.core) * M - 0.4;
+        o3.position.set(wx + Math.sin(s.yaw) * f, s.y + 0.12, wz + Math.cos(s.yaw) * f); o3.rotation.set(0, s.yaw, 0, 'XYZ'); o3.scale.set(4.6, 1, 11);
+        o3.updateMatrix(); beams.setMatrixAt(beamN++, o3.matrix);
+      }
       if (e.turret) {
         const tgt = u.tgt ? sim.byId.get(u.tgt) : null;
         const want = tgt ? Math.atan2(tgt.x * M - wx, tgt.y * M - wz) : s.yaw;
@@ -757,6 +949,7 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
     }
     for (const id of smooth.keys()) if (!seen.has(id)) smooth.delete(id);
     rings.count = ringN; rings.instanceMatrix.needsUpdate = true;
+    beams.count = beamN; beams.instanceMatrix.needsUpdate = true;
 
     // wrecks: dark, sinking slowly at the end
     for (const w of wrecks) {

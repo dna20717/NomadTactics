@@ -9,6 +9,9 @@
    {"units": {"kampfpanzer": 2, "spaeher": 1, "soldat": 5}},
    {"units": {"kampfpanzer": 1, "spaeher": 1, "soldat": 3}}
   ],
+  "loadout": {
+   "kampfpanzer": [["gefechtsdrohne"], ["spaeherdrohne"], [], ["raketendrohne"]]
+  },
   "extra": [
    {"each": 3, "units": {"lenkwerfer": 1}}
   ]

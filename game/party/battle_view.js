@@ -155,7 +155,14 @@ export function battleView({ cv, app, meSeat, playerList, toast }) {
       const [x, y] = pos(u);
       const col = colors[u.seat] || '#999';
       if (ty.building) pad(X(x), Y(y), L(ty.radius), col, u);
-      else if (ty.cls === 'infantry') {
+      else if (ty.air) {
+        // companion drone: small cross with the team colour
+        const r = Math.max(3, L(1400)), a = toRad(u.h) + Math.PI / 4;
+        g.strokeStyle = 'rgba(0,0,0,.7)'; g.lineWidth = 2.6;
+        for (const q of [0, Math.PI / 2]) line(X(x) - Math.cos(a + q) * r, Y(y) - Math.sin(a + q) * r, X(x) + Math.cos(a + q) * r, Y(y) + Math.sin(a + q) * r);
+        g.strokeStyle = col; g.lineWidth = 1.4;
+        for (const q of [0, Math.PI / 2]) line(X(x) - Math.cos(a + q) * r, Y(y) - Math.sin(a + q) * r, X(x) + Math.cos(a + q) * r, Y(y) + Math.sin(a + q) * r);
+      } else if (ty.cls === 'infantry') {
         const r = Math.max(2.2, L(650));
         g.fillStyle = 'rgba(0,0,0,.35)'; g.beginPath(); g.arc(X(x) + r * .3, Y(y) + r * .3, r, 0, TAU); g.fill();
         g.fillStyle = col; g.beginPath(); g.arc(X(x), Y(y), r, 0, TAU); g.fill();
@@ -268,7 +275,7 @@ export function battleView({ cv, app, meSeat, playerList, toast }) {
 
 }
 
-function rank(sim, u) { const t = sim.types[u.type]; return t.building ? 0 : t.cls === 'infantry' ? 1 : 2; }
+function rank(sim, u) { const t = sim.types[u.type]; return t.building ? 0 : t.air ? 3 : t.cls === 'infantry' ? 1 : 2; }
 function hex(c) { const v = parseInt(c.slice(1), 16); return [(v >> 16) & 255, (v >> 8) & 255, v & 255]; }
 function clamp(v) { return Math.max(0, Math.min(255, Math.round(v))); }
 function shade(c, d) { const [r, g, b] = hex(c); return `rgb(${clamp(r + d)},${clamp(g + d)},${clamp(b + d)})`; }

@@ -89,7 +89,10 @@ export function voxelMaterial() {
 export function vehicleMaterial(envMap = null, { tint = null } = {}) {
   const m = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.6, metalness: 0, envMap, envMapIntensity: 0.28 });
   if (tint) m.color.setHex(tint);
+  // night 0…1: headlights and tail lights glow (set m.userData.night.value; wrecks keep 0)
+  m.userData.night = { value: 0 };
   m.onBeforeCompile = (sh) => {
+    sh.uniforms.uNight = m.userData.night;
     sh.vertexShader = sh.vertexShader.replace('#include <common>', `#include <common>
       attribute vec2 edge; attribute float mat; attribute vec4 outer;
       varying vec2 vEdge; varying float vMat; varying vec4 vOuter; varying vec3 vLoc;`)
@@ -101,7 +104,7 @@ export function vehicleMaterial(envMap = null, { tint = null } = {}) {
       float noise3(vec3 x) { vec3 i = floor(x), f = fract(x); f = f * f * (3.0 - 2.0 * f);
         return mix(mix(mix(h31(i), h31(i + vec3(1,0,0)), f.x), mix(h31(i + vec3(0,1,0)), h31(i + vec3(1,1,0)), f.x), f.y),
                    mix(mix(h31(i + vec3(0,0,1)), h31(i + vec3(1,0,1)), f.x), mix(h31(i + vec3(0,1,1)), h31(i + vec3(1,1,1)), f.x), f.y), f.z); }
-      float gRough = 0.6; float gMetal = 0.0;`)
+      float gRough = 0.6; float gMetal = 0.0; uniform float uNight;`)
       .replace('#include <color_fragment>', `#include <color_fragment>
         vec2 kk = min(vEdge, 1.0 - vEdge);
         float rGrid = min(kk.x, kk.y);
@@ -130,6 +133,9 @@ export function vehicleMaterial(envMap = null, { tint = null } = {}) {
         if (kind == 4) dirt *= 0.3;
         diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.24, 0.19, 0.13), dirt * 0.75);
         gRough = mix(gRough, 0.95, dirt); gMetal *= 1.0 - dirt;`)
+      .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
+        if (kind == 6) totalEmissiveRadiance += vec3(1.0, 0.9, 0.68) * (0.15 + uNight * 6.0);
+        else if (kind == 7) totalEmissiveRadiance += vec3(1.0, 0.1, 0.06) * uNight * 3.0;`)
       .replace('#include <roughnessmap_fragment>', 'float roughnessFactor = gRough;')
       .replace('#include <metalnessmap_fragment>', 'float metalnessFactor = gMetal;');
   };

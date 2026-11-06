@@ -4,6 +4,7 @@
  "spaeher": {"name": "Spähwagen", "source": "prototype:spaeher"},
  "soldat": {"name": "Soldat", "source": "prototype:soldat"},
  "dozer": {"name": "Dozer", "source": "prototype:dozer"},
+ "drone": {"name": "Begleitdrohne", "source": "prototype:drone"},
  "kaserne": {"name": "Kaserne", "source": "prototype:kaserne"},
  "highrise": {"name": "Hochhaus", "source": "prototype:highrise"},
  "daniel_tank": {"name": "Daniels Panzer", "source": "../../prototypes/nomadtactics/models/daniel_tank.vox"}

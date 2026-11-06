@@ -37,6 +37,7 @@ export function hudForBattle({ app, views, send, meSeat, playerList, canvas }) {
     const seen = new Set();
     for (const u of s.units) {
       const t = s.types[u.type];
+      if (t.air) continue; // companion drones: drawn by the views, never selected or commanded
       const [x, y] = pos(u);
       if (t.building) {
         let g = pads.get(u.id);
@@ -213,7 +214,7 @@ export function hudForBattle({ app, views, send, meSeat, playerList, canvas }) {
     const s = sim(); const me = meSeat();
     for (const e of list) {
       if (e.kind === 'wave' && e.seat === me) hud.message(`Welle ${e.n}: Verstärkung ist gelandet.`, { x: e.x * M, z: e.y * M }, { kind: 'good', voice: true, speak: 'Verstärkung ist da.' });
-      else if (e.kind === 'dead' && e.seat === me && performance.now() - lossT > 5000) {
+      else if (e.kind === 'dead' && e.seat === me && !s.types[e.type]?.air && performance.now() - lossT > 5000) {
         const t = s.types[e.type];
         lossT = performance.now();
         hud.message(`${t.name} verloren.`, { x: e.x * M, z: e.y * M }, { kind: 'hostile', voice: !t.building, speak: hud.radio('lost') });

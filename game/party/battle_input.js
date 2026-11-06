@@ -9,7 +9,7 @@ export function battleInput({ el, app, send, meSeat, view }) {
   const keys = new Set();
   const groups = {};
   const sim = () => app.ls?.sim;
-  const own = () => { const s = sim(); const me = meSeat(); return s ? s.units.filter((u) => u.seat === me && !s.types[u.type].building) : []; };
+  const own = () => { const s = sim(); const me = meSeat(); return s ? s.units.filter((u) => u.seat === me && !s.types[u.type].building && !s.types[u.type].air) : []; };
 
   // nearest unit under the pointer, in screen pixels
   function hitUnit(px, py, pred) {
@@ -79,7 +79,7 @@ export function battleInput({ el, app, send, meSeat, view }) {
       for (const u of own()) { const [px, py] = v.project(u.x, u.y, u); if (px >= x0 && px <= x1 && py >= y0 && py <= y1) app.selection.add(u.id); }
       return;
     }
-    const mine = hitUnit(z.x, z.y, (u) => u.seat === me && !s.types[u.type].building);
+    const mine = hitUnit(z.x, z.y, (u) => u.seat === me && !s.types[u.type].building && !s.types[u.type].air);
     if (!z.right && mine) {
       if (z.shift) { app.selection.has(mine.id) ? app.selection.delete(mine.id) : app.selection.add(mine.id); }
       else { app.selection.clear(); app.selection.add(mine.id); }
@@ -110,7 +110,7 @@ export function battleInput({ el, app, send, meSeat, view }) {
   el.addEventListener('dblclick', (e) => {
     const s = sim(); if (!s || app.hud) return;
     const me = meSeat();
-    const u = hitUnit(e.offsetX, e.offsetY, (x) => x.seat === me && !s.types[x.type].building);
+    const u = hitUnit(e.offsetX, e.offsetY, (x) => x.seat === me && !s.types[x.type].building && !s.types[x.type].air);
     if (!u) return;
     const v = view(), w = el.clientWidth, h = el.clientHeight;
     for (const x of own()) if (x.type === u.type) {

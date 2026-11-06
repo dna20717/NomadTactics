@@ -150,7 +150,7 @@ function orders() {
   for (const side of SIDES) {
     const own = sim.units.filter((u) => u.seat === side.seat && u.hp > 0);
     const pad = own.find((u) => sim.types[u.type].building);
-    const idle = own.filter((u) => !sim.types[u.type].building && sim.types[u.type].weapon && !u.order && !u.tgt);
+    const idle = own.filter((u) => !sim.types[u.type].building && !sim.types[u.type].air && sim.types[u.type].weapon && !u.order && !u.tgt);
     if (!idle.length) continue;
     const from = pad || idle[0];
     let best = null, bd = Infinity;
@@ -189,10 +189,12 @@ function oneRound() {
 // ?overview shows the whole board instead (slow orbit). Dragging takes over for 6 s.
 const overview = new URLSearchParams(location.search).has('overview');
 const auto = { since: -1e9 };
+// tests and screenshots: hold the camera where it is (launcher.hold(), launcher.cam)
+app.hold = (on = true) => { auto.since = on ? 1e15 : -1e9; };
 const hero = { id: 0, since: 0, shots: 0, fell: 0, x: 0, z: 0, name: '', seat: 0 };
 const HERO_RANK = { kampfpanzer: 5, lenkwerfer: 4, spaeher: 3 };
 function pickHero(now) {
-  const fighting = sim.units.filter((u) => u.hp > 0 && !sim.types[u.type].building);
+  const fighting = sim.units.filter((u) => u.hp > 0 && !sim.types[u.type].building && !sim.types[u.type].air);
   if (!fighting.length) return null;
   let best = null, bs = -1e18;
   for (const u of fighting) {
@@ -240,6 +242,10 @@ app.strikeNow = (t) => launchStrike(performance.now(), t);
 app.shot = (t) => { shotTower(performance.now(), t, 'Einsturz'); director.until = 1e15; };
 app.towers = () => view.towers.list;
 app.viewTowers = view.towers;
+app.cam = view.cam;
+// tests and screenshots: a fixed time of day (stops the clock)
+app.setHour = (h) => { dials.hour = h; dials.running = false; setAtmosphere(); };
+app.view3d = view;
 function launchStrike(now, chosen = null) {
   const standing = view.towers.standing();
   if (!standing.length) return;

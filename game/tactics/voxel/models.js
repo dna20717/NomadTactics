@@ -13,11 +13,13 @@ export const PAL = {
   trunk: [0x7a5a3c, 0x82613f], skin: [0xd9a37c, 0xc68d68, 0x9c6b4c], pants: [0x3b4f73, 0x4a4a52],
   tires: [0x2b2a27, 0x312f2b], yellow: [0xe2b232, 0xe9bb3c, 0xdcab2c], yellowDark: [0xb98a22, 0xc09126],
   asphalt: [0x56585b, 0x5b5d60, 0x515356], paint: [0xeeeeea, 0xf4f4f0],
+  lamp: [0xf3ead2], tail: [0x8a1e18],
 };
 
-// Surface kind per voxel kind for the vehicle shader: 0 camo paint, 1 team paint, 2 metal, 3 rubber/fabric, 4 glass, 5 plain paint
+// Surface kind per voxel kind for the vehicle shader: 0 camo paint, 1 team paint, 2 metal, 3 rubber/fabric, 4 glass, 5 plain paint,
+// 6 headlight, 7 tail light (both glow at night)
 export const SURFACE = { oliv: 0, brown: 0, sand: 0, team: 1, metall: 2, black: 2, track: 3, tires: 3, pants: 3, skin: 3, glass: 4,
-  yellow: 5, yellowDark: 5, red: 5, concrete: 5, concreteDark: 5, white: 5, paint: 5, asphalt: 3, holz: 3 };
+  yellow: 5, yellowDark: 5, red: 5, concrete: 5, concreteDark: 5, white: 5, paint: 5, asphalt: 3, holz: 3, lamp: 6, tail: 7 };
 
 export const newModel = () => { const W = new Map(); return [W, (x, y, z, a) => W.set(`${x},${y},${z}`, a)]; };
 export const box = (s, x0, x1, y0, y1, z0, z1, a) => { for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) for (let z = z0; z <= z1; z++) s(x, y, z, typeof a === 'function' ? a(x, y, z) : a); };
@@ -31,6 +33,7 @@ function tankHull() {
   box(s, -4, 4, 3, 3, -10, 6, 'oliv');
   box(s, -3, 3, 4, 4, -10, -8, 'black');
   box(s, -5, -5, 2, 2, -6, 4, 'team'); box(s, 5, 5, 2, 2, -6, 4, 'team');
+  s(-3, 2, 9, 'lamp'); s(3, 2, 9, 'lamp'); s(-3, 2, -10, 'tail'); s(3, 2, -10, 'tail');
   return W;
 }
 function tankTurret() {
@@ -54,6 +57,7 @@ function launcherHull() {
   box(s, -2, 2, 4, 4, 8, 8, 'glass'); box(s, -3, -3, 4, 4, 5, 7, 'glass'); box(s, 3, 3, 4, 4, 5, 7, 'glass');
   box(s, -3, 3, 6, 6, 4, 7, 'team');
   box(s, -3, 3, 2, 2, 9, 9, 'black');
+  s(-2, 2, 9, 'lamp'); s(2, 2, 9, 'lamp'); s(-3, 2, -9, 'tail'); s(3, 2, -9, 'tail');
   return W;
 }
 function launcherTurret() {
@@ -74,6 +78,7 @@ function scoutHull() {
   box(s, -3, 3, 3, 3, 2, 5, (x) => (Math.abs(x) <= 2 ? 'team' : 'oliv'));
   box(s, -3, 3, 4, 4, 2, 2, 'glass');
   box(s, -2, -1, 3, 3, 0, 0, 'black'); box(s, 1, 2, 3, 3, 0, 0, 'black');
+  s(-3, 2, 5, 'lamp'); s(3, 2, 5, 'lamp'); s(-3, 2, -5, 'tail'); s(3, 2, -5, 'tail');
   return W;
 }
 function scoutTurret() {
@@ -92,6 +97,7 @@ function dozer() {
   box(s, 1, 1, 5, 7, 0, 0, 'black');
   box(s, -3, -3, 2, 2, 3, 5, 'black'); box(s, 3, 3, 2, 2, 3, 5, 'black');
   box(s, -5, 5, 0, 3, 6, 6, 'metall'); box(s, -5, 5, 0, 0, 7, 7, 'metall'); box(s, -5, 5, 3, 3, 5, 5, 'metall');
+  s(-2, 4, 2, 'lamp'); s(2, 4, 2, 'lamp'); s(-2, 2, -5, 'tail'); s(2, 2, -5, 'tail');
   return W;
 }
 function soldier() {
@@ -101,6 +107,21 @@ function soldier() {
   box(s, -1, 0, 4, 4, 0, 0, 'skin');
   box(s, -1, 0, 5, 5, 0, 0, 'oliv');
   s(0, 3, 1, 'black'); s(0, 3, 2, 'black');
+  return W;
+}
+
+// Companion drone (quadcopter): body with sensor nose, four arms with rotor rings (front = +z)
+function drone() {
+  const [W, s] = newModel();
+  box(s, -1, 1, 1, 2, -2, 2, 'black');
+  box(s, -1, 1, 3, 3, -1, 1, 'team');
+  s(0, 1, 3, 'lamp'); s(0, 0, 1, 'metall'); s(0, 0, 0, 'black'); s(0, 4, -1, 'tail');
+  for (const [dx, dz] of [[1, 1], [-1, 1], [1, -1], [-1, -1]]) {
+    for (let q = 1; q <= 2; q++) s(dx * (1 + q), 2, dz * (1 + q), 'metall');
+    const cx = dx * 4, cz = dz * 4;
+    s(cx, 2, cz, 'black'); s(cx, 3, cz, 'metall');
+    for (const [a, b] of [[-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [1, 1], [-1, 1], [1, -1]]) s(cx + a, 3, cz + b, 'track');
+  }
   return W;
 }
 
@@ -133,11 +154,12 @@ export function tree(size = 1, seed = 0) {
   return W;
 }
 
-// Built-in models ("prototype:<name>" in data/models.json). pivot = turret pivot in voxels on the hull.
+// Built-in models ("prototype:<name>" in data/models.json). pivot = turret pivot in voxels on the hull, scale = voxel size (m).
 export const PROTOTYPES = {
   tank: { hull: tankHull, turret: tankTurret, pivot: [0, 4, -3] },
   werfer: { hull: launcherHull, turret: launcherTurret, pivot: [0, 3, -3] },
   spaeher: { hull: scoutHull, turret: scoutTurret, pivot: [0, 3, -2] },
   dozer: { hull: dozer },
   soldat: { hull: soldier },
+  drone: { hull: drone, scale: 0.24 },   // smaller voxels: about 2.4 m across
 };

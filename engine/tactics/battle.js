@@ -6,10 +6,15 @@
 // events (the view drains them; the simulation never reads them back), over, nextWave.
 //
 // Commands (same kinds as the HUD):
-//   { kind: 'drive', ids, x, y }     drive there (formation kept loosely), 'target' is the old name
+//   { kind: 'drive', ids, x, y }     drive there in formation, 'target' is the old name
 //   { kind: 'attack', ids, target }  attack a unit or building
 //   { kind: 'halt', ids }            stop
 //   seat −1 (game master): { kind: 'wind', direction: 0–7 } drifts rockets and shells for 3 s
+//
+// Companion drones (06.11.): the mode's loadout gives some units equipment with a companion (e.g. tanks with a
+// combat drone). Drones are units of their own (air, never commanded), hover around their host, shoot what the
+// host shoots, repair it (keyword repaired) or lend it their sight (keyword scout). Only weapons with
+// targets: air can hit them; when the host dies they crash.
 
 import { sin, cos, angleOf, angleDiff, root, whole, Random, hasher } from './fixed.js';
 import { MM, buildMap, stepAllowed } from './map.js';
@@ -32,6 +37,16 @@ const TURN = { track: 5, wheel: 7, infantry: 40 };
 const SHOT_SPEED = { gewehr: 20000, mg: 20000, granate: 12000, rakete: 2600, laser: 100000, flame: 3000, bomb: 1200 };
 const PROJECTILE = ['gewehr', 'mg', 'granate', 'rakete', 'laser', 'flame', 'bomb'];
 const SALVO_GAP = 3;                      // ticks between shots of a salvo
+// Formation (06.11., Daniel: „mehr militärische Formation, weniger Autoscooter“): a drive order splits the
+// selection into blocks by arm (vehicles, infantry). Each block gets rows across the direction of march
+// (tanks in front, scouts behind, launchers last; infantry as its own block behind the vehicles), marches
+// at the pace of its slowest member, waits for stragglers and faces the direction of march on arrival.
+const FORMATION = {
+  vehicle: { gapX: 7000, gapY: 11000, cols: 5, depth: 4000 },
+  infantry: { gapX: 2400, gapY: 2600, cols: 8, depth: 1200 },
+};
+const PACE_BAND = 4000;                   // ahead of the block's average by more than this: slow down
+const LINE_MAX = 160000;                  // straight to the own slot when the way is clear (checked up to 160 m)
 
 // ---------- compile game data into integer types (once per match, not part of the state) ----------
 export function compileTypes(setup) {
@@ -44,7 +59,8 @@ export function compileTypes(setup) {
   const types = {}, order = [];
   const add = (id, t) => { t.index = order.length; order.push(id); types[id] = t; };
   for (const [id, u] of Object.entries(faction.units || {})) {
-    if (u.class === 'air') continue; // no aircraft in milestone 1
+    const air = u.class === 'air';
+    if (air && !u.keywords?.companion) continue; // no aircraft in milestone 1, only companion drones
     const kinds = movementTypes(world, u);
     const movement = kinds.find((k) => k === 'track') || kinds.find((k) => k === 'wheel') || kinds[0] || 'infantry';
     const w = weapons[(u.weapons || [])[0]];
@@ -60,7 +76,19 @@ export function compileTypes(setup) {
       tough: whole((typeof kw.tough === 'number' ? kw.tough : kw.tough ? 1 : 0) * 100),
       deploys: !!kw.aufbauen,
       weapon: w ? compileWeapon(w) : null,
+      air: air ? 1 : 0,
+      repair: air ? whole((typeof kw.repaired === 'number' ? kw.repaired : 0) * 100 / TICKS_PER_SECOND) : 0,
+      scout: air && kw.scout ? 1 : 0,
     });
+    if (air) Object.assign(types[id], { radius: 700, body: 700, core: 0, movement: 'air', turn: 24 });
+  }
+  // loadouts of the mode: { unit: [[equipment, …], …] } in turn per seat → companion unit types
+  const loadouts = {};
+  for (const [unit, list] of Object.entries(mode.loadout || {})) {
+    if (!types[unit] || !Array.isArray(list)) continue;
+    loadouts[unit] = list.map((choice) => (choice || []).flatMap((eq) => (faction.equipment?.[eq]?.effect || [])
+      .filter((e) => e.kind === 'companion' && types[e.unit]?.air)
+      .flatMap((e) => Array.from({ length: Math.max(1, e.count | 0) }, () => e.unit))));
   }
   const padId = mode.pad || 'landeplatz';
   const pad = faction.building?.[padId] || { name: 'Landeplatz', health: 3000, armor: 'building', size: [12, 12] };
@@ -68,7 +96,7 @@ export function compileTypes(setup) {
     id: padId, name: pad.name, cls: 'building', armor: pad.armor || 'building', model: pad.model, building: true,
     hp: whole((pad.health || 3000) * 100), speed: 0, sight: 0, radius: whole(((pad.size || [12])[0]) * MM / 2), turn: 0, tough: 0, weapon: null,
   });
-  return { types, order, table, pad: padId };
+  return { types, order, table, pad: padId, loadouts };
 }
 
 function compileWeapon(w) {
@@ -85,6 +113,7 @@ function compileWeapon(w) {
     projectile: Math.max(0, PROJECTILE.indexOf(w.projectile)),
     shotSpeed: SHOT_SPEED[w.projectile] || 10000,
     ground: (w.targets || ['ground']).includes('ground'),
+    air: (w.targets || []).includes('air'),
   };
 }
 
@@ -96,7 +125,8 @@ export class Battle {
     this.map = setup.map.grounds ? setup.map : buildMap(setup.map, this.world);
     this.mode = setup.mode || {};
     const c = compileTypes(setup);
-    this.types = c.types; this.typeOrder = c.order; this.table = c.table; this.padType = c.pad;
+    this.types = c.types; this.typeOrder = c.order; this.table = c.table; this.padType = c.pad; this.loadouts = c.loadouts;
+    this.issued = {};            // loadouts handed out per seat and unit type (turn order)
     this.flow = new FlowCache(this.map, this.world);
     this.random = new Random(seed);
     this.seats = seats.length === 1 ? [seats[0], PRACTICE_SEAT] : seats.slice();
@@ -110,6 +140,8 @@ export class Battle {
     this.wind = { x: 0, y: 0, rest: 0 };
     this.over = null;
     this.out = [];               // seats that lost, in order
+    this.groups = new Map();     // formation blocks: id → { speed, avg, sum, cnt }
+    this.nextGroup = 1;
     this.waveEvery = Math.max(1, whole((this.mode.waveEvery || 60) * TICKS_PER_SECOND));
     this.waveCount = 0;
     this.maxUnits = this.mode.maxUnits || 60;
@@ -143,6 +175,7 @@ export class Battle {
       id: this.nextId++, seat, type, x, y, h: h & 255, hp: t.hp,
       cd: 0, salvo: 0, gap: 0, tgt: 0,
       order: 0, gx: x, gy: y, fkey: -1, best: FAR, since: 0, ax: x, ay: y, moved: 0,
+      grp: 0, face: -1, direct: 0, gd: 0, host: 0, slot: 0, eye: 0,
     };
     this.units.push(u); this.byId.set(u.id, u);
     return u;
@@ -161,38 +194,113 @@ export class Battle {
     const own = [];
     for (const id of b.ids.slice(0, MAX_IDS)) {
       const u = this.byId.get(id | 0);
-      if (u && u.seat === seat && !this.types[u.type].building && !own.includes(u)) own.push(u);
+      if (u && u.seat === seat && !this.types[u.type].building && !this.types[u.type].air && !own.includes(u)) own.push(u);
     }
     if (!own.length) return;
-    if (b.kind === 'halt') { for (const u of own) this.stop(u); return; }
+    if (b.kind === 'halt') { for (const u of own) { this.stop(u); u.face = -1; } return; }
     if (b.kind === 'attack') {
       const target = this.byId.get(b.target | 0);
       if (!target || target.seat === seat) return;
-      for (const u of own) if (this.types[u.type].weapon) { u.order = 2; u.tgt = target.id; u.fkey = -1; u.best = FAR; u.since = 0; }
+      for (const u of own) if (this.types[u.type].weapon) { u.order = 2; u.tgt = target.id; u.fkey = -1; u.best = FAR; u.since = 0; u.grp = 0; u.face = -1; }
       return;
     }
     if (b.kind !== 'drive' && b.kind !== 'target') return;
     const size = this.map.size;
     const x = b.x | 0, y = b.y | 0;
     if (x < 0 || y < 0 || x > size || y > size) return;
-    // loose formation: keep the offset to the group centre, squeezed to a radius that grows with the group
     let cx = 0, cy = 0;
     for (const u of own) { cx += u.x; cy += u.y; }
     cx = Math.trunc(cx / own.length); cy = Math.trunc(cy / own.length);
-    const maxR = 2000 + 2200 * root(own.length);
-    const k = this.cellOf(x, y);
-    for (const u of own) {
-      const t = this.types[u.type];
-      let ox = u.x - cx, oy = u.y - cy;
-      const d = root(ox * ox + oy * oy);
-      if (d > maxR) { ox = Math.trunc(ox * maxR / d); oy = Math.trunc(oy * maxR / d); }
-      let gx = x + ox, gy = y + oy;
-      const gk = this.cellOf(gx, gy);
-      if (gx < 0 || gy < 0 || gx > size || gy > size || !this.passable(t, gk) || this.map.level[gk] !== this.map.level[k]) { gx = x; gy = y; }
-      u.order = 1; u.gx = gx; u.gy = gy; u.tgt = 0;
-      u.fkey = nearestOpen(this.map, this.flow.cost(t.movement), k);
-      u.best = FAR; u.since = 0;
+    const dir = cx === x && cy === y ? own[0].h : angleOf(x - cx, y - cy);
+    const vehicles = own.filter((u) => this.types[u.type].cls !== 'infantry');
+    const infantry = own.filter((u) => this.types[u.type].cls === 'infantry');
+    const depth = this.formation(vehicles, x, y, dir, cx, cy, FORMATION.vehicle);
+    const back = vehicles.length ? depth + 5000 : 0;
+    this.formation(infantry, x - Math.trunc(cos(dir) * back / 1024), y - Math.trunc(sin(dir) * back / 1024), dir, cx, cy, FORMATION.infantry);
+  }
+
+  // One block: rows across the direction, front rows by role, inside a row by the current side (no crossing).
+  // Returns the depth of the block (mm).
+  formation(list, px, py, dir, cx, cy, F) {
+    if (!list.length) return 0;
+    const size = this.map.size;
+    px = px < 0 ? 0 : px >= size ? size - 1 : px; py = py < 0 ? 0 : py >= size ? size - 1 : py;
+    const c = cos(dir), sn = sin(dir);
+    const role = (t) => (t.weapon?.indirect || t.deploys ? 2 : t.movement === 'wheel' ? 1 : 0);
+    const info = list.map((u) => {
+      const dx = u.x - cx, dy = u.y - cy;
+      return { u, role: role(this.types[u.type]), f: Math.trunc((dx * c + dy * sn) / 1024), l: Math.trunc((dy * c - dx * sn) / 1024) };
+    });
+    info.sort((a, b) => a.role - b.role || b.f - a.f || a.u.id - b.u.id);
+    let cols = 1;
+    while (cols < F.cols && cols * cols < list.length * 2) cols++;
+    const rows = Math.floor((list.length + cols - 1) / cols);
+    const k = this.cellOf(px, py);
+    let speed = FAR;
+    for (const { u } of info) speed = Math.min(speed, this.types[u.type].speed);
+    const g = { id: this.nextGroup++, speed, avg: 0, sum: 0, cnt: 0 };
+    this.groups.set(g.id, g);
+    for (let r = 0; r < rows; r++) {
+      const row = info.slice(r * cols, (r + 1) * cols).sort((a, b) => a.l - b.l || a.u.id - b.u.id);
+      const m = row.length;
+      row.forEach(({ u }, i) => {
+        const t = this.types[u.type];
+        const lat = ((2 * i - (m - 1)) * F.gapX) >> 1, fwd = -r * F.gapY;
+        let gx = px + Math.trunc((fwd * c - lat * sn) / 1024), gy = py + Math.trunc((fwd * sn + lat * c) / 1024);
+        [gx, gy] = this.slotNear(t, gx, gy, k, px, py);
+        u.order = 1; u.gx = gx; u.gy = gy; u.tgt = 0;
+        u.fkey = nearestOpen(this.map, this.flow.cost(t.movement), k);
+        u.best = FAR; u.since = 0; u.grp = g.id; u.face = dir; u.direct = 0; u.gd = FAR;
+      });
     }
+    return (rows - 1) * F.gapY + F.depth;
+  }
+
+  // a slot on open ground at the level of the goal, else the nearest such cell around it, else the goal
+  slotNear(t, gx, gy, k, px, py) {
+    const n = this.map.n, cell = this.map.cell, size = this.map.size, lv = this.map.level[k];
+    const ok = (x, y) => { if (x < 0 || y < 0 || x >= size || y >= size) return false; const c = this.cellOf(x, y); return this.passable(t, c) && this.map.level[c] === lv; };
+    if (ok(gx, gy)) return [gx, gy];
+    for (let ring = 1; ring <= 2; ring++) for (let dj = -ring; dj <= ring; dj++) for (let di = -ring; di <= ring; di++) {
+      if (di !== -ring && di !== ring && dj !== -ring && dj !== ring) continue;
+      const x = gx + di * cell, y = gy + dj * cell;
+      if (ok(x, y)) return [x, y];
+    }
+    void n;
+    return [px, py];
+  }
+
+  // straight line from the unit to (x1, y1) over open ground (every metre: passable, no cliff in between)
+  clearLine(u, t, x1, y1) {
+    const dx = x1 - u.x, dy = y1 - u.y, d = root(dx * dx + dy * dy);
+    if (d > LINE_MAX) return false;
+    const steps = Math.max(1, Math.trunc(d / 1000));
+    let prev = this.cellOf(u.x, u.y);
+    for (let s = 1; s <= steps; s++) {
+      const c = this.cellOf(u.x + Math.trunc(dx * s / steps), u.y + Math.trunc(dy * s / steps));
+      if (c === prev) continue;
+      if (!this.passable(t, c) || !stepAllowed(this.map, prev, c) || !this.corner(prev, c, t)) return false;
+      prev = c;
+    }
+    return true;
+  }
+
+  // the nearest own vehicle right in front (inside the width of both bodies), for keeping distance
+  blocker(u, t, h) {
+    const c = cos(h), sn = sin(h);
+    let best = null, bestF = FAR, bestL = 0;
+    this.around(u.x, u.y, 9000, (e) => {
+      if (e === u || e.seat !== u.seat || e.hp <= 0) return;
+      const te = this.types[e.type];
+      if (te.building || te.cls === 'infantry' || te.air) return;
+      const dx = e.x - u.x, dy = e.y - u.y;
+      const f = Math.trunc((dx * c + dy * sn) / 1024);
+      if (f <= 0 || f >= t.body + t.core + te.body + te.core + 2000) return;
+      const l = Math.trunc((dy * c - dx * sn) / 1024);
+      if ((l < 0 ? -l : l) >= t.body + te.body + 400) return;
+      if (f < bestF || (f === bestF && best && e.id < best.id)) { best = e; bestF = f; bestL = l; }
+    });
+    return best ? { e: best, l: bestL } : null;
   }
 
   stop(u) { u.order = 0; u.tgt = 0; u.ax = u.x; u.ay = u.y; u.fkey = -1; }
@@ -207,10 +315,12 @@ export class Battle {
       const t = this.types[u.type];
       if (t.building || u.hp <= 0) continue;
       u.moved = 0;
+      if (t.air) { this.drone(u, t); continue; }
       if (t.weapon) this.aim(u, t);
       this.move(u, t);
     }
     this.separate();
+    this.pace();
     for (const u of this.units) {
       const t = this.types[u.type];
       if (t.weapon && u.hp > 0) this.fire(u, t);
@@ -218,6 +328,14 @@ export class Battle {
     this.flight();
     if (this.wind.rest > 0) this.wind.rest--;
     this.cleanup();
+  }
+
+  // average remaining distance per block (for the next step); empty blocks are gone
+  pace() {
+    for (const [id, g] of this.groups) {
+      if (!g.cnt) { this.groups.delete(id); continue; }
+      g.avg = Math.trunc(g.sum / g.cnt); g.sum = 0; g.cnt = 0;
+    }
   }
 
   get nextWave() { return this.waveEvery - ((this.tick - 1) % this.waveEvery) - 1; }
@@ -231,7 +349,7 @@ export class Battle {
     for (const seat of this.seats) {
       const pad = this.units.find((u) => u.seat === seat && u.type === this.padType && u.hp > 0);
       if (!pad) continue;
-      let count = this.units.filter((u) => u.seat === seat && u.hp > 0 && !this.types[u.type].building).length;
+      let count = this.units.filter((u) => u.seat === seat && u.hp > 0 && !this.types[u.type].building && !this.types[u.type].air).length;
       const h = angleOf(centre - pad.x, centre - pad.y);
       let slot = 0;
       for (const part of [w.units || {}, ...extra.map((e) => e.units || {})]) {
@@ -243,11 +361,58 @@ export class Battle {
             const u = this.spawn(type, seat, x, y, h);
             count++;
             this.events.push({ kind: 'spawn', id: u.id, seat, x, y });
+            this.equip(u, seat, type);
           }
         }
       }
       this.events.push({ kind: 'wave', seat, x: pad.x, y: pad.y, n: this.waveCount });
     }
+  }
+
+  // the next loadout in turn for this seat and type: spawn its companion drones next to the unit
+  equip(u, seat, type) {
+    const list = this.loadouts[type];
+    if (!list || !list.length) return;
+    const issued = this.issued[seat] || (this.issued[seat] = {});
+    const n = issued[type] | 0;
+    issued[type] = n + 1;
+    list[n % list.length].forEach((drone, i) => {
+      const d = this.spawn(drone, seat, u.x, u.y, u.h);
+      d.host = u.id; d.slot = i;
+      this.events.push({ kind: 'spawn', id: d.id, seat, x: d.x, y: d.y });
+    });
+  }
+
+  // a drone: hover beside the host (slowly circling), take over its target if in reach, repair it, lend it sight
+  drone(u, t) {
+    const host = this.byId.get(u.host);
+    if (!host || host.hp <= 0) { u.hp = 0; return; }
+    const ht = this.types[host.type];
+    const a = (host.h + 64 + u.slot * 128 + (this.tick >> 2)) & 255;
+    const r = ht.body + ht.core + 2500;
+    const wx = host.x + Math.trunc(cos(a) * r / 1024), wy = host.y + Math.trunc(sin(a) * r / 1024);
+    const dx = wx - u.x, dy = wy - u.y, d = root(dx * dx + dy * dy);
+    const sp = t.speed;
+    if (d > 0) {
+      const s = d < sp ? d : sp;
+      u.x += Math.trunc(dx * s / d); u.y += Math.trunc(dy * s / d);
+      u.moved = 1;
+    }
+    const size = this.map.size - 1;
+    u.x = u.x < 0 ? 0 : u.x > size ? size : u.x; u.y = u.y < 0 ? 0 : u.y > size ? size : u.y;
+    if (t.weapon) {
+      const ht2 = host.tgt ? this.byId.get(host.tgt) : null;
+      if (ht2 && ht2.hp > 0 && (this.types[ht2.type].air ? t.weapon.air : t.weapon.ground)) {
+        const ex = ht2.x - u.x, ey = ht2.y - u.y;
+        if (root(ex * ex + ey * ey) <= this.range(u, t, ht2)) u.tgt = ht2.id; else this.aim(u, t);
+      } else this.aim(u, t);
+    }
+    const tg = u.tgt ? this.byId.get(u.tgt) : null;
+    const want = tg ? angleOf(tg.x - u.x, tg.y - u.y) : d > 300 ? angleOf(dx, dy) : host.h;
+    const diff = angleDiff(u.h, want);
+    u.h = (diff > t.turn ? u.h + t.turn : diff < -t.turn ? u.h - t.turn : want) & 255;
+    if (t.repair && host.hp < ht.hp) host.hp = Math.min(ht.hp, host.hp + t.repair);
+    if (t.scout) host.eye = t.sight;
   }
 
   // Spots on rings around the pad, in front first (towards the map centre)
@@ -303,16 +468,18 @@ export class Battle {
     }
     if (cur && cur.hp > 0) {
       const dx = cur.x - u.x, dy = cur.y - u.y, d = root(dx * dx + dy * dy);
-      const keep = u.order === 1 ? this.range(u, t, cur) : t.sight + this.types[cur.type].radius;
+      const keep = u.order === 1 ? this.range(u, t, cur) : (u.eye > t.sight ? u.eye : t.sight) + this.types[cur.type].radius;
       if (d <= keep) return;
     }
     u.tgt = 0;
     if ((this.tick + u.id) % 8 !== 0 && !cur) return; // look around every 8 steps, staggered
-    const reach = u.order === 1 ? t.weapon.range + 3000 : t.sight;
+    const reach = u.order === 1 ? t.weapon.range + 3000 : (u.eye > t.sight ? u.eye : t.sight);
+    u.eye = 0; // a scout drone renews it every step
     let best = null, bestScore = FAR;
     this.around(u.x, u.y, reach + 8000, (e) => {
       if (e.seat === u.seat || e.hp <= 0) return;
       const et = this.types[e.type];
+      if (et.air ? !t.weapon.air : !t.weapon.ground) return;
       const dx = e.x - u.x, dy = e.y - u.y, d = root(dx * dx + dy * dy) - et.radius;
       if (d > reach) return;
       const score = d + (et.building ? 30000 : 0);
@@ -338,7 +505,7 @@ export class Battle {
     } else {
       // idle: chase what is in sight a little, then hold the new spot
       const e = u.tgt ? this.byId.get(u.tgt) : null;
-      if (!e) return;
+      if (!e) { this.turnTo(u, t); return; }
       const dx = e.x - u.x, dy = e.y - u.y, d = root(dx * dx + dy * dy);
       if (d <= this.range(u, t, e) - 1500) return;
       const lx = u.x - u.ax, ly = u.y - u.ay;
@@ -350,6 +517,9 @@ export class Battle {
     const gx = goalX - u.x, gy = goalY - u.y;
     const gd = root(gx * gx + gy * gy);
     if (u.order === 1) {
+      u.gd = gd;
+      const g = u.grp ? this.groups.get(u.grp) : null;
+      if (g) { g.sum += gd; g.cnt++; }
       if (gd <= arrive) { this.stop(u); return; }
       // not getting closer for 2 s (crowd at the goal, blocked): good enough when near, else keep trying
       if (gd < u.best - 300) { u.best = gd; u.since = 0; }
@@ -359,14 +529,32 @@ export class Battle {
     // direction: flowfield gradient far away, straight line in the last metres
     let vx = gx, vy = gy;
     const k = this.cellOf(u.x, u.y);
-    if (field >= 0 && gd > 2 * this.map.cell + 2000) {
+    if (u.order === 1 && (this.tick + u.id) % 10 === 0) u.direct = this.clearLine(u, t, goalX, goalY) ? 1 : 0;
+    if (field >= 0 && gd > 2 * this.map.cell + 2000 && !(u.order === 1 && u.direct)) {
       const f = this.flow.field(t.movement, field);
       if (f.dist[k] >= FAR) { if (u.order === 1) this.stop(u); return; } // unreachable
       const v = this.gradient(f, k, t);
       if (v) { vx = v[0]; vy = v[1]; }
     }
     if (vx === 0 && vy === 0) return;
-    const want = angleOf(vx, vy);
+    let want = angleOf(vx, vy);
+    // pace of the block: the slowest member's speed; ahead of the others → slower, behind → own top speed
+    let top = t.speed;
+    const g = u.order === 1 && u.grp ? this.groups.get(u.grp) : null;
+    if (g && g.avg) {
+      top = g.speed;
+      if (gd + PACE_BAND < g.avg) top = Math.trunc(g.speed * 3 / 5);
+      else if (gd > g.avg + PACE_BAND) top = t.speed;
+    }
+    // vehicles keep their distance: follow the one in front, go round one that stands
+    if (t.cls !== 'infantry') {
+      const b = this.blocker(u, t, want);
+      if (b) {
+        const tb = this.types[b.e.type];
+        if (b.e.order) top = Math.min(top, tb.speed);
+        else if (!(u.order === 2 && b.e.id === u.tgt)) { want = (want + (b.l >= 0 ? -24 : 24)) & 255; top = top >> 1; }
+      }
+    }
     const diff = angleDiff(u.h, want);
     const ad = diff < 0 ? -diff : diff;
     if (ad <= t.turn) u.h = want;
@@ -375,11 +563,19 @@ export class Battle {
     let pct = this.speedPct[t.movement][this.map.ground[k]];
     if (ad > 40) pct = t.movement === 'track' ? 0 : t.movement === 'wheel' ? pct >> 1 : pct;
     if (pct <= 0) return;
-    let s = Math.trunc(t.speed * pct / 100);
+    let s = Math.trunc(top * pct / 100);
     if (arrive > 0 && gd < s) s = gd;
     const nx = u.x + Math.trunc(cos(u.h) * s / 1024), ny = u.y + Math.trunc(sin(u.h) * s / 1024);
     this.place(u, t, nx, ny);
     u.moved = 1;
+  }
+
+  // standing without anything to do: turn to the direction of the last march (formation faces forward)
+  turnTo(u, t) {
+    if (u.face < 0 || t.turn === 0) return;
+    const diff = angleDiff(u.h, u.face), ad = diff < 0 ? -diff : diff;
+    if (ad <= t.turn) { u.h = u.face; u.face = -1; }
+    else u.h = (u.h + (diff > 0 ? t.turn : -t.turn)) & 255;
   }
 
   groupNear(u) {
@@ -438,12 +634,12 @@ export class Battle {
     for (let pass = 0; pass < SEPARATE_PASSES; pass++) {
       for (const a of this.units) {
         const ta = this.types[a.type];
-        if (ta.building || a.hp <= 0) continue;
+        if (ta.building || ta.air || a.hp <= 0) continue;
         const ea = ta.body + ta.core;
         this.around(a.x, a.y, 8000, (b) => {
           if (b.id <= a.id || b.hp <= 0) return;
           const tb = this.types[b.type];
-          if (tb.building) return;
+          if (tb.building || tb.air) return;
           const reach = ea + tb.body + tb.core;
           const dx = b.x - a.x, dy = b.y - a.y;
           if (dx > reach || dx < -reach || dy > reach || dy < -reach) return;
@@ -481,7 +677,7 @@ export class Battle {
     if (u.salvo > 0 && u.gap > 0) { u.gap--; }
     const e = u.tgt ? this.byId.get(u.tgt) : null;
     if (!e || e.hp <= 0) { u.salvo = 0; return; }
-    if (!w.ground) return;
+    if (this.types[e.type].air ? !w.air : !w.ground) return;
     if (t.deploys && u.moved) return;
     const dx = e.x - u.x, dy = e.y - u.y, d = root(dx * dx + dy * dy);
     if (d > this.range(u, t, e) || d < w.minRange) return;
@@ -495,7 +691,7 @@ export class Battle {
     let dmg = w.damage;
     if (!w.indirect && this.levelAt(u.x, u.y) < this.levelAt(e.x, e.y)) dmg += Math.trunc(dmg * (this.world.height?.hitUphill ?? -25) / 100);
     this.projectiles.push({ seat: u.seat, src: u.id, tgt: w.indirect ? 0 : e.id, x: tx, y: ty, t: time, all: time, dmg, dt: w.damageType, splash: w.splash, kind: w.projectile, indirect: w.indirect ? 1 : 0, fx: u.x, fy: u.y });
-    this.events.push({ kind: 'shot', src: u.id, seat: u.seat, x: u.x, y: u.y, tx, ty, projectile: w.projectile, time });
+    this.events.push({ kind: 'shot', src: u.id, tgt: e.id, seat: u.seat, x: u.x, y: u.y, tx, ty, projectile: w.projectile, time });
   }
 
   flight() {
@@ -507,7 +703,7 @@ export class Battle {
       if (e && e.hp > 0) { p.x = e.x; p.y = e.y; }
       if (p.splash > 0) {
         this.around(p.x, p.y, p.splash + 3000, (v) => {
-          if (v.seat === p.seat || v.hp <= 0) return;
+          if (v.seat === p.seat || v.hp <= 0 || this.types[v.type].air) return;
           const dx = v.x - p.x, dy = v.y - p.y, d = root(dx * dx + dy * dy) - this.types[v.type].radius;
           if (d > p.splash) return;
           this.hurt(v, d * 2 <= p.splash ? p.dmg : p.dmg >> 1, p);
@@ -528,7 +724,7 @@ export class Battle {
     if (d <= 0) return;
     v.hp -= d;
     // hit from out of sight: idle units turn towards the shooter
-    if (!v.tgt && !t.building && v.order === 0 && p.src) v.tgt = p.src;
+    if (!v.tgt && !t.building && !t.air && v.order === 0 && p.src) v.tgt = p.src;
   }
 
   cleanup() {
@@ -542,7 +738,7 @@ export class Battle {
       this.units = alive;
     }
     if (this.seats.length < 2) return;
-    const living = this.seats.filter((s) => this.units.some((u) => u.seat === s));
+    const living = this.seats.filter((s) => this.units.some((u) => u.seat === s && !this.types[u.type].air));
     for (const s of this.seats) if (!living.includes(s) && !this.out.includes(s)) { this.out.push(s); this.events.push({ kind: 'out', seat: s }); }
     if (living.length <= 1) {
       this.over = { winner: living.length ? living[0] : -1, tick: this.tick };
@@ -557,7 +753,10 @@ export class Battle {
     for (const u of this.units) {
       h.mix(u.id); h.mix(u.seat); h.mix(this.types[u.type].index); h.mix(u.x); h.mix(u.y); h.mix(u.h); h.mix(u.hp);
       h.mix(u.cd); h.mix(u.salvo); h.mix(u.tgt); h.mix(u.order); h.mix(u.gx); h.mix(u.gy); h.mix(u.fkey);
+      h.mix(u.grp); h.mix(u.face); h.mix(u.direct); h.mix(u.host); h.mix(u.eye);
     }
+    for (const [id, g] of this.groups) { h.mix(id); h.mix(g.speed); h.mix(g.avg); }
+    for (const seat of Object.keys(this.issued)) for (const [type, n] of Object.entries(this.issued[seat])) { h.mix(seat | 0); h.mix(this.types[type].index); h.mix(n); }
     for (const p of this.projectiles) { h.mix(p.src); h.mix(p.tgt); h.mix(p.x); h.mix(p.y); h.mix(p.t); h.mix(p.dmg); }
     if (this.over) { h.mix(this.over.winner); h.mix(this.over.tick); }
     return h.text();
