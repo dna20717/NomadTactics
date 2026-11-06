@@ -74,7 +74,9 @@ test('Fahrzeug-Baukasten: Listen stimmen, jedes Modell baut, Räder und Türme s
   assert.ok(kits.length >= 30);
   for (const [id, m] of kits) {
     const k = buildKit(m.source.slice(4), m.kit, m.paint);
-    assert.ok(k.hull.size > 500, id);
+    const soldier = m.source === 'kit:soldier';
+    assert.ok(k.hull.size > (soldier ? 200 : 500), id);
+    if (soldier) { assert.equal(k.legs?.at.length, 2, `${id}: Beine`); assert.equal(k.scale, 0.1); }
     for (const kind of k.hull.values()) assert.ok(!['c', 'c1', 'hd', 'acc'].includes(kind), `${id}: unbemalter Würfel`);
     if (k.turret) assert.ok(k.pivot, id);
     if (KIT_TYPES[m.source.slice(4)].life === 'wheeled') assert.ok(k.wheels?.at.length >= 4, `${id}: Räder`);

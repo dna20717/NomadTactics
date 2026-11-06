@@ -83,7 +83,7 @@ function kitFields(w, x, file) {
   if (!T) return out;
   const K = (x.kit = x.kit || {});
   for (const [k, def] of Object.entries(T.defaults)) {
-    const f = KIT_FIELDS[k]; if (!f || Array.isArray(def)) continue;
+    const f = KIT_FIELDS[`${k}_${type}`] || KIT_FIELDS[k]; if (!f || Array.isArray(def)) continue;
     const [label, kind, choices] = f;
     if (kind === 'check') out.push(w.input(label, K[k] ?? def, 'checkbox', { set: (v) => w.change(file, () => { if (v === def) delete K[k]; else K[k] = v; }) }));
     else if (kind === 'choice') out.push(w.labeled(label, w.selection(Object.entries(choices), K[k] ?? def, (v) => w.change(file, () => { if (v === def) delete K[k]; else K[k] = v; }))));

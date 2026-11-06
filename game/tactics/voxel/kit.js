@@ -18,14 +18,24 @@ export const PAINTS = {
   ukraine: { name: 'Ukraine (Oliv/Khaki)', camo: [0x5d673d, 0x8f8459, 0x3f3f2c], pattern: 'blotch', second: 0x8f8459, dark: 0x35352a, accent: 0xd8c25a },
   europa: { name: 'Europa (NATO)', camo: [0x4a5838, 0x5a4934, 0x2b2b27], pattern: 'blotch', second: 0x6b6f6c, dark: 0x31332f, accent: 0x2d4f9e },
   site: { name: 'Baustelle (Gelb)', camo: [0xe2b232, 0xdcab2c], pattern: 'mono', second: 0xb98a22, dark: 0x3a3a35, accent: 0x222222 },
+  // uniforms (fabric, pattern per 0.1-m voxel): OCP, Type 07 woodland, MM14, Flecktarn
+  usa_u: { name: 'USA Uniform (OCP)', camo: [0x9c8f6b, 0x7d7454, 0xb7a988, 0x5f5a43], pattern: 'pixel', second: 0x6f6a4c, dark: 0x3b3a33, accent: 0x7d7454, fabric: true },
+  china_u: { name: 'China Uniform (Type 07)', camo: [0x4d5a3a, 0x3c4630, 0x6b7350, 0x2d3326], pattern: 'pixel', second: 0x55603f, dark: 0x2f3329, accent: 0xa8382c, fabric: true },
+  ukraine_u: { name: 'Ukraine Uniform (MM14)', camo: [0x6a6b48, 0x4d4f33, 0x8a7e58, 0x3a3524], pattern: 'pixel', second: 0x5c5a3e, dark: 0x302e25, accent: 0xd8c25a, fabric: true },
+  europa_u: { name: 'Europa Uniform (Flecktarn)', camo: [0x5b6644, 0x3f4a30, 0x6e5a3e, 0x2a2b24, 0x7c855a], pattern: 'flecks', second: 0x55604a, dark: 0x2c2e28, accent: 0x2d4f9e, fabric: true },
 };
+// skin tones for soldiers (one per figure, chosen per unit in the renderer)
+export const SKINS = [0xd9a37c, 0xb5835e, 0x7d5539];
+for (const [i, c] of SKINS.entries()) { PAL[`skin${i}`] = [c]; SURFACE[`skin${i}`] = 3; }
+Object.assign(PAL, { boots: [0x2e2924, 0x352f29], unblue: [0x4a8fd4, 0x5196da], kepi: [0xf1efe8, 0xe8e6de], kepiTop: [0x2a3550], scope: [0x1d1f22] });
+Object.assign(SURFACE, { boots: 3, unblue: 5, kepi: 5, kepiTop: 5, scope: 2 });
 const shade = (c, f) => { const r = Math.min(255, ((c >> 16) & 255) * f), g = Math.min(255, ((c >> 8) & 255) * f), b = Math.min(255, (c & 255) * f); return (r << 16) | (g << 8) | b; };
 const registered = new Set();
 function register(id) {
   if (registered.has(id)) return; registered.add(id);
   const P = PAINTS[id] || PAINTS.usa;
-  P.camo.forEach((c, i) => { PAL[`${id}_c${i}`] = [c, shade(c, 0.96), shade(c, 1.03)]; SURFACE[`${id}_c${i}`] = 0; });
-  PAL[`${id}_s`] = [P.second, shade(P.second, 0.95)]; SURFACE[`${id}_s`] = 0;
+  P.camo.forEach((c, i) => { PAL[`${id}_c${i}`] = [c, shade(c, 0.96), shade(c, 1.03)]; SURFACE[`${id}_c${i}`] = P.fabric ? 3 : 0; });
+  PAL[`${id}_s`] = [P.second, shade(P.second, 0.95)]; SURFACE[`${id}_s`] = P.fabric ? 3 : 0;
   PAL[`${id}_d`] = [P.dark, shade(P.dark, 1.08)]; SURFACE[`${id}_d`] = 2;
   PAL[`${id}_a`] = [P.accent]; SURFACE[`${id}_a`] = 5;
 }
@@ -33,6 +43,8 @@ const H = (x, y, z, s = 0) => { let h = (x * 73856093) ^ (y * 19349663) ^ (z * 8
 function camoAt(P, x, y, z, seed) {
   const n = P.camo.length;
   if (P.pattern === 'mono' || n === 1) return H(x, y, z, seed) < 0.06 && n > 1 ? 1 : 0;
+  if (P.pattern === 'pixel') { const v = H(x >> 1, y, z, seed) * 0.6 + H(x, y, z, seed + 3) * 0.4; return v < 0.45 ? 0 : v < 0.7 ? 1 : v < 0.88 ? 2 : Math.min(3, n - 1); }
+  if (P.pattern === 'flecks') { const v = H(x, y, z, seed); return v < 0.4 ? 0 : v < 0.62 ? 1 : v < 0.8 ? 2 : v < 0.9 ? 3 : Math.min(4, n - 1); }
   // soft blotches: coarse cells with jittered borders
   const jx = x + Math.round(Math.sin(z * 0.45 + y * 0.3 + seed) * 2), jz = z + Math.round(Math.cos(x * 0.5 + y * 0.2 + seed) * 2);
   const v = H(Math.floor(jx / 6), Math.floor(y / 5), Math.floor(jz / 7), seed);
@@ -328,9 +340,74 @@ function trackedCabHull(p) {
   return W;
 }
 
+// ---------- soldiers (0.1-m voxels): body with arms and weapon as the hull, one leg model swung twice ----------
+// headgear: helmet | ops (helmet with night vision) | boonie | cap | beret | kepi | unhelmet | none
+// weapon: rifle | at (launcher on the shoulder) | mg | sniper | grenade | tool | drone | none; pack: pack | shovel | radio | none
+function soldierBody(p) {
+  const [W, s] = newModel();
+  const skin = `skin${(p.skin ?? 0) % SKINS.length}`;
+  box(s, -2, 2, 8, 9, -1, 1, 'c');                     // hips
+  box(s, -2, 2, 10, 14, -1, 1, 'c');                   // torso
+  if (p.vest) { box(s, -2, 2, 10, 13, 2, 2, 'c1'); box(s, -2, 2, 10, 13, -2, -2, 'c1'); box(s, -1, 1, 11, 12, 3, 3, 'hd'); }
+  box(s, -2, 2, 9, 9, -2, 2, 'hd');                    // belt
+  for (const x of [-3, 3]) { box(s, x, x, 11, 14, -1, 0, 'c'); s(x, 13, 1, 'team'); s(x, 14, 1, 'team'); }   // upper arms, team patch
+  for (const x of [-3, 3]) { s(x, 11, 1, 'c'); s(x, 11, 2, 'c'); }   // forearms reach forward to the weapon, gloves
+  s(-2, 11, 3, 'hd'); s(2, 11, 3, 'hd'); s(-1, 11, 4, 'hd');
+  box(s, -1, 1, 15, 15, -1, 0, skin);                  // neck
+  box(s, -1, 1, 16, 18, -1, 1, skin);                  // head
+  s(-1, 17, 1, 'black'); s(1, 17, 1, 'black');         // eyes (in the face)
+  const hg = p.headgear;
+  if (p.mask) box(s, -1, 1, 16, 16, 1, 1, 'hd');
+  if (hg === 'helmet' || hg === 'ops' || hg === 'unhelmet') {
+    const k = hg === 'unhelmet' ? 'unblue' : hg === 'ops' ? 'hd' : 'c1';
+    box(s, -2, 2, 18, 19, -2, 2, k); box(s, -1, 1, 20, 20, -1, 1, k);
+    for (const x of [-2, 2]) box(s, x, x, 17, 17, -2, 1, k);
+    box(s, -1, 1, 17, 17, -2, -2, k);
+    s(0, 20, -2, 'team');
+    if (hg === 'ops') { box(s, -1, 1, 19, 19, 3, 3, 'black'); s(0, 20, 3, 'black'); }
+  } else if (hg === 'boonie') { box(s, -3, 3, 18, 18, -3, 3, 'c'); box(s, -1, 1, 19, 19, -1, 1, 'c'); s(0, 19, -2, 'team'); }
+  else if (hg === 'cap') { box(s, -1, 1, 19, 19, -1, 1, 'c1'); box(s, -1, 1, 18, 18, 2, 3, 'c1'); s(0, 19, 0, 'team'); }
+  else if (hg === 'beret') { box(s, -2, 1, 19, 19, -1, 1, 'acc'); s(1, 19, 2, 'acc'); }
+  else if (hg === 'kepi') { box(s, -1, 1, 19, 20, -1, 1, 'kepi'); box(s, -1, 1, 21, 21, -1, 1, 'kepiTop'); box(s, -1, 1, 18, 18, 2, 2, 'black'); }
+  // pack on the back with the team flap on top (visible from above)
+  if (p.pack !== 'none') {
+    box(s, -2, 2, 10, 13, -3, -3, 'c1'); box(s, -1, 1, 11, 13, -4, -4, 'c1'); box(s, -2, 2, 14, 14, -4, -3, 'team');
+    if (p.pack === 'shovel') { box(s, 2, 2, 10, 15, -5, -5, 'holz'); box(s, 1, 3, 9, 10, -5, -5, 'metall'); }
+    if (p.pack === 'radio') for (let y = 15; y <= 21; y++) s(-2, y, -4, 'black');
+  } else box(s, -2, 2, 14, 14, -2, -2, 'team');
+  const w = p.weapon;
+  if (w === 'rifle' || w === 'grenade' || w === 'mg' || w === 'sniper') {
+    const len = w === 'mg' ? 8 : w === 'sniper' ? 9 : 6;
+    for (let z = 0; z <= len; z++) s(0, 12, z, z === len ? 'metall' : 'hd');
+    s(0, 11, 3, 'hd'); s(0, 10, 3, 'hd');              // magazine / grip
+    if (w === 'grenade') for (let z = 3; z <= 5; z++) s(0, 11, z, 'c1');
+    if (w === 'mg') { box(s, -1, -1, 10, 11, 2, 3, 'c1'); s(0, 11, len - 1, 'hd'); s(0, 10, len - 1, 'hd'); }
+    if (w === 'sniper') { s(0, 13, 3, 'scope'); s(0, 13, 4, 'scope'); s(0, 13, 5, 'scope'); }
+  } else if (w === 'at') {
+    for (let z = -4; z <= 5; z++) { s(2, 15, z, z === 5 || z === -4 ? 'hd' : 'c1'); s(2, 16, z, z === 5 || z === -4 ? 'hd' : 'c1'); }
+    s(2, 14, 1, 'hd'); s(1, 15, 2, 'scope');
+  } else if (w === 'tool') { s(2, 11, 3, 'metall'); s(2, 11, 4, 'metall'); s(2, 12, 5, 'metall'); s(2, 10, 5, 'metall'); }
+  else if (w === 'drone') {
+    box(s, -1, 1, 11, 11, 3, 4, 'hd'); s(-1, 12, 4, 'black'); s(1, 12, 4, 'black');   // controller
+    box(s, -1, 1, 15, 15, -5, -3, 'black');
+    for (const [x, z] of [[-3, -6], [3, -6], [-3, -2], [3, -2]]) { s(x, 15, z, 'metall'); s(x, 16, z, 'black'); s(Math.sign(x) * 2, 15, z === -6 ? -5 : -3, 'black'); }
+  }
+  return W;
+}
+// one leg hanging from the hip (y = 0); boots at the bottom
+function soldierLeg() {
+  const [W, s] = newModel();
+  for (let y = -8; y <= -1; y++) for (let x = -1; x <= 0; x++) for (let z = -1; z <= 0; z++) s(x, y, z, y <= -7 ? 'boots' : y === -4 && z === 0 ? 'c1' : 'c');
+  s(-1, -8, 1, 'boots'); s(0, -8, 1, 'boots');
+  return W;
+}
+
 // ---------- types: defaults, builder, which params the workshop shows ----------
 const TRACKED = { trackH: 5, trackW: 4 };
 export const KIT_TYPES = {
+  soldier: { name: 'Soldat', life: 'infantry', footprint: 'soldat', scale: 0.1,
+    defaults: { headgear: 'helmet', weapon: 'rifle', pack: 'pack', vest: true, mask: false },
+    build: (p) => ({ hull: soldierBody(p), legs: { W: soldierLeg(), at: [{ x: -0.1, side: -1 }, { x: 0.1, side: 1 }], hip: 0.8, center: [-0.05, 0, -0.05] } }) },
   mbt: { name: 'Kampfpanzer', life: 'tracked', footprint: 'tank',
     defaults: { length: 38, width: 19, ...TRACKED, hullH: 8, glacis: 2, skirts: true, era: false, turretL: 18, turretW: 13, turretH: 5, shape: 'box', barrel: 26, brake: false, sleeve: true, rack: true, pivotZ: -2 },
     build: (p) => ({ hull: mbtHull(p), turret: mbtTurret(p), pivot: [0, p.hullH + 1, p.pivotZ] }) },
@@ -389,6 +466,10 @@ export const KIT_FIELDS = {
   style: ['Bauart', 'choice', { humvee: 'Humvee', fennek: 'Spähwagen flach', mengshi: 'Geländewagen', mrap: 'MRAP', pickup: 'Pick-up' }],
   cabL: ['Kabinenlänge', 'number'], cabH: ['Kabinenhöhe', 'number'], payload: ['Aufbau', 'choice', { pod: 'Raketenbehälter', gun: 'Haubitze', box: 'Kofferaufbau', cargo: 'Plane', scrap: 'Schrott' }],
   podL: ['Behälterlänge', 'number'], podW: ['Behälterbreite', 'number'], podH: ['Behälterhöhe', 'number'], tilt: ['Behälter-Neigung', 'number'], pods: ['Behälter', 'number'], blade: ['Planierschild', 'check'],
+  headgear: ['Kopfbedeckung', 'choice', { helmet: 'Helm', ops: 'Helm mit Nachtsicht', boonie: 'Buschhut', cap: 'Feldmütze', beret: 'Barett', kepi: 'Képi', unhelmet: 'Blauhelm', none: 'Keine' }],
+  weapon_soldier: ['Waffe', 'choice', { rifle: 'Sturmgewehr', at: 'Panzerfaust', mg: 'Maschinengewehr', sniper: 'Scharfschützengewehr', grenade: 'Granatwerfer', tool: 'Werkzeug', drone: 'Drohne + Steuerung', none: 'Keine' }],
+  pack: ['Rucksack', 'choice', { pack: 'Rucksack', shovel: 'Mit Spaten', radio: 'Mit Funkgerät', none: 'Keiner' }],
+  vest: ['Schutzweste', 'check'], mask: ['Sturmhaube', 'check'],
 };
 
 const cache = new Map();
@@ -400,8 +481,9 @@ export function buildKit(type, params = {}, paintId = 'usa') {
   const p = { ...T.defaults, ...params };
   const b = T.build(p);
   const seed = [...key].reduce((a, c) => (a * 31 + c.charCodeAt(0)) | 0, 7) & 1023;
-  const out = { hull: paint(b.hull, paintId, seed), turret: b.turret ? paint(b.turret, paintId, seed + 1) : null, pivot: b.pivot || null, scale: KIT_SCALE,
-    wheels: b.wheels ? { ...b.wheels, W: paint(b.wheels.W, paintId) } : null, trackMid: T.life === 'tracked' ? (p.trackH || 5) * KIT_SCALE / 2 : 0 };
+  const out = { hull: paint(b.hull, paintId, seed), turret: b.turret ? paint(b.turret, paintId, seed + 1) : null, pivot: b.pivot || null, scale: T.scale || KIT_SCALE,
+    wheels: b.wheels ? { ...b.wheels, W: paint(b.wheels.W, paintId) } : null, trackMid: T.life === 'tracked' ? (p.trackH || 5) * KIT_SCALE / 2 : 0,
+    legs: b.legs ? { ...b.legs, W: paint(b.legs.W, paintId, seed + 2) } : null };
   cache.set(key, out);
   return out;
 }

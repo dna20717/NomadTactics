@@ -9,7 +9,7 @@ const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=sw
 try {
   const P = await browser.newPage({ viewport: { width: +arg('w', 1600), height: +arg('h', 1000) } });
   P.on('pageerror', (e) => console.log('pageerror', String(e))); P.on('console', (m) => m.type() === 'error' && console.log(m.text()));
-  const qs = new URLSearchParams(Object.fromEntries(['only', 'cols', 'yaw', 'pitch', 'dist', 'fov', 'team'].filter((k) => arg(k)).map((k) => [k, arg(k)])));
+  const qs = new URLSearchParams(Object.fromEntries(['only', 'cols', 'yaw', 'pitch', 'dist', 'fov', 'team', 'stride', 'gap'].filter((k) => arg(k)).map((k) => [k, arg(k)])));
   await P.goto(`http://127.0.0.1:8823/tools/kit/preview.html?${qs}`);
   await P.waitForFunction(() => window.done, null, { timeout: 120000 });
   const out = arg('out', 'output/kit.png'); await P.screenshot({ path: out });

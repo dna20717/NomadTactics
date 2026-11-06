@@ -77,7 +77,7 @@ export function compileTypes(setup) {
     // size class for collisions and aiming: models.json › footprint (vehicle kit), else the model id itself
     const shape = setup.models?.[u.model]?.footprint || u.model;
     add(id, {
-      id, name: u.name, cls: u.class, armor: u.armor, model: u.model, shape, movement,
+      id, name: u.name, cls: u.class, armor: u.armor, model: u.model, shape, movement, squad: u.squad || 1,   // squad: figures in the picture only
       hp: whole((u.health || 100) * 100),
       speed: whole((u.speed || 3) * MM / TICKS_PER_SECOND),
       sight: whole((u.sight || 20) * MM),

@@ -20,15 +20,18 @@ const sun = new THREE.DirectionalLight(0xfff1dc, 2.4); sun.position.set(-30, 50,
 Object.assign(sun.shadow.camera, { left: -80, right: 80, top: 80, bottom: -80 }); sun.shadow.mapSize.set(4096, 4096); scene.add(sun);
 const ground = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), new THREE.MeshStandardMaterial({ color: 0x8e8a6e })); ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
 const mat = vehicleMaterial(env);
-const cols = +(q.get('cols') || 6), gap = 11, team = new THREE.Color(q.get('team') || '#3a78d8').getHex();
+const cols = +(q.get('cols') || 6), gap = +(q.get('gap') || 11), team = new THREE.Color(q.get('team') || '#3a78d8').getHex();
 let tris = 0; const labels = [];
 list.forEach(([id, m], i) => {
   const [type] = m.source.slice(4).split(':');
-  const k = buildKit(type, m.kit || {}, m.paint || 'usa');
+  const k = buildKit(type, { ...(m.kit || {}), ...(type === 'soldier' ? { skin: i % 3 } : {}) }, m.paint || 'usa');
   const g = new THREE.Group(); const sc = k.scale;
   const add = (W, o) => { const geo = voxelGeometry(W, { team, scale: sc }); tris += geo.attributes.position.count / 3; const me = new THREE.Mesh(geo, mat); me.castShadow = me.receiveShadow = true; o(me); if (!me.parent) g.add(me); };
   add(k.hull, () => {});
   if (k.turret) add(k.turret, (me) => me.position.set(k.pivot[0] * sc, k.pivot[1] * sc, k.pivot[2] * sc));
+  if (k.legs) k.legs.at.forEach((a, j) => add(k.legs.W, (me) => {
+    const o = new THREE.Object3D(); o.position.set(a.x, k.legs.hip, 0); o.rotation.x = (j ? 1 : -1) * +(q.get('stride') || 0);
+    me.position.set(-k.legs.center[0], -k.legs.center[1], -k.legs.center[2]); o.add(me); g.add(o); }));
   if (k.wheels) for (const w of k.wheels.at) add(k.wheels.W, (me) => {
     const o = new THREE.Object3D(); o.position.set(w.x, w.y, w.z); o.rotation.y = w.side < 0 ? Math.PI : 0;
     me.position.set(-k.wheels.center[0], -k.wheels.center[1], -k.wheels.center[2]); o.add(me); g.add(o); });

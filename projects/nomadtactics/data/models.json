@@ -149,5 +149,50 @@
  "m270_eu": {"name": "M270 MLRS (Europa)", "source": "kit:mlrs", "paint": "europa", "kit": {}, "life": "tracked", "footprint": "tank"},
  "boxer": {"name": "Boxer", "source": "kit:apc", "paint": "europa", "kit": {"module": true, "weapon": "rcws"}, "life": "wheeled", "footprint": "werfer"},
  "fennek": {"name": "Fennek", "source": "kit:car", "paint": "europa", "kit": {"style": "fennek", "weapon": "rcws", "length": 26, "width": 12}, "life": "wheeled", "footprint": "spaeher"},
- "eu_truck": {"name": "Versorgungslaster Europa", "source": "kit:truck", "paint": "europa", "kit": {"payload": "cargo"}, "life": "wheeled", "footprint": "werfer"}
+ "eu_truck": {"name": "Versorgungslaster Europa", "source": "kit:truck", "paint": "europa", "kit": {"payload": "cargo"}, "life": "wheeled", "footprint": "werfer"},
+ "us_rifle": {"name": "US Rifleman", "source": "kit:soldier", "paint": "usa_u", "kit": {}, "life": "infantry", "footprint": "soldat"},
+ "us_ranger": {"name": "US Ranger (Panzerabwehr)", "source": "kit:soldier", "paint": "usa_u", "kit": {"weapon": "at"}, "life": "infantry", "footprint": "soldat"},
+ "us_seal": {
+  "name": "Navy SEAL",
+  "source": "kit:soldier",
+  "paint": "usa_u",
+  "kit": {"headgear": "ops", "weapon": "sniper", "pack": "radio", "mask": true},
+  "life": "infantry",
+  "footprint": "soldat"
+ },
+ "us_engineer": {"name": "US Combat Engineer", "source": "kit:soldier", "paint": "usa_u", "kit": {"pack": "shovel"}, "life": "infantry", "footprint": "soldat"},
+ "cn_rifle": {"name": "PLA Rifleman", "source": "kit:soldier", "paint": "china_u", "kit": {}, "life": "infantry", "footprint": "soldat"},
+ "cn_grenadier": {"name": "PLA Grenadier", "source": "kit:soldier", "paint": "china_u", "kit": {"weapon": "grenade"}, "life": "infantry", "footprint": "soldat"},
+ "cn_at": {"name": "PLA Panzerabwehr", "source": "kit:soldier", "paint": "china_u", "kit": {"weapon": "at"}, "life": "infantry", "footprint": "soldat"},
+ "cn_special": {
+  "name": "PLA Spezialeinheit",
+  "source": "kit:soldier",
+  "paint": "china_u",
+  "kit": {"headgear": "ops", "mask": true, "pack": "radio"},
+  "life": "infantry",
+  "footprint": "soldat"
+ },
+ "ua_tech": {
+  "name": "Ukrainischer Techniker",
+  "source": "kit:soldier",
+  "paint": "ukraine_u",
+  "kit": {"headgear": "cap", "weapon": "tool", "vest": false, "pack": "shovel"},
+  "life": "infantry",
+  "footprint": "soldat"
+ },
+ "ua_fighter": {"name": "Territorialverteidigung", "source": "kit:soldier", "paint": "ukraine_u", "kit": {"headgear": "helmet"}, "life": "infantry", "footprint": "soldat"},
+ "ua_at": {"name": "Ukrainischer Panzerabwehrschütze", "source": "kit:soldier", "paint": "ukraine_u", "kit": {"weapon": "at"}, "life": "infantry", "footprint": "soldat"},
+ "ua_drone": {"name": "Drohnenoperator", "source": "kit:soldier", "paint": "ukraine_u", "kit": {"headgear": "boonie", "weapon": "drone"}, "life": "infantry", "footprint": "soldat"},
+ "ua_special": {"name": "Ukrainische Spezialeinheit", "source": "kit:soldier", "paint": "ukraine_u", "kit": {"headgear": "ops", "mask": true}, "life": "infantry", "footprint": "soldat"},
+ "eu_bluehelmet": {"name": "Blauhelm", "source": "kit:soldier", "paint": "europa_u", "kit": {"headgear": "unhelmet"}, "life": "infantry", "footprint": "soldat"},
+ "eu_legion": {"name": "Fremdenlegionär", "source": "kit:soldier", "paint": "europa_u", "kit": {"headgear": "kepi", "weapon": "grenade"}, "life": "infantry", "footprint": "soldat"},
+ "eu_ksk": {
+  "name": "KSK",
+  "source": "kit:soldier",
+  "paint": "europa_u",
+  "kit": {"headgear": "ops", "weapon": "sniper", "mask": true, "pack": "radio"},
+  "life": "infantry",
+  "footprint": "soldat"
+ },
+ "eu_engineer": {"name": "Kampfingenieur", "source": "kit:soldier", "paint": "europa_u", "kit": {"pack": "shovel"}, "life": "infantry", "footprint": "soldat"}
 }

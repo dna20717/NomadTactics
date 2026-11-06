@@ -595,14 +595,15 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
   }
   function modelFor(key) {
     if (models[key]) return models[key];
-    const def = modelSource?.[key] || null;
+    const [baseKey, tone] = key.split('~');   // soldiers: "<model>~<skin tone>"
+    const def = modelSource?.[baseKey] || null;
     const entry = { ready: false, pivot: null, hull: null, turret: null, scale: V, life: lifeOf(lifeData, def, key === 'pad' ? 'building' : null), variants: new Map() };
     models[key] = entry;
     const src = def?.source || (key === 'pad' ? 'prototype:pad' : `prototype:${key}`);
     if (src === 'prototype:pad') { entry.hull = landingPad(31); finish(entry, def); return entry; }
     if (src.startsWith('kit:')) {   // vehicle kit (game/tactics/voxel/kit.js): 0.2-m voxels, wheels as their own part
-      const k = buildKit(src.slice(4), def?.kit || {}, def?.paint || 'usa');
-      Object.assign(entry, { hull: k.hull, turret: k.turret, pivot: k.pivot, scale: k.scale, wheels: k.wheels, trackMid: k.trackMid });
+      const k = buildKit(src.slice(4), tone != null ? { ...(def?.kit || {}), skin: +tone } : def?.kit || {}, def?.paint || 'usa');
+      Object.assign(entry, { hull: k.hull, turret: k.turret, pivot: k.pivot, scale: k.scale, wheels: k.wheels, trackMid: k.trackMid, legs: k.legs });
       finish(entry, { ...def, scale: def?.scale || k.scale }); return entry;
     }
     if (src.startsWith('prototype:')) {
@@ -628,8 +629,8 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
   }
   // model for a damage stage (0 = intact); cached per model
   function variant(e, which, stage) {
-    const W = which === 'turret' ? e.turret : which === 'wheel' ? e.wheels?.W : e.hull;
-    if (which === 'wheel') return { W, soot: null };
+    const W = which === 'turret' ? e.turret : which === 'wheel' ? e.wheels?.W : which === 'leg' ? e.legs?.W : e.hull;
+    if (which === 'wheel' || which === 'leg') return { W, soot: null };
     if (!stage || !lifeOn) return { W, soot: null };
     const id = which + stage;
     if (!e.variants.has(id)) {
@@ -773,6 +774,10 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
         for (let i = 0; i < Math.round((t?.cls === 'infantry' ? 2 : 14) * boom); i++) puff(x + (Math.random() - 0.5) * r, y + 1, z + (Math.random() - 0.5) * r, 1.2 + Math.random() * 1.6 * boom, 0x3d3833);
         light(x, y + 3, z, (t?.building ? 6 : 3) * boom);
         if (t?.cls !== 'infantry') { jolt(x, z, t?.building ? 1.2 : 0.6); towers.hit(x, z, t?.building ? 30 : 5); tfx.scorch(x, z, t?.building ? 7 : 2.6); }
+        if (t?.cls === 'infantry' && lifeOn) {   // the soldier falls and lies there for a while
+          const key = sourceOf(sim, e.type, e.seat, e.id);
+          if (modelFor(key).legs) wrecks.push({ key: `${key}~${(e.id * 7) % 3}`, base: key, x, y, z, yaw: yawOf(e.h) + (Math.random() - 0.5), t0: now, colour: colourOf(playerList().find((p) => p.seat === e.seat)), fallen: true });
+        }
         if (t && t.cls !== 'infantry') {
           const key = sourceOf(sim, e.type, e.seat, e.id);
           const seat = playerList().find((p) => p.seat === e.seat);
@@ -964,6 +969,36 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
       putMatrix(part(key, 'wheel', colour, wreck, 0), wM, 0, 0);
     });
   }
+  // soldiers (kit:soldier): legs swing with the step, a squad shows as several figures (fewer as it loses health),
+  // every figure with its own skin tone ("<model>~<tone>")
+  const SQUAD = [[0, 0], [-0.9, -1.1], [0.9, -1.1], [-1.8, -2.2], [0, -2.3], [1.8, -2.2], [-0.9, -3.4], [0.9, -3.4]];
+  const lM = new THREE.Matrix4(), fM = new THREE.Matrix4();
+  function drawLegs(e, key, colour, base, swing) {
+    const L = e.legs;
+    wC.makeTranslation(-L.center[0], -L.center[1], -L.center[2]);
+    L.at.forEach((a, j) => {
+      wE.set((j ? 1 : -1) * swing, 0, 0, 'YXZ'); wQ.setFromEuler(wE); wP.set(a.x, L.hip, a.z || 0);
+      lM.compose(wP, wQ, oneV).multiply(wC).premultiply(base);
+      putMatrix(part(key, 'leg', colour, false, 0), lM, 0, 0);
+    });
+  }
+  function drawSoldiers(u, ty, e, key, colour, base, s, speed, live) {
+    const full = app.squadOf?.(u.seat, ty) || ty.squad || 1;
+    const n = Math.max(1, Math.min(SQUAD.length, Math.ceil(full * Math.max(0, u.hp) / ty.hp)));
+    const stride = live ? Math.min(1, speed / 1.6) * 0.55 : 0;
+    const fx = Math.sin(s.yaw), fz = Math.cos(s.yaw);
+    for (let k = 0; k < n; k++) {
+      const tone = `${key}~${(u.id * 7 + k * 5) % 3}`, ph = (s.dist || 0) * Math.PI / 0.75 + k * 1.7;
+      if (k === 0) fM.copy(base);
+      else {
+        const [ox, oz] = SQUAD[k], x = base.elements[12] + ox * fz + oz * fx, z = base.elements[14] - ox * fx + oz * fz;
+        const bob = live && speed > 0.3 ? Math.abs(Math.sin(ph)) * 0.08 : 0;
+        o3.position.set(x, groundAt(x, z) + bob, z); o3.rotation.set(0, s.yaw + Math.sin(k * 2.3 + u.id) * 0.15, 0, 'XYZ'); o3.scale.set(1, 1, 1); o3.updateMatrix(); fM.copy(o3.matrix);
+      }
+      putMatrix(part(tone, 'hull', colour, false, 0), fM, 0, 0);
+      drawLegs(e, key, colour, fM, Math.sin(ph) * stride);
+    }
+  }
   function lively(sim, u, ty, e, key, colour, s, wx, wz, dt, now) {
     const L = e.life, sc = e.scale || V;
     const stage = L.stages.length ? stageAt(L, Math.max(0, u.hp) / ty.hp) : 0;
@@ -1002,7 +1037,7 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
       spring(s, 'rl', tr + turnR, dt, L.spring, L.damping / 100);
       pt = s.pt; rl = s.rl;
       if (L.bob) {
-        if (L.drive === 'walk') lift += speed > 0.3 ? Math.abs(Math.sin(s.dist * Math.PI / 0.55)) * L.bob / 100 : 0;
+        if (L.drive === 'walk') lift += speed > 0.3 ? Math.abs(Math.sin(s.dist * Math.PI / 0.75)) * L.bob / 100 : 0;
         else if (speed > 0.5) lift += Math.sin(now * 0.06 + u.id) * L.bob / 100 * 0.6;
       }
     }
@@ -1012,7 +1047,8 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
     o3.position.set(wx, s.y + lift, wz); o3.rotation.set(pt, s.yaw, rl, 'YXZ'); o3.scale.set(1, 1, 1); o3.updateMatrix();
     hullM.copy(o3.matrix);
     if (!e.turret && rc) hullM.multiply(locM.makeTranslation(0, 0, -rc * 0.5));
-    putMatrix(part(key, 'hull', colour, false, stage), hullM, s.dist, runs);
+    if (e.legs) drawSoldiers(u, ty, e, key, colour, hullM, s, speed, true);
+    else putMatrix(part(key, 'hull', colour, false, stage), hullM, s.dist, runs);
     drawWheels(e, key, colour, hullM, s, dt, true);
     let mzFrom = hullM;
     if (e.turret) {
@@ -1090,7 +1126,7 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
     // burning wrecks (boom > 1): black smoke column and a few sparks for 15 s
     if (boom > 1) for (const w of wrecks) {
       const age = (performance.now() - w.t0) / 1000;
-      if (age > 15 || Math.random() > dt * (w.building ? 14 : 7)) continue;
+      if (w.fallen || age > 15 || Math.random() > dt * (w.building ? 14 : 7)) continue;
       puff(w.x + (Math.random() - 0.5) * 1.5, w.y + 1.5, w.z + (Math.random() - 0.5) * 1.5, 0.9 + Math.random() * 1.2, age < 4 && Math.random() < 0.35 ? 0xff8a3a : 0x2a2724);
     }
     buildWorld(sim);
@@ -1143,7 +1179,8 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
           const v = Math.hypot(wx - s.px, wz - s.pz) / Math.max(dt, 1e-3);
           s.tilt += (Math.min(0.3, v * 0.03) - s.tilt) * k; s.px = wx; s.pz = wz;
           put(part(key, 'hull', colour), wx, s.y, wz, s.yaw, (o) => { o.rotation.set(s.tilt, s.yaw, 0, 'YXZ'); });
-        } else put(part(key, 'hull', colour), wx, s.y, wz, s.yaw);
+        } else if (e.legs) { o3.position.set(wx, s.y, wz); o3.rotation.set(0, s.yaw, 0, 'XYZ'); o3.scale.set(1, 1, 1); o3.updateMatrix(); baseM.copy(o3.matrix); drawSoldiers(u, ty, e, key, colour, baseM, s, 0, false); }
+        else put(part(key, 'hull', colour), wx, s.y, wz, s.yaw);
         if (e.wheels) { o3.position.set(wx, s.y, wz); o3.rotation.set(0, s.yaw, 0, 'XYZ'); o3.scale.set(1, 1, 1); o3.updateMatrix(); baseM.copy(o3.matrix); drawWheels(e, key, colour, baseM, s, dt, false); }
         if (e.turret) {
           const tgt = u.tgt ? sim.byId.get(u.tgt) : null;
@@ -1174,6 +1211,13 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
     // wrecks: dark, sinking slowly at the end
     for (const w of wrecks) {
       const age = (now - w.t0) / 1000, sink = age > 25 ? (age - 25) * 0.5 : 0;
+      if (w.fallen) {   // lying on the back, sinks into the ground after 20 s
+        const f = Math.min(1, age * 2.5), sinkF = age > 20 ? (age - 20) * 0.08 : 0;
+        o3.position.set(w.x, w.y + 0.12 * f - sinkF, w.z); o3.rotation.set(-1.45 * f, w.yaw, 0, 'YXZ'); o3.scale.set(1, 1, 1); o3.updateMatrix(); baseM.copy(o3.matrix);
+        putMatrix(part(w.key, 'hull', w.colour, false, 0), baseM, 0, 0);
+        const eb = models[w.base]; if (eb?.legs) drawLegs(eb, w.base, w.colour, baseM, 0.15);
+        continue;
+      }
       const ws = lifeOn ? (models[w.key]?.life?.stages.length || 0) : 0;
       put(part(w.key, 'hull', w.colour, true, ws), w.x, w.y - sink - (w.building ? 0.2 : 0), w.z, w.yaw, w.building ? null : (o) => { o.rotation.z = 0.06; });
       const e = models[w.key];

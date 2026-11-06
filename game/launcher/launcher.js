@@ -48,11 +48,13 @@ const app = { view: 'game', ls: null, selection: new Set(), drag: null, hud: tru
 // The simulation plays USA on all four sides; the picture shows one nation per side with its own vehicles (kit models,
 // a few kinds mixed by unit id). Yellow = Ukraine drives Daniel's own tank (Voxel Max, models.json › daniel_tank).
 const LOOKS = [
-  { abrams: ['abrams', 'abrams', 'booker'], humvee: ['humvee', 'stryker'], himars: ['himars', 'm270'] },
-  { abrams: ['type96', 'type99a', 'type15'], humvee: ['mengshi', 'zbl08', 'ztl11'], himars: ['phl16', 'plz05'] },
-  { abrams: ['daniel_tank', 'leopard2_ua', 'daniel_tank'], humvee: ['kozak', 'pickup'], himars: ['himars_ua', 'bohdana', 'gvozdika'] },
-  { abrams: ['leopard2', 'leclerc', 'challenger2'], humvee: ['fennek', 'boxer'], himars: ['m270_eu', 'pzh2000', 'caesar'] },
+  { abrams: ['abrams', 'abrams', 'booker'], humvee: ['humvee', 'stryker'], himars: ['himars', 'm270'], us_rifle: ['us_rifle', 'us_rifle', 'us_ranger', 'us_engineer', 'us_seal'] },
+  { abrams: ['type96', 'type99a', 'type15'], humvee: ['mengshi', 'zbl08', 'ztl11'], himars: ['phl16', 'plz05'], us_rifle: ['cn_rifle', 'cn_rifle', 'cn_grenadier', 'cn_at', 'cn_special'] },
+  { abrams: ['daniel_tank', 'leopard2_ua', 'daniel_tank'], humvee: ['kozak', 'pickup'], himars: ['himars_ua', 'bohdana', 'gvozdika'], us_rifle: ['ua_fighter', 'ua_fighter', 'ua_at', 'ua_drone', 'ua_special'] },
+  { abrams: ['leopard2', 'leclerc', 'challenger2'], humvee: ['fennek', 'boxer'], himars: ['m270_eu', 'pzh2000', 'caesar'], us_rifle: ['eu_bluehelmet', 'eu_legion', 'eu_bluehelmet', 'eu_engineer', 'eu_ksk'] },
 ];
+// figures per infantry unit in the picture (China comes in masses, as in Daniel's list)
+app.squadOf = (seat, t) => (t.cls === 'infantry' ? [1, 3, 2, 2][seat] || 1 : 1);
 // the hero sign names what you see: the swapped model's name, otherwise the unit's
 const heroName = (u) => { const t = sim.types[u.type], m = app.swapModel(u.seat, t.model, u.id); return (m && setup.models[m]?.name) || t.name || u.type; };
 app.swapModel = (seat, key, id = 0) => {

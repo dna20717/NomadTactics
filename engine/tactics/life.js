@@ -48,8 +48,9 @@ export const LIFE_NONE = { drive: 'none', tilt: 0, pitch: 0, roll: 0, spring: 10
 
 // Vehicle kit (game/tactics/voxel/kit.js, test/life.test.js keeps these lists equal): body types, paint schemes,
 // size classes of the simulation (engine/tactics/battle.js › FOOTPRINTS)
-export const KIT_TYPE_IDS = ['mbt', 'spg', 'mlrs', 'dozer', 'apc', 'car', 'truck'];
-export const PAINT_IDS = ['usa', 'china', 'ukraine', 'europa', 'site'];
+export const KIT_TYPE_IDS = ['soldier', 'mbt', 'spg', 'mlrs', 'dozer', 'apc', 'car', 'truck'];
+export const PAINT_IDS = ['usa', 'china', 'ukraine', 'europa', 'site', 'usa_u', 'china_u', 'ukraine_u', 'europa_u'];
+export const KIT_SOLDIER = 'soldier';
 export const FOOTPRINT_IDS = ['tank', 'werfer', 'spaeher', 'dozer', 'soldat'];
 
 export function emptyLife() { return { profiles: {} }; }
