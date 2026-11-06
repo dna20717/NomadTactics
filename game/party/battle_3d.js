@@ -15,6 +15,7 @@ import { createTerrainFx, SURFACES, surfaceOf } from './terrain_fx.js';
 import { ROUND_MS } from '../../engine/net/protocol.js';
 import { lifeOf, stageAt } from '../../engine/tactics/life.js';
 import { bounds, muzzleOf, damagedModel, sootAt, spring, recoilCurve, DEG } from './unit_life.js';
+import { buildKit } from '../tactics/voxel/kit.js';
 
 const M = 1 / 1000;          // world units (mm) → metres
 const LEVEL = 2.0;           // one map level = 2 m (5 voxels)
@@ -587,10 +588,10 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
   }
 
   // ---------- models ----------
-  function sourceOf(sim, type, seat = null) {
+  function sourceOf(sim, type, seat = null, id = 0) {
     const t = sim.types[type];
     const key = t.building ? 'pad' : (t.model || (t.cls === 'infantry' ? 'soldat' : 'tank'));
-    return app.swapModel?.(seat, key) || key;   // launcher: another model for one side (optics only)
+    return app.swapModel?.(seat, key, id) || key;   // launcher: other nations' vehicles per side (optics only)
   }
   function modelFor(key) {
     if (models[key]) return models[key];
@@ -599,6 +600,11 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
     models[key] = entry;
     const src = def?.source || (key === 'pad' ? 'prototype:pad' : `prototype:${key}`);
     if (src === 'prototype:pad') { entry.hull = landingPad(31); finish(entry, def); return entry; }
+    if (src.startsWith('kit:')) {   // vehicle kit (game/tactics/voxel/kit.js): 0.2-m voxels, wheels as their own part
+      const k = buildKit(src.slice(4), def?.kit || {}, def?.paint || 'usa');
+      Object.assign(entry, { hull: k.hull, turret: k.turret, pivot: k.pivot, scale: k.scale, wheels: k.wheels, trackMid: k.trackMid });
+      finish(entry, { ...def, scale: def?.scale || k.scale }); return entry;
+    }
     if (src.startsWith('prototype:')) {
       const p = PROTOTYPES[src.slice(10)] || PROTOTYPES.tank;
       entry.hull = p.hull(); entry.turret = p.turret ? p.turret() : null; entry.pivot = p.pivot || null; entry.scale = p.scale || V; finish(entry, def);
@@ -622,7 +628,8 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
   }
   // model for a damage stage (0 = intact); cached per model
   function variant(e, which, stage) {
-    const W = which === 'turret' ? e.turret : e.hull;
+    const W = which === 'turret' ? e.turret : which === 'wheel' ? e.wheels?.W : e.hull;
+    if (which === 'wheel') return { W, soot: null };
     if (!stage || !lifeOn) return { W, soot: null };
     const id = which + stage;
     if (!e.variants.has(id)) {
@@ -767,7 +774,7 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
         light(x, y + 3, z, (t?.building ? 6 : 3) * boom);
         if (t?.cls !== 'infantry') { jolt(x, z, t?.building ? 1.2 : 0.6); towers.hit(x, z, t?.building ? 30 : 5); tfx.scorch(x, z, t?.building ? 7 : 2.6); }
         if (t && t.cls !== 'infantry') {
-          const key = sourceOf(sim, e.type, e.seat);
+          const key = sourceOf(sim, e.type, e.seat, e.id);
           const seat = playerList().find((p) => p.seat === e.seat);
           wrecks.push({ key, x, y, z, yaw: yawOf(e.h), t0: now, colour: colourOf(seat), building: !!t.building });
           for (let i = 0; i < Math.round((t.building ? 50 : 26) * boom); i++) chip(x, y + 1.2, z, t.building ? 0x9a968c : 0x4e5236, boom);
@@ -935,6 +942,28 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
   function emit(n) {   // n per second → how many this frame (random rounding)
     const q = n; return Math.floor(q) + (Math.random() < q % 1 ? 1 : 0);
   }
+  // wheels as their own part (vehicle kit): spin with the distance driven, front axles steer, each springs to the ground
+  const wM = new THREE.Matrix4(), wQ = new THREE.Quaternion(), wE = new THREE.Euler(), wP = new THREE.Vector3(), wC = new THREE.Matrix4(), baseM = new THREE.Matrix4();
+  function drawWheels(e, key, colour, base, s, dt, live, wreck = false) {
+    const wh = e.wheels; if (!wh) return;
+    const spin = live ? (s.dist || 0) / wh.r : 0;
+    const steer = live ? Math.max(-0.45, Math.min(0.45, (s.turn || 0) * 0.35)) : 0;
+    if (live) s.wy ??= [];
+    wC.makeTranslation(-wh.center[0], -wh.center[1], -wh.center[2]);
+    wh.at.forEach((a, i) => {
+      let off = 0;
+      if (live) {
+        wP.set(a.x, a.y - wh.r, a.z).applyMatrix4(base);
+        const want = Math.max(-0.16, Math.min(0.22, groundAt(wP.x, wP.z) - wP.y));
+        s.wy[i] = (s.wy[i] || 0) + (want - (s.wy[i] || 0)) * Math.min(1, dt * 14);
+        off = s.wy[i];
+      }
+      wE.set(spin * a.side, (a.front ? steer : 0) + (a.side < 0 ? Math.PI : 0), wreck && i % 3 === 0 ? 0.25 : 0, 'YXZ');
+      wQ.setFromEuler(wE); wP.set(a.x, a.y + off, a.z);
+      wM.compose(wP, wQ, oneV).multiply(wC).premultiply(base);
+      putMatrix(part(key, 'wheel', colour, wreck, 0), wM, 0, 0);
+    });
+  }
   function lively(sim, u, ty, e, key, colour, s, wx, wz, dt, now) {
     const L = e.life, sc = e.scale || V;
     const stage = L.stages.length ? stageAt(L, Math.max(0, u.hp) / ty.hp) : 0;
@@ -979,11 +1008,12 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
     }
     // barrel / hull recoil
     const rc = s.shot ? recoilCurve(now - s.shot, L.recover) * L.barrel / 100 : 0;
-    const runs = L.drive === 'track' || L.drive === 'wheel' ? 1 : 0;
+    const runs = L.drive === 'track' ? (e.trackMid || 0.42) : L.drive === 'wheel' && !e.wheels ? 0.42 : 0;
     o3.position.set(wx, s.y + lift, wz); o3.rotation.set(pt, s.yaw, rl, 'YXZ'); o3.scale.set(1, 1, 1); o3.updateMatrix();
     hullM.copy(o3.matrix);
     if (!e.turret && rc) hullM.multiply(locM.makeTranslation(0, 0, -rc * 0.5));
     putMatrix(part(key, 'hull', colour, false, stage), hullM, s.dist, runs);
+    drawWheels(e, key, colour, hullM, s, dt, true);
     let mzFrom = hullM;
     if (e.turret) {
       const tgt = u.tgt ? sim.byId.get(u.tgt) : null;
@@ -1097,7 +1127,7 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
       const ty = sim.types[u.type];
       const [x, y] = pos(u);
       const wx = x * M, wz = y * M;
-      const key = sourceOf(sim, u.type, u.seat);
+      const key = sourceOf(sim, u.type, u.seat, u.id);
       const colour = colours[u.seat] ?? 0x999999;
       let s = smooth.get(u.id);
       const yaw = ty.building ? 0 : yawOf(u.h);
@@ -1114,6 +1144,7 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
           s.tilt += (Math.min(0.3, v * 0.03) - s.tilt) * k; s.px = wx; s.pz = wz;
           put(part(key, 'hull', colour), wx, s.y, wz, s.yaw, (o) => { o.rotation.set(s.tilt, s.yaw, 0, 'YXZ'); });
         } else put(part(key, 'hull', colour), wx, s.y, wz, s.yaw);
+        if (e.wheels) { o3.position.set(wx, s.y, wz); o3.rotation.set(0, s.yaw, 0, 'XYZ'); o3.scale.set(1, 1, 1); o3.updateMatrix(); baseM.copy(o3.matrix); drawWheels(e, key, colour, baseM, s, dt, false); }
         if (e.turret) {
           const tgt = u.tgt ? sim.byId.get(u.tgt) : null;
           const want = tgt ? Math.atan2(tgt.x * M - wx, tgt.y * M - wz) : s.yaw;
@@ -1146,7 +1177,11 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
       const ws = lifeOn ? (models[w.key]?.life?.stages.length || 0) : 0;
       put(part(w.key, 'hull', w.colour, true, ws), w.x, w.y - sink - (w.building ? 0.2 : 0), w.z, w.yaw, w.building ? null : (o) => { o.rotation.z = 0.06; });
       const e = models[w.key];
-      if (e?.turret) put(part(w.key, 'turret', w.colour, true, ws), w.x + 0.8, w.y - sink + 0.2, w.z - 0.5, w.yaw + 0.9, (o) => { o.rotation.z = 0.5; });
+      if (e?.wheels) { o3.position.set(w.x, w.y - sink, w.z); o3.rotation.set(0, w.yaw, 0.06, 'XYZ'); o3.scale.set(1, 1, 1); o3.updateMatrix(); baseM.copy(o3.matrix); drawWheels(e, w.key, w.colour, baseM, w, 0, false, true); }
+      if (e?.turret) {   // turret thrown off to the side, resting at the height of its ring
+        const py = (e.pivot?.[1] ?? 4) * (e.scale || V);
+        put(part(w.key, 'turret', w.colour, true, ws), w.x + 0.8 + (e.scale < V ? 1 : 0), w.y - sink + py * 0.55, w.z - 0.5, w.yaw + 0.9, (o) => { o.rotation.z = 0.5; });
+      }
     }
     for (const im of parts.values()) { im.count = im.userData.used; im.instanceMatrix.needsUpdate = true; im.userData.life.needsUpdate = true; }
 

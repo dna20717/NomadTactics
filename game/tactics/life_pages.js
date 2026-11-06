@@ -4,6 +4,7 @@ import { icon } from '../icons.js';
 import { el } from '../ui.js';
 import { DRIVES, LIFE_GROUPS, STAGE_FIELDS, LIFE_NONE, renameLife } from '../../engine/tactics/life.js';
 import { catalog } from './pages.js';
+import { KIT_TYPES, KIT_FIELDS, PAINTS } from './voxel/kit.js';
 
 const L_ = (w) => (w.p.data.life = w.p.data.life || { profiles: {} });
 const users = (w, id) => Object.entries(w.p.data.models || {}).filter(([, m]) => m.life === id);
@@ -61,10 +62,32 @@ function stagesTable(w, x, file) {
 // Fields in the model inspector: voxel size (Daniel 05.11.: „Voxel-Maßstab je Modell wählbar“) and the profile
 export function modelLifeFields(w, x, file) {
   const P = L_(w).profiles || {};
-  return [
+  return [...kitFields(w, x, file),
     w.input('Voxel-Größe (m)', x.scale, 'number', { set: (v) => w.change(file, () => { if (v == null || v <= 0) delete x.scale; else x.scale = Math.max(0.05, Math.min(2, v)); }) }),
     el('p', { class: 'ed-small' }, `Leer = Standard (${w.p.def.voxel ?? 0.4} m wie das Gelände). Kleiner = feinere Modelle; ein 10 Würfel langer Panzer braucht 0,8 m, um so groß wie der Kampfpanzer zu sein.`),
     w.labeled('Lebendigkeit', w.selection(Object.entries(P).map(([k, p]) => [k, p.name || k]), x.life || '', (v) => w.change(file, () => { if (v) x.life = v; else delete x.life; }), '— steht still —')),
     x.life && P[x.life] ? el('button', { class: 'da-tag tk-leap', onclick: () => w.go({ area: 'life', choice: x.life }) }, icon('particles', 12), ' Profil öffnen') : null,
   ].filter(Boolean);
+}
+
+// Vehicle kit (Daniel 06.11.): body type, paint and the parameters of that body type. Changes rebuild the model in game.
+function kitFields(w, x, file) {
+  if (!x.source?.startsWith('kit:')) return [];
+  const type = x.source.slice(4), T = KIT_TYPES[type];
+  const out = [el('h4', {}, icon('vehicle', 13), ' Fahrzeug-Baukasten'),
+    w.labeled('Bauform', w.selection(Object.entries(KIT_TYPES).map(([k, t]) => [k, t.name]), type, (v) => w.change(file, () => {
+      x.source = `kit:${v}`; x.kit = {}; x.life = KIT_TYPES[v].life; x.footprint = KIT_TYPES[v].footprint;
+    }))),
+    w.labeled('Bemalung', w.selection(Object.entries(PAINTS).map(([k, p]) => [k, p.name]), x.paint || 'usa', (v) => w.change(file, () => { x.paint = v; }))),
+    el('p', { class: 'ed-small' }, `Würfel 0,2 m. Größenklasse im Spiel: ${x.footprint || T?.footprint || '–'} (bestimmt, wie viel Platz das Fahrzeug in der Simulation braucht). Leere Felder nehmen den Standard der Bauform.`)];
+  if (!T) return out;
+  const K = (x.kit = x.kit || {});
+  for (const [k, def] of Object.entries(T.defaults)) {
+    const f = KIT_FIELDS[k]; if (!f || Array.isArray(def)) continue;
+    const [label, kind, choices] = f;
+    if (kind === 'check') out.push(w.input(label, K[k] ?? def, 'checkbox', { set: (v) => w.change(file, () => { if (v === def) delete K[k]; else K[k] = v; }) }));
+    else if (kind === 'choice') out.push(w.labeled(label, w.selection(Object.entries(choices), K[k] ?? def, (v) => w.change(file, () => { if (v === def) delete K[k]; else K[k] = v; }))));
+    else out.push(w.input(`${label} (${def})`, K[k], 'number', { set: (v) => w.change(file, () => { if (v == null || v === def) delete K[k]; else K[k] = v; }) }));
+  }
+  return out;
 }

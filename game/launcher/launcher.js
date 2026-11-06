@@ -45,8 +45,21 @@ const LIFE_KEY = 'nomadtactics-life', lifeOn = () => read(LIFE_KEY) !== '0';
 const TERRAIN_KEY = 'nomadtactics-terrain', terrainOn = () => read(TERRAIN_KEY) !== '0';
 
 const app = { view: 'game', ls: null, selection: new Set(), drag: null, hud: true };   // hud: no rings or order lines
-// Daniel's own tank (Voxel Max, models.json › daniel_tank with its own voxel size) drives for the yellow side
-app.swapModel = (seat, key) => (seat === 2 && key === 'tank' && setup?.models?.daniel_tank ? 'daniel_tank' : null);
+// The simulation plays USA on all four sides; the picture shows one nation per side with its own vehicles (kit models,
+// a few kinds mixed by unit id). Yellow = Ukraine drives Daniel's own tank (Voxel Max, models.json › daniel_tank).
+const LOOKS = [
+  { abrams: ['abrams', 'abrams', 'booker'], humvee: ['humvee', 'stryker'], himars: ['himars', 'm270'] },
+  { abrams: ['type96', 'type99a', 'type15'], humvee: ['mengshi', 'zbl08', 'ztl11'], himars: ['phl16', 'plz05'] },
+  { abrams: ['daniel_tank', 'leopard2_ua', 'daniel_tank'], humvee: ['kozak', 'pickup'], himars: ['himars_ua', 'bohdana', 'gvozdika'] },
+  { abrams: ['leopard2', 'leclerc', 'challenger2'], humvee: ['fennek', 'boxer'], himars: ['m270_eu', 'pzh2000', 'caesar'] },
+];
+// the hero sign names what you see: the swapped model's name, otherwise the unit's
+const heroName = (u) => { const t = sim.types[u.type], m = app.swapModel(u.seat, t.model, u.id); return (m && setup.models[m]?.name) || t.name || u.type; };
+app.swapModel = (seat, key, id = 0) => {
+  const pick = LOOKS[seat]?.[key];
+  const m = pick && pick[id % pick.length];
+  return m && setup?.models?.[m] ? m : null;
+};
 window.launcher = app;   // for tests and the console
 
 // ---------- page ----------
@@ -216,7 +229,7 @@ function pickHero(now) {
     if (score > bs) { bs = score; best = u; }
   }
   app.marked = best.id;
-  Object.assign(hero, { id: best.id, since: now, shots: 0, fell: 0, name: sim.types[best.type].name || best.type, seat: best.seat, x: best.x / 1000, z: best.y / 1000 });
+  Object.assign(hero, { id: best.id, since: now, shots: 0, fell: 0, name: heroName(best), seat: best.seat, x: best.x / 1000, z: best.y / 1000 });
   heroChip.show();
   return best;
 }

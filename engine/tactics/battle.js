@@ -38,6 +38,7 @@ const MAX_IDS = 120;
 const RADIUS = { tank: 2600, werfer: 2400, spaeher: 2100, dozer: 2400, soldat: 450 };
 // Body for pushing apart (06.11.): vehicles are capsules along their heading, a circle of radius r
 // moved ±core forward/back (tank 8 × 4.4 m, launcher 7.6 × 2.8 m …). Targeting keeps RADIUS.
+export const FOOTPRINTS = ['tank', 'werfer', 'spaeher', 'dozer', 'soldat'];
 const BODY = { tank: [2300, 1700], werfer: [1500, 2300], spaeher: [1500, 700], dozer: [2200, 400], soldat: [450, 0] };
 const SEPARATE_PASSES = 2;
 const TURN = { track: 5, wheel: 7, infantry: 40 };
@@ -73,13 +74,15 @@ export function compileTypes(setup) {
     const movement = kinds.find((k) => k === 'track') || kinds.find((k) => k === 'wheel') || kinds[0] || 'infantry';
     const w = weapons[(u.weapons || [])[0]];
     const kw = u.keywords || {};
+    // size class for collisions and aiming: models.json › footprint (vehicle kit), else the model id itself
+    const shape = setup.models?.[u.model]?.footprint || u.model;
     add(id, {
-      id, name: u.name, cls: u.class, armor: u.armor, model: u.model, movement,
+      id, name: u.name, cls: u.class, armor: u.armor, model: u.model, shape, movement,
       hp: whole((u.health || 100) * 100),
       speed: whole((u.speed || 3) * MM / TICKS_PER_SECOND),
       sight: whole((u.sight || 20) * MM),
-      radius: RADIUS[u.model] ?? (u.class === 'infantry' ? 450 : 2200),
-      body: BODY[u.model]?.[0] ?? (u.class === 'infantry' ? 450 : 2000), core: BODY[u.model]?.[1] ?? (u.class === 'infantry' ? 0 : 1000),
+      radius: RADIUS[shape] ?? (u.class === 'infantry' ? 450 : 2200),
+      body: BODY[shape]?.[0] ?? (u.class === 'infantry' ? 450 : 2000), core: BODY[shape]?.[1] ?? (u.class === 'infantry' ? 0 : 1000),
       turn: TURN[movement] ?? 8,
       tough: whole((typeof kw.tough === 'number' ? kw.tough : kw.tough ? 1 : 0) * 100),
       deploys: !!kw.aufbauen,

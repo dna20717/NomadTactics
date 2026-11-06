@@ -74,10 +74,10 @@ export function hudForBattle({ app, views, send, meSeat, playerList, canvas }) {
     const kw = setup.keywords || {};
     const r = t.radius * M, w = t.weapon;
     const d = {
-      id: kind, name: t.name, short: f.short || shortName(t.name), symbol: SYMBOL[t.model] || (t.cls === 'infantry' ? 'humans' : 'vehicle'),
+      id: kind, name: t.name, short: f.short || shortName(t.name), symbol: SYMBOL[t.shape || t.model] || (t.cls === 'infantry' ? 'humans' : 'vehicle'),
       cost: f.cost?.money || 0, buildTime: f.buildTime || 0, health: Math.round(t.hp / 100),
       damage: w ? Math.round((w.damage / 100) * w.salvo) : 0, range: w ? Math.round(w.range * M) : 0, speed: f.speed || 0,
-      height: HEIGHT[t.model] || (t.cls === 'infantry' ? 1.9 : 2.6), radius: r, halfB: r * 0.62, halfL: r * 1.05, infantry: t.cls === 'infantry',
+      height: HEIGHT[t.shape || t.model] || (t.cls === 'infantry' ? 1.9 : 2.6), radius: r, halfB: r * 0.62, halfL: r * 1.05, infantry: t.cls === 'infantry',
       keywords: Object.entries(f.keywords || {}).map(([k, v]) => (kw[k]?.name || k) + (v !== true && v != null ? `(${v})` : '')),
       swIds: Object.keys(f.keywords || {}), tiers: [],
     };

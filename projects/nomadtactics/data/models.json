@@ -8,5 +8,146 @@
  "kaserne": {"name": "Kaserne", "source": "prototype:kaserne", "life": "building"},
  "highrise": {"name": "Hochhaus", "source": "prototype:highrise"},
  "daniel_tank": {"name": "Daniels Panzer", "source": "../../prototypes/nomadtactics/models/daniel_tank.vox", "life": "tracked", "scale": 0.8},
- "pad": {"name": "Landeplatz", "source": "prototype:pad", "life": "building"}
+ "pad": {"name": "Landeplatz", "source": "prototype:pad", "life": "building"},
+ "kit_dozer": {"name": "Bautrupp (Planierraupe)", "source": "kit:dozer", "paint": "site", "kit": {}, "life": "tracked", "footprint": "dozer"},
+ "abrams": {
+  "name": "M1 Abrams",
+  "source": "kit:mbt",
+  "paint": "usa",
+  "kit": {"length": 40, "width": 19, "turretL": 20, "turretW": 15, "turretH": 5, "barrel": 25, "shape": "box", "sleeve": true, "rack": true},
+  "life": "tracked",
+  "footprint": "tank"
+ },
+ "booker": {
+  "name": "M10 Booker",
+  "source": "kit:mbt",
+  "paint": "usa",
+  "kit": {"length": 34, "width": 17, "hullH": 7, "turretL": 15, "turretW": 11, "turretH": 5, "barrel": 22, "shape": "box"},
+  "life": "tracked",
+  "footprint": "tank"
+ },
+ "paladin": {
+  "name": "M109 Paladin",
+  "source": "kit:spg",
+  "paint": "usa",
+  "kit": {"length": 34, "turretL": 18, "turretW": 15, "turretH": 7, "barrel": 28, "pivotZ": -5},
+  "life": "tracked",
+  "footprint": "tank"
+ },
+ "m270": {"name": "M270 MLRS", "source": "kit:mlrs", "paint": "usa", "kit": {}, "life": "tracked", "footprint": "tank"},
+ "humvee": {"name": "Humvee", "source": "kit:car", "paint": "usa", "kit": {"style": "humvee", "weapon": "ring"}, "life": "wheeled", "footprint": "spaeher"},
+ "stryker": {"name": "Stryker", "source": "kit:apc", "paint": "usa", "kit": {"weapon": "rcws"}, "life": "wheeled", "footprint": "werfer"},
+ "himars": {"name": "HIMARS", "source": "kit:truck", "paint": "usa", "kit": {"payload": "pod"}, "life": "wheeled", "footprint": "werfer"},
+ "us_truck": {"name": "Versorgungslaster USA", "source": "kit:truck", "paint": "usa", "kit": {"payload": "cargo"}, "life": "wheeled", "footprint": "werfer"},
+ "type96": {
+  "name": "Type 96",
+  "source": "kit:mbt",
+  "paint": "china",
+  "kit": {"length": 36, "turretL": 16, "turretW": 14, "turretH": 5, "barrel": 26, "shape": "round", "rack": false, "sleeve": true},
+  "life": "tracked",
+  "footprint": "tank"
+ },
+ "type99a": {
+  "name": "Type 99A",
+  "source": "kit:mbt",
+  "paint": "china",
+  "kit": {"length": 40, "width": 19, "turretL": 18, "turretW": 15, "barrel": 27, "shape": "wedge", "era": true},
+  "life": "tracked",
+  "footprint": "tank"
+ },
+ "type15": {
+  "name": "Type 15",
+  "source": "kit:mbt",
+  "paint": "china",
+  "kit": {"length": 32, "width": 17, "hullH": 7, "turretL": 15, "turretW": 12, "barrel": 21, "shape": "wedge"},
+  "life": "tracked",
+  "footprint": "tank"
+ },
+ "ztl11": {"name": "ZTL-11", "source": "kit:apc", "paint": "china", "kit": {"weapon": "gun", "barrel": 22}, "life": "wheeled", "footprint": "werfer"},
+ "zbl08": {"name": "ZBL-08", "source": "kit:apc", "paint": "china", "kit": {"weapon": "ifv", "barrel": 12}, "life": "wheeled", "footprint": "werfer"},
+ "mengshi": {"name": "Mengshi", "source": "kit:car", "paint": "china", "kit": {"style": "mengshi", "weapon": "ring", "length": 25, "width": 12}, "life": "wheeled", "footprint": "spaeher"},
+ "plz05": {"name": "PLZ-05", "source": "kit:spg", "paint": "china", "kit": {"length": 38, "turretL": 22, "turretW": 15, "turretH": 7, "barrel": 32}, "life": "tracked", "footprint": "tank"},
+ "phl16": {
+  "name": "PHL-16",
+  "source": "kit:truck",
+  "paint": "china",
+  "kit": {"payload": "pod", "axles": 4, "pods": 2, "length": 40, "podW": 13, "podL": 18},
+  "life": "wheeled",
+  "footprint": "werfer"
+ },
+ "cn_truck": {"name": "Versorgungslaster China", "source": "kit:truck", "paint": "china", "kit": {"payload": "cargo"}, "life": "wheeled", "footprint": "werfer"},
+ "pickup": {
+  "name": "Improvisierter Pick-up",
+  "source": "kit:car",
+  "paint": "ukraine",
+  "kit": {"style": "pickup", "weapon": "pickup", "length": 25},
+  "life": "wheeled",
+  "footprint": "spaeher"
+ },
+ "kozak": {
+  "name": "Kozak",
+  "source": "kit:car",
+  "paint": "ukraine",
+  "kit": {"style": "mrap", "wheelR": 3, "width": 12, "length": 26, "weapon": "rcws"},
+  "life": "wheeled",
+  "footprint": "spaeher"
+ },
+ "drone_truck": {"name": "Drohnentransporter", "source": "kit:truck", "paint": "ukraine", "kit": {"payload": "box"}, "life": "wheeled", "footprint": "werfer"},
+ "bohdana": {"name": "2S22 Bohdana", "source": "kit:truck", "paint": "ukraine", "kit": {"payload": "gun", "barrel": 30}, "life": "wheeled", "footprint": "werfer"},
+ "gvozdika": {
+  "name": "2S1 Gvozdika",
+  "source": "kit:spg",
+  "paint": "ukraine",
+  "kit": {"length": 30, "width": 15, "turretL": 14, "turretW": 12, "turretH": 6, "barrel": 20, "pivotZ": -3},
+  "life": "tracked",
+  "footprint": "tank"
+ },
+ "ua_scrap": {"name": "Schrottsammler", "source": "kit:truck", "paint": "ukraine", "kit": {"payload": "scrap"}, "life": "wheeled", "footprint": "werfer"},
+ "leopard2_ua": {
+  "name": "Leopard 2 (Ukraine)",
+  "source": "kit:mbt",
+  "paint": "ukraine",
+  "kit": {"length": 40, "width": 19, "turretL": 19, "turretW": 15, "barrel": 26, "shape": "wedge"},
+  "life": "tracked",
+  "footprint": "tank"
+ },
+ "caesar_ua": {"name": "Caesar (Ukraine)", "source": "kit:truck", "paint": "ukraine", "kit": {"payload": "gun", "barrel": 30}, "life": "wheeled", "footprint": "werfer"},
+ "himars_ua": {"name": "HIMARS (Ukraine)", "source": "kit:truck", "paint": "ukraine", "kit": {"payload": "pod"}, "life": "wheeled", "footprint": "werfer"},
+ "leopard2": {
+  "name": "Leopard 2",
+  "source": "kit:mbt",
+  "paint": "europa",
+  "kit": {"length": 40, "width": 19, "turretL": 19, "turretW": 15, "barrel": 26, "shape": "wedge"},
+  "life": "tracked",
+  "footprint": "tank"
+ },
+ "leclerc": {
+  "name": "Leclerc",
+  "source": "kit:mbt",
+  "paint": "europa",
+  "kit": {"length": 36, "width": 18, "turretL": 20, "turretW": 14, "barrel": 26, "shape": "box", "rack": false},
+  "life": "tracked",
+  "footprint": "tank"
+ },
+ "challenger2": {
+  "name": "Challenger 2",
+  "source": "kit:mbt",
+  "paint": "europa",
+  "kit": {"length": 40, "width": 19, "turretL": 18, "turretW": 15, "turretH": 6, "barrel": 25, "shape": "box", "sleeve": true},
+  "life": "tracked",
+  "footprint": "tank"
+ },
+ "pzh2000": {
+  "name": "PzH 2000",
+  "source": "kit:spg",
+  "paint": "europa",
+  "kit": {"length": 40, "turretL": 22, "turretW": 16, "turretH": 7, "barrel": 34},
+  "life": "tracked",
+  "footprint": "tank"
+ },
+ "caesar": {"name": "CAESAR", "source": "kit:truck", "paint": "europa", "kit": {"payload": "gun", "barrel": 30}, "life": "wheeled", "footprint": "werfer"},
+ "m270_eu": {"name": "M270 MLRS (Europa)", "source": "kit:mlrs", "paint": "europa", "kit": {}, "life": "tracked", "footprint": "tank"},
+ "boxer": {"name": "Boxer", "source": "kit:apc", "paint": "europa", "kit": {"module": true, "weapon": "rcws"}, "life": "wheeled", "footprint": "werfer"},
+ "fennek": {"name": "Fennek", "source": "kit:car", "paint": "europa", "kit": {"style": "fennek", "weapon": "rcws", "length": 26, "width": 12}, "life": "wheeled", "footprint": "spaeher"},
+ "eu_truck": {"name": "Versorgungslaster Europa", "source": "kit:truck", "paint": "europa", "kit": {"payload": "cargo"}, "life": "wheeled", "footprint": "werfer"}
 }

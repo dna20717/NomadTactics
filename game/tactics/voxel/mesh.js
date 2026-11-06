@@ -135,8 +135,8 @@ export function vehicleMaterial(envMap = null, { tint = null } = {}) {
         else if (kind == 2) { gRough = 0.34 + 0.25 * fine; gMetal = 0.75; }
         else if (kind == 3) { gRough = 0.95; diffuseColor.rgb *= 0.88 + 0.16 * fine;
           // running tracks / wheels (aLife.x = distance driven in m): links slide along, top forward, bottom back
-          if (vRun.y > 0.5 && vLoc.y < 0.9) { float dir = vLoc.y > 0.42 ? 1.0 : -1.0;
-            float link = fract((vLoc.z - dir * vRun.x) / 0.2); diffuseColor.rgb *= mix(0.62, 1.08, smoothstep(0.12, 0.3, link) * (1.0 - smoothstep(0.7, 0.9, link))); } }
+          if (vRun.y > 0.05 && vLoc.y < vRun.y * 2.15) { float dir = vLoc.y > vRun.y ? 1.0 : -1.0;   // aLife.y = height of the track middle (m)
+            float link = fract((vLoc.z - dir * vRun.x) / 0.15); diffuseColor.rgb *= mix(0.62, 1.08, smoothstep(0.12, 0.3, link) * (1.0 - smoothstep(0.7, 0.9, link))); } }
         else { gRough = 0.06; gMetal = 0.25; diffuseColor.rgb *= 0.75; }
         if (kind <= 1 || kind == 5) {
           float wear = (1.0 - smoothstep(0.015, 0.09, rOut)) * step(0.5, noise3(vLoc * 6.0 + 1.7));

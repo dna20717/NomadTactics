@@ -61,3 +61,23 @@ test('Rückstoß und Feder kommen zur Ruhe', () => {
   for (let i = 0; i < 200; i++) spring(s, 'a', 1, 0.1, 30, 0.5);
   assert.ok(Math.abs(s.a - 1) < 1e-3, 'stabil auch bei großen Zeitschritten');
 });
+
+test('Fahrzeug-Baukasten: Listen stimmen, jedes Modell baut, Räder und Türme sitzen', async () => {
+  const { KIT_TYPES, PAINTS, buildKit } = await import('../game/tactics/voxel/kit.js');
+  const { KIT_TYPE_IDS, PAINT_IDS, FOOTPRINT_IDS } = await import('../engine/tactics/life.js');
+  const { FOOTPRINTS } = await import('../engine/tactics/battle.js');
+  assert.deepEqual(Object.keys(KIT_TYPES).sort(), [...KIT_TYPE_IDS].sort());
+  assert.deepEqual(Object.keys(PAINTS).sort(), [...PAINT_IDS].sort());
+  assert.deepEqual([...FOOTPRINTS].sort(), [...FOOTPRINT_IDS].sort());
+  const models = JSON.parse(fs.readFileSync(path.join(root, 'data/models.json'), 'utf8'));
+  const kits = Object.entries(models).filter(([, m]) => m.source?.startsWith('kit:'));
+  assert.ok(kits.length >= 30);
+  for (const [id, m] of kits) {
+    const k = buildKit(m.source.slice(4), m.kit, m.paint);
+    assert.ok(k.hull.size > 500, id);
+    for (const kind of k.hull.values()) assert.ok(!['c', 'c1', 'hd', 'acc'].includes(kind), `${id}: unbemalter Würfel`);
+    if (k.turret) assert.ok(k.pivot, id);
+    if (KIT_TYPES[m.source.slice(4)].life === 'wheeled') assert.ok(k.wheels?.at.length >= 4, `${id}: Räder`);
+    assert.equal(m.footprint, KIT_TYPES[m.source.slice(4)].footprint, id);
+  }
+});

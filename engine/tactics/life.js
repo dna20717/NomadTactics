@@ -46,6 +46,12 @@ export const LIFE_FIELDS = Object.fromEntries(LIFE_GROUPS.flatMap((g) => g.field
 export const LIFE_NONE = { drive: 'none', tilt: 0, pitch: 0, roll: 0, spring: 10, damping: 100, bob: 0, kick: 0, barrel: 0, recover: 300,
   flash: 100, smoke: 0, casings: 0, dust: 0, dustSize: 1, exhaust: 0, stages: [] };
 
+// Vehicle kit (game/tactics/voxel/kit.js, test/life.test.js keeps these lists equal): body types, paint schemes,
+// size classes of the simulation (engine/tactics/battle.js › FOOTPRINTS)
+export const KIT_TYPE_IDS = ['mbt', 'spg', 'mlrs', 'dozer', 'apc', 'car', 'truck'];
+export const PAINT_IDS = ['usa', 'china', 'ukraine', 'europa', 'site'];
+export const FOOTPRINT_IDS = ['tank', 'werfer', 'spaeher', 'dozer', 'soldat'];
+
 export function emptyLife() { return { profiles: {} }; }
 
 // Resolved profile for a model entry (models.json): profile + lifeOver, missing fields from LIFE_NONE,
@@ -87,6 +93,9 @@ export function validateLife(p, report) {
   for (const [id, m] of Object.entries(p.data.models || {})) {
     if (m.life && !L.profiles?.[m.life]) report('error', `models ${id}`, `Lebendigkeit „${m.life}“ gibt es nicht`);
     if (m.scale != null && !(typeof m.scale === 'number' && m.scale >= 0.05 && m.scale <= 2)) report('error', `models ${id}`, `Voxel-Größe ${m.scale} m liegt nicht zwischen 0,05 und 2`);
+    if (m.source?.startsWith('kit:') && !KIT_TYPE_IDS.includes(m.source.slice(4))) report('error', `models ${id}`, `Bauform „${m.source.slice(4)}“ gibt es nicht (${KIT_TYPE_IDS.join(', ')})`);
+    if (m.paint && !PAINT_IDS.includes(m.paint)) report('error', `models ${id}`, `Bemalung „${m.paint}“ gibt es nicht (${PAINT_IDS.join(', ')})`);
+    if (m.footprint && !FOOTPRINT_IDS.includes(m.footprint)) report('error', `models ${id}`, `Größenklasse „${m.footprint}“ gibt es nicht (${FOOTPRINT_IDS.join(', ')})`);
     for (const k of Object.keys(m.lifeOver || {})) if (!LIFE_FIELDS[k] && k !== 'drive' && k !== 'stages') report('warning', `models ${id}`, `lifeOver: unbekanntes Feld „${k}“`);
   }
   for (const [id, t] of Object.entries(p.data.world?.terrains || {})) {

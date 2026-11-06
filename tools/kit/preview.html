@@ -1,0 +1,49 @@
+<!doctype html>
+<!-- Vehicle kit preview: every model from data/models.json with source "kit:…" in a row, for tools/kit/preview.mjs -->
+<html><head><meta charset="utf-8"><style>html,body{margin:0;background:#c9c3b4;overflow:hidden}#l{position:fixed;left:0;top:0;font:12px Inter,sans-serif}</style>
+<script type="importmap">{ "imports": { "three": "../../game/vendor/three.module.min.js", "three/addons/": "../../game/vendor/addons/" } }</script>
+</head><body><div id="l"></div><script type="module">
+import * as THREE from 'three';
+import { buildKit } from '../../game/tactics/voxel/kit.js';
+import { voxelGeometry, vehicleMaterial } from '../../game/tactics/voxel/mesh.js';
+const q = new URLSearchParams(location.search);
+const models = await (await fetch('../../projects/nomadtactics/data/models.json')).json();
+const only = q.get('only') ? q.get('only').split(',') : null;
+const list = Object.entries(models).filter(([id, m]) => m.source?.startsWith('kit:') && (!only || only.includes(id)));
+const R = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+R.setSize(innerWidth, innerHeight); document.body.appendChild(R.domElement);
+R.shadowMap.enabled = true;
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0xc9c3b4);
+const env = null;
+scene.add(new THREE.HemisphereLight(0xdfe8f0, 0x6a6150, 1.1));
+const sun = new THREE.DirectionalLight(0xfff1dc, 2.4); sun.position.set(-30, 50, 25); sun.castShadow = true;
+Object.assign(sun.shadow.camera, { left: -80, right: 80, top: 80, bottom: -80 }); sun.shadow.mapSize.set(4096, 4096); scene.add(sun);
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), new THREE.MeshStandardMaterial({ color: 0x8e8a6e })); ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
+const mat = vehicleMaterial(env);
+const cols = +(q.get('cols') || 6), gap = 11, team = new THREE.Color(q.get('team') || '#3a78d8').getHex();
+let tris = 0; const labels = [];
+list.forEach(([id, m], i) => {
+  const [type] = m.source.slice(4).split(':');
+  const k = buildKit(type, m.kit || {}, m.paint || 'usa');
+  const g = new THREE.Group(); const sc = k.scale;
+  const add = (W, o) => { const geo = voxelGeometry(W, { team, scale: sc }); tris += geo.attributes.position.count / 3; const me = new THREE.Mesh(geo, mat); me.castShadow = me.receiveShadow = true; o(me); if (!me.parent) g.add(me); };
+  add(k.hull, () => {});
+  if (k.turret) add(k.turret, (me) => me.position.set(k.pivot[0] * sc, k.pivot[1] * sc, k.pivot[2] * sc));
+  if (k.wheels) for (const w of k.wheels.at) add(k.wheels.W, (me) => {
+    const o = new THREE.Object3D(); o.position.set(w.x, w.y, w.z); o.rotation.y = w.side < 0 ? Math.PI : 0;
+    me.position.set(-k.wheels.center[0], -k.wheels.center[1], -k.wheels.center[2]); o.add(me); g.add(o); });
+  const cx = (i % cols - (cols - 1) / 2) * gap, cz = -Math.floor(i / cols) * gap * 1.25;
+  g.position.set(cx, 0, cz); g.rotation.y = +(q.get('yaw') || 0.6); scene.add(g);
+  labels.push({ id, name: m.name, x: cx, z: cz });
+});
+const rows = Math.ceil(list.length / cols);
+const cam = new THREE.PerspectiveCamera(+(q.get('fov') || 30), innerWidth / innerHeight, 1, 1000);
+const midZ = -(rows - 1) * gap * 1.25 / 2, dist = +(q.get('dist') || Math.max(rows, cols) * 16);
+const pitch = +(q.get('pitch') || 0.55);
+cam.position.set(0, Math.sin(pitch) * dist, midZ + Math.cos(pitch) * dist); cam.lookAt(0, 0, midZ);
+R.toneMapping = THREE.ACESFilmicToneMapping; R.toneMappingExposure = 0.95;
+R.render(scene, cam);
+const L = document.getElementById('l');
+for (const l of labels) { const v = new THREE.Vector3(l.x, 0, l.z + 4).project(cam); const d = document.createElement('div'); d.textContent = l.name; d.style.cssText = `position:fixed;left:${(v.x + 1) / 2 * innerWidth - 40}px;top:${(1 - v.y) / 2 * innerHeight}px;background:#fffc;padding:1px 4px;border-radius:3px`; L.appendChild(d); }
+window.done = { tris: Math.round(tris), n: list.length };
+</script></body></html>

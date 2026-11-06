@@ -87,7 +87,7 @@ export function battleView({ cv, app, meSeat, playerList, toast }) {
       else if (e.kind === 'dead') {
         const t = sim.types[e.type];
         effects.push({ kind: 'boom', x: e.x, y: e.y, r: t?.cls === 'infantry' ? 900 : t?.building ? 14000 : 5500, t0: now, dur: t?.building ? 1400 : 700, big: true });
-        if (t && t.cls !== 'infantry') wrecks.push({ x: e.x, y: e.y, h: e.h, model: t.model, building: t.building, radius: t.radius, t0: now });
+        if (t && t.cls !== 'infantry') wrecks.push({ x: e.x, y: e.y, h: e.h, model: t.shape || t.model, building: t.building, radius: t.radius, t0: now });
       } else if (e.kind === 'wave') {
         effects.push({ kind: 'ring', x: e.x, y: e.y, r: 16000, t0: now, dur: 1200, seat: e.seat });
         if (e.seat === me) toast(`Welle ${e.n}: Verstärkung ist gelandet`);
@@ -170,7 +170,7 @@ export function battleView({ cv, app, meSeat, playerList, toast }) {
       } else {
         const e = u.tgt ? sim.byId.get(u.tgt) : null;
         const aim = e ? Math.atan2(e.y - y, e.x - x) : toRad(u.h);
-        body(X(x), Y(y), u.h, ty.model, col, shade(col, -45), s, aim);
+        body(X(x), Y(y), u.h, ty.shape || ty.model, col, shade(col, -45), s, aim);
       }
       if (sel.has(u.id)) {
         g.strokeStyle = '#fff'; g.lineWidth = 1.5;
