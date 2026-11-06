@@ -48,6 +48,12 @@ try {
   for (let i = 0; i < 20 && !shown.startsWith('22:'); i++) { shown = await P.evaluate(() => document.querySelector('.ln-time').textContent); await pause(250); }
   validate(shown.startsWith('22:'), `Uhrzeit-Anzeige folgt dem Schieber (${shown})`);
   if (images) await P.screenshot({ path: 'output/launcher_winter.png', timeout: 90000 });
+  // image effects: on by default, the star switches back to the old look
+  const fx0 = await P.evaluate(() => JSON.parse(localStorage.getItem('nomadtactics-launcher')).fx);
+  await P.click('#ln-fx');
+  const fx1 = await P.evaluate(() => JSON.parse(localStorage.getItem('nomadtactics-launcher')).fx);
+  await P.click('#ln-fx');
+  validate(fx0 === true && fx1 === false, `Effekte standardmäßig an, Stern schaltet um (${fx0} → ${fx1})`);
   // options
   await P.click('#ln-options');
   validate(await P.locator('.ln-panel').isVisible(), 'Optionen öffnen sich');

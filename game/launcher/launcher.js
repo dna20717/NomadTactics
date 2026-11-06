@@ -37,7 +37,7 @@ const DAY_SECONDS = 720;   // one day in 12 minutes, like data/world.json › da
 
 let saved = {};
 try { saved = JSON.parse(read(KEY) || '{}'); } catch {}
-const dials = { hour: saved.hour ?? 16.5, running: saved.running ?? true, weather: saved.weather || 'clear', climate: saved.climate || 'gemaessigt' };
+const dials = { hour: saved.hour ?? 16.5, running: saved.running ?? true, weather: saved.weather || 'clear', climate: saved.climate || 'gemaessigt', fx: saved.fx ?? true };
 const remember = () => write(KEY, JSON.stringify(dials));
 
 const app = { view: 'game', ls: null, selection: new Set(), drag: null, hud: true };   // hud: no rings or order lines
@@ -112,7 +112,9 @@ function dialsCard() {
     if (sym.dataset.ic !== want) { sym.dataset.ic = want; sym.replaceChildren(icon(want, 15)); }
   };
   return el('aside', { class: 'ln-dials', id: 'ln-dials' },
-    el('div', { class: 'ln-row' }, sym, slider, label, play),
+    el('div', { class: 'ln-row' }, sym, slider, label, play,
+      el('button', { class: 'ln-mini' + (dials.fx ? ' on' : ''), id: 'ln-fx', title: dials.fx ? 'Effekte an (Leuchten, Schatten in Ecken, Farbstimmung) – tippen für den alten Look' : 'Effekte aus (alter Look) – tippen für Leuchten, Schatten in Ecken, Farbstimmung',
+        onclick: () => { dials.fx = !dials.fx; view.imageFx(dials.fx); remember(); drawMenu(); } }, icon('star', 13))),
     el('div', { class: 'ln-row ln-weather' }, WEATHER.map(([id, name, ic]) => el('button', { class: 'ln-mini' + (dials.weather === id ? ' on' : ''), 'data-w': id, title: name,
       onclick: () => { dials.weather = id; setAtmosphere(); remember(); drawMenu(); } }, icon(ic, 14)))),
     el('div', { class: 'ln-row ln-climate' }, CLIMATES.map(([id, name]) => el('button', { class: dials.climate === id ? 'on' : '', 'data-c': id,
@@ -127,6 +129,7 @@ view.show(true);
 view.quality(read(QUALITY_KEY) || 'medium');
 const setAtmosphere = () => view.atmosphere({ hour: dials.hour, weather: dials.weather, climate: dials.climate });
 setAtmosphere();
+view.imageFx(dials.fx);
 
 let setup = null, sim = null, before = null, beforeTime = 0, overAt = 0, round = 0;
 function newBattle() {

@@ -124,6 +124,7 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
     hemi.color.setHex(day > 0 ? 0xcfe3ff : 0x5c6f9c);
     fill.intensity = 0.45 * (0.3 + 0.7 * day);
     now3.fall += ((w.amount || 0) - now3.fall) * k;
+    gradeStep(dt, day, elev);
   }
   // rain, snow or dust: boxes falling in a box around the camera target
   const FALL_MAX = 2400;
@@ -158,8 +159,54 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
     }
     fall.count = n; fall.instanceMatrix.needsUpdate = true;
   }
+  // ---------- image effects (Fidelity step 1, battle_fx.js): bloom, AO on „Schön“, colour grade ----------
+  // Switched on by the launcher (dial „Effekte“); off = the old look. Loaded only when wanted.
+  let fx = null, fxOn = false, fxToken = 0, quality_ = 'medium';
+  const gradeNow = { gain: [1, 1, 1], lift: [0, 0, 0], saturation: 1.08, contrast: 1.05, vignette: 0.3, bloom: 0.75 };
+  async function imageFx(on) {
+    fxOn = !!on;
+    const token = ++fxToken;
+    if (fx && (!on || fx.quality !== quality_)) { fx.dispose(); fx = null; glow(1); }
+    if (!on || fx) return !!fx;
+    try {
+      const { createFx } = await import('./battle_fx.js');
+      const made = await createFx({ renderer, scene, camera, quality: quality_ });
+      if (token !== fxToken) { made.dispose(); return !!fx; }
+      fx = made; glow(7); canvas.width = 0;   // setSize on the next frame
+    } catch (e) { console.warn('Effekte nicht verfügbar:', e); fx = null; }
+    return !!fx;
+  }
+  // fire and tracers above 1.0 so only they bloom
+  function glow(f) { fire.material.color.setScalar(f); bolts.material.color.setHex(0xffe7a0).multiplyScalar(f > 1 ? f * 0.8 : 1); }
+  // grade from climate, time of day and weather (eased like the rest of the atmosphere)
+  const GRADE_CLIMATE = {
+    gemaessigt: { gain: [1.08, 1.07, 1.05], lift: [0.01, 0.01, 0.012], saturation: 1.12, contrast: 1.06 },
+    steppe: { gain: [1.1, 1.06, 0.96], lift: [0.015, 0.01, 0], saturation: 0.98, contrast: 1.06 },
+    wueste: { gain: [1.12, 1.05, 0.9], lift: [0.03, 0.015, 0], saturation: 0.95, contrast: 1.1 },
+    winter: { gain: [1.0, 1.04, 1.1], lift: [0, 0.008, 0.025], saturation: 0.86, contrast: 1.04 },
+  };
+  const GRADE_WEATHER = { clear: [1, 1, 0.75], cloudy: [0.9, 0.98, 0.55], rain: [0.78, 0.95, 0.5], fog: [0.75, 0.9, 0.35], snow: [0.85, 0.96, 0.55], storm: [0.7, 1.04, 0.45], wind: [0.95, 1.02, 0.7] };
+  function gradeStep(dt, day, elev) {
+    const c = GRADE_CLIMATE[atm.climate] || GRADE_CLIMATE.gemaessigt, [ws, wc, wb] = GRADE_WEATHER[atm.weather] || GRADE_WEATHER.clear;
+    const golden = day > 0 ? Math.max(0, 1 - elev / 0.35) * day : 0, night = 1 - day;
+    const want = {
+      gain: c.gain.map((g, i) => g * (1 + golden * [0.1, 0.02, -0.08][i]) * (1 + night * [-0.08, 0, 0.12][i])),
+      lift: c.lift.map((l, i) => l + night * [0, 0.008, 0.03][i]),
+      saturation: c.saturation * ws * (1 - night * 0.3),
+      contrast: c.contrast * wc,
+      vignette: 0.22 + night * 0.12,
+      bloom: wb * (1 + night * 0.5),
+    };
+    const k = 1 - Math.exp(-dt * 1.6);
+    for (const key of ['gain', 'lift']) gradeNow[key] = gradeNow[key].map((v, i) => v + (want[key][i] - v) * k);
+    for (const key of ['saturation', 'contrast', 'vignette', 'bloom']) gradeNow[key] += (want[key] - gradeNow[key]) * k;
+    fx?.grade(gradeNow);
+  }
+
   // quality (Schön / Mittel / Schnell): pixel ratio and shadows. Mittel = the look the battle always had.
   function quality(q) {
+    quality_ = q;
+    if (fx && fx.quality !== q) imageFx(fxOn);   // AO only on „Schön“: rebuild the chain
     const ratio = q === 'fast' ? 1 : q === 'beautiful' ? 2 : 1.5;
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, ratio));
     sun.castShadow = q !== 'fast';
@@ -620,7 +667,7 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
     g2.setTransform(d, 0, 0, d, 0, 0); g2.clearRect(0, 0, W, H);
     if (app.view !== 'game' || !sim || !shown) { canvas.style.display = 'none'; return; }
     canvas.style.display = 'block';
-    if (canvas.width !== Math.round(W * renderer.getPixelRatio())) { renderer.setSize(W, H, false); camera.aspect = W / H; camera.updateProjectionMatrix(); }
+    if (canvas.width !== Math.round(W * renderer.getPixelRatio())) { renderer.setSize(W, H, false); camera.aspect = W / H; camera.updateProjectionMatrix(); fx?.setSize(W, H); }
     applyAtmosphere(dt);
     shake = Math.max(0, shake - dt * 2.2);
     // burning wrecks (boom > 1): black smoke column and a few sparks for 15 s
@@ -766,7 +813,7 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
     chips.count = cn; chips.instanceMatrix.needsUpdate = true; if (chips.instanceColor) chips.instanceColor.needsUpdate = true;
     for (const f of flashes) { const a = (now - f.t0) / 500; f.l.intensity = a < 1 ? (1 - a) * 260 * (f.s || 1) : 0; }
 
-    renderer.render(scene, camera);
+    if (fx) fx.render(dt); else renderer.render(scene, camera);
     insets(sim, now);
 
     // overlay: health bars, selection frame
@@ -796,5 +843,5 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
   function show(on) { shown = on; if (!on) canvas.style.display = 'none'; }
 
   return { draw, drain, reset, project, unproject, pixelsPerMm, pan, zoom, rotate, centreOn, home, show, setModels, kind: '3d', renderer,
-    scene, camera, projectWorld, target, groundAt, inset, yawOf, atmosphere, quality, cam, excite };
+    scene, camera, projectWorld, target, groundAt, inset, yawOf, atmosphere, quality, cam, excite, imageFx };
 }
