@@ -214,28 +214,70 @@ const director = { mode: overview ? 'wide' : 'wide', until: 0, tower: null, hero
 function shotWide(now, ms) { director.mode = 'wide'; director.until = now + ms; app.marked = 0; heroChip.label('Totale', 'Grenzland · vier Armeen'); }
 function shotTower(now, t, text) {
   director.mode = 'tower'; director.tower = t; director.until = now + 15000; app.marked = 0; heroChip.label(text, 'Hochhaus');
-  // look from outside the city (away from the board centre), a little from the side of the fall
+  // pick the view: from outside the city, a little from the side of the fall, and with no other tower in between
   const size = sim.map.size / 1000, ox = t.x - size / 2, oz = t.z - size / 2, len = Math.hypot(ox, oz) || 1;
-  const side = [-t.dir[1], t.dir[0]], s2 = side[0] * ox + side[1] * oz > 0 ? 1 : -1;
-  const vx = ox / len * 0.7 + side[0] * s2 * 0.5, vz = oz / len * 0.7 + side[1] * s2 * 0.5;
-  director.yaw = Math.atan2(vx, vz);
+  const side = [-t.dir[1], t.dir[0]];
+  let best = 0, bestScore = -1e9;
+  for (let i = 0; i < 24; i++) {
+    const yaw = i / 24 * Math.PI * 2, vx = Math.sin(yaw), vz = Math.cos(yaw);
+    let score = (vx * ox + vz * oz) / len * 1.5 + Math.abs(vx * side[0] + vz * side[1]);
+    // blocked? walk along the line of sight from the camera (165 m, pitch 0.42) to the tower's middle
+    const cx = t.x + vx * 165 * Math.cos(0.42), cz = t.z + vz * 165 * Math.cos(0.42), cy = 165 * Math.sin(0.42), ty = view.towers.height(t) * 0.45;
+    for (const o2 of view.towers.list) {
+      if (o2 === t || o2.state === 'down') continue;
+      if (Math.hypot(cx - o2.x, cz - o2.z) < o2.size + 30) score -= 10;   // right next to the camera
+      for (let q = 0; q < 0.95; q += 0.05) {
+        const x = cx + (t.x - cx) * q, z = cz + (t.z - cz) * q, y = cy + (ty - cy) * q;
+        if (Math.abs(x - o2.x) < o2.size * 0.75 + 12 && Math.abs(z - o2.z) < o2.size * 0.75 + 12 && y < view.towers.height(o2) + 18) { score -= 8; break; }
+      }
+    }
+    if (score > bestScore) { bestScore = score; best = yaw; }
+  }
+  director.yaw = best;
 }
 app.director = director;
-app.strikeNow = () => launchStrike(performance.now());
+app.strikeNow = (t) => launchStrike(performance.now(), t);
 app.shot = (t) => { shotTower(performance.now(), t, 'Einsturz'); director.until = 1e15; };
 app.towers = () => view.towers.list;
-function launchStrike(now) {
+app.viewTowers = view.towers;
+function launchStrike(now, chosen = null) {
   const standing = view.towers.standing();
   if (!standing.length) return;
-  // prefer towers close to the fighting
-  const t = standing[(Math.random() * standing.length) | 0];
-  for (let i = 0; i < 7; i++) view.strike(t.x + (Math.random() - 0.5) * t.size * 0.8, t.z + (Math.random() - 0.5) * t.size * 0.8, i * 420);
+  const t = chosen || standing[(Math.random() * standing.length) | 0];
+  // rockets into the facade at different heights, the first ones low (that is what brings it down)
+  for (let i = 0; i < 10; i++) {
+    const [x, z, y] = view.towers.facadePoint(t);
+    view.strike(x, z, i * 330, { y: i < 4 ? t.y0 + 1 + Math.random() * 4 : y, radius: 2.6 + Math.random(), size: 1.1 });
+  }
   shotTower(now, t, 'Luftschlag');
 }
+// artillery: a few shells into the thick of the fighting (more explosions, Daniel 06.11.)
+function barrage() {
+  const busy = sim.units.filter((u) => u.hp > 0 && u.tgt && !sim.types[u.type].building);
+  if (!busy.length) return;
+  const u = busy[(Math.random() * busy.length) | 0], x = u.x / 1000, z = u.y / 1000;
+  const n = 4 + ((Math.random() * 4) | 0);
+  for (let i = 0; i < n; i++) view.strike(x + (Math.random() - 0.5) * 24, z + (Math.random() - 0.5) * 24, i * 180 + Math.random() * 200, { size: 0.75, radius: 1.8, flight: 1500 });
+}
+// crushed or hit from outside (launcher only, the simulation runs offline here): units lose health
+function hurt(x, z, r, pct) {
+  const R = r * 1000;
+  for (const u of sim.units) {
+    const t = sim.types[u.type];
+    if (u.hp <= 0 || t.building) continue;
+    const dx = u.x - x * 1000, dz = u.y - z * 1000;
+    if (dx * dx + dz * dz > R * R) continue;
+    u.hp -= Math.ceil(t.hp * pct / 100);
+  }
+}
+view.hooks.onCrush = (x, z, r, pct) => hurt(x, z, r, pct);
+view.hooks.onStrike = (x, z, size) => hurt(x, z, 4.5 * size, 55);
+view.hooks.onTower = (t, what) => { if (what === 'warn' && director.mode === 'hero' && !overview) shotTower(performance.now(), t, 'Einsturz'); };
 function camera(dt, now) {
   const c = view.cam, size = sim.map.size / 1000;
-  if (!director.nextStrike) director.nextStrike = now + 22000;
-  if (!overview && now > director.nextStrike) { director.nextStrike = now + 45000 + Math.random() * 25000; if (director.mode !== 'tower') launchStrike(now); }
+  if (!director.nextStrike) director.nextStrike = now + 18000;
+  if (!overview && now > director.nextStrike) { director.nextStrike = now + 30000 + Math.random() * 20000; if (director.mode !== 'tower') launchStrike(now); }
+  if (!director.nextBarrage || now > director.nextBarrage) { if (director.nextBarrage) barrage(); director.nextBarrage = now + 6000 + Math.random() * 5000; }
   // a tower starts to fall on its own: go there unless something else is on
   if (!overview && director.mode === 'hero') {
     const falling = view.towers.list.find((t) => t.state === 'warn');
@@ -258,7 +300,10 @@ function camera(dt, now) {
     const fx = t.x + t.dir[0] * 12, fz = t.z + t.dir[1] * 12;
     c.tx += (fx - c.tx) * k; c.tz += (fz - c.tz) * k;
     c.dist += (165 - c.dist) * kSlow; c.pitch += (0.42 - c.pitch) * kSlow;
-    if (now > director.until) { director.mode = 'hero'; hero.id = 0; }
+    // stay while it is still coming down (at most 20 s longer)
+    const busy = t.state === 'warn' || t.state === 'fall';
+    if (now > director.until && (!busy || now > director.until + 20000)) { director.mode = 'hero'; hero.id = 0; }
+    else if (!busy && t.state === 'down' && director.until > now + 5000 && director.until < 1e14) director.until = now + 5000;
     return;
   }
   const u = hero.id ? sim.byId.get(hero.id) : null;

@@ -51,17 +51,20 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
   let boom = 1, shake = 0;
   const excite = (b) => { boom = Math.max(1, b); };
   // towers on the map (props, optics only; their ground „bebaut“ is what the simulation sees)
-  const towers = createTowers(THREE, scene, { groundAt, puff, chip, jolt, light });
+  const towers = createTowers(THREE, scene, { groundAt, puff, chip, jolt, light,
+    onCrush: (x, z, r, pct) => api3d.onCrush?.(x, z, r, pct), onEvent: (t, what) => api3d.onTower?.(t, what) });
+  const api3d = {};   // hooks the launcher sets (onCrush, onTower, onStrike)
   let towersOf = null, dayNow = 1;
   // a rocket strike from beyond the board (launcher show): arcs in, explodes, hurts towers
   let strikes = [];
-  function strike(x, z, delay = 0) {
+  // opt.y: height of the hit (a facade), opt.size: blast size, opt.radius: hole in towers (m)
+  function strike(x, z, delay = 0, opt = {}) {
     const now = performance.now() + delay, a = Math.random() * TAU;
     const fx = x + Math.cos(a) * 160, fz = z + Math.sin(a) * 160;
-    strikes.push({ x, z, fx, fz, at: now, hit: now + 2200, shot: false });
+    strikes.push({ x, z, y: opt.y ?? null, size: opt.size ?? 1, radius: opt.radius ?? 2.8, fx, fz, at: now, hit: now + (opt.flight ?? 2200), shot: false });
   }
-  function boomAt(x, z, size = 1) {
-    const y = groundAt(x, z), now = performance.now();
+  function boomAt(x, z, size = 1, yAt = null) {
+    const y = yAt ?? groundAt(x, z), now = performance.now();
     effects.push({ kind: 'flash', x, y: y + 1, z, r: 4.5 * size, t0: now, dur: 900, big: true });
     for (let i = 0; i < Math.round(12 * size * boom); i++) puff(x + (Math.random() - 0.5) * 6, y + 1, z + (Math.random() - 0.5) * 6, 1.5 + Math.random() * 2.5, i % 3 ? 0x4a4540 : 0x6d665e);
     for (let i = 0; i < Math.round(16 * size); i++) chip(x, y + 0.5, z, i % 2 ? 0x5a4a36 : 0x6f6a60, 1.6);
@@ -702,8 +705,12 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
     drawFall(dt);
     if (towersOf !== sim) { towers.build(sim.map.props || [], sim.map.size); towersOf = sim; strikes = []; }
     for (const k of strikes) {
-      if (!k.shot && now >= k.at) { k.shot = true; effects.push({ kind: 'shot', p: 3, x: k.fx, y: groundAt(k.fx, k.fz) + 30, z: k.fz, tx: k.x, ty: groundAt(k.x, k.z) + 1, tz: k.z, t0: now, dur: k.hit - k.at }); }
-      if (now >= k.hit) { k.done = true; boomAt(k.x, k.z); towers.hit(k.x, k.z, 18, k.fx, k.fz); }
+      if (!k.shot && now >= k.at) { k.shot = true; effects.push({ kind: 'shot', p: 3, x: k.fx, y: groundAt(k.fx, k.fz) + 30, z: k.fz, tx: k.x, ty: k.y ?? groundAt(k.x, k.z) + 1, tz: k.z, t0: now, dur: k.hit - k.at }); }
+      if (now >= k.hit) {
+        k.done = true; boomAt(k.x, k.z, k.size, k.y);
+        towers.hitAt(k.x, k.y ?? groundAt(k.x, k.z) + 1.5, k.z, k.radius, [k.fx, k.fz]);
+        api3d.onStrike?.(k.x, k.z, k.size);
+      }
     }
     strikes = strikes.filter((k) => !k.done);
     towers.update(dt, now, atm.on ? 1 - dayNow : 0);
@@ -871,5 +878,5 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
   function show(on) { shown = on; if (!on) canvas.style.display = 'none'; }
 
   return { draw, drain, reset, project, unproject, pixelsPerMm, pan, zoom, rotate, centreOn, home, show, setModels, kind: '3d', renderer,
-    scene, camera, projectWorld, target, groundAt, inset, yawOf, atmosphere, quality, cam, excite, imageFx, towers, strike };
+    scene, camera, projectWorld, target, groundAt, inset, yawOf, atmosphere, quality, cam, excite, imageFx, towers, strike, hooks: api3d };
 }
