@@ -52,7 +52,7 @@ const catFrom = (eb, id) => eb.category(id) || error(`„${id}“ gibt es in ${e
 const AREAS = { resources: ['resources'], keywords: ['keywords'], weapons: ['weapons'], models: ['models'], slots: ['slots'], 'combat.damageTypes': ['combat', 'damageTypes'], 'combat.armors': ['combat', 'armors'], 'combat.classes': ['combat', 'classes'], 'combat.table': ['combat', 'table'],
   ...Object.fromEntries(['maps', 'maps.sizes', 'height', 'movementTypes', 'terrains', 'transformations', 'daytime', 'weather', 'weatherSequence', 'climates'].map(b => ['world.' + b, ['world', ...b.split('.')]])),
   ui: ['ui'], 'ui.moods': ['ui', 'moods'], 'ui.hud': ['ui', 'hud'], 'ui.radio': ['ui', 'radio'],
-  experience: ['experience'], 'experience.sources': ['experience', 'sources'] };
+  experience: ['experience'], 'experience.sources': ['experience', 'sources'], 'life.profiles': ['life', 'profiles'] };
 const area = b => {
   const [kind, ...sub] = AREAS[b] || error(`Bereich „${b}“ gibt es nicht: ${Object.keys(AREAS).join(', ')}`);
   if (!p.paths[kind]) { p.paths[kind] = p.def[kind] = `data/${kind}.json`; changed.add('project.json'); }

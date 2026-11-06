@@ -40,8 +40,12 @@ let saved = {};
 try { saved = JSON.parse(read(KEY) || '{}'); } catch {}
 const dials = { hour: saved.hour ?? 16.5, running: saved.running ?? true, weather: saved.weather || 'clear', climate: saved.climate || 'gemaessigt', fx: saved.fx ?? true };
 const remember = () => write(KEY, JSON.stringify(dials));
+// liveliness of units (Fidelity step 2): shared with the battle, standard on
+const LIFE_KEY = 'nomadtactics-life', lifeOn = () => read(LIFE_KEY) !== '0';
 
 const app = { view: 'game', ls: null, selection: new Set(), drag: null, hud: true };   // hud: no rings or order lines
+// Daniel's own tank (Voxel Max, models.json › daniel_tank with its own voxel size) drives for the yellow side
+app.swapModel = (seat, key) => (seat === 2 && key === 'tank' && setup?.models?.daniel_tank ? 'daniel_tank' : null);
 window.launcher = app;   // for tests and the console
 
 // ---------- page ----------
@@ -120,7 +124,9 @@ function dialsCard() {
   return el('aside', { class: 'ln-dials', id: 'ln-dials' },
     el('div', { class: 'ln-row' }, sym, slider, label, play,
       el('button', { class: 'ln-mini' + (dials.fx ? ' on' : ''), id: 'ln-fx', title: dials.fx ? 'Effekte an (Leuchten, Schatten in Ecken, Farbstimmung) – tippen für den alten Look' : 'Effekte aus (alter Look) – tippen für Leuchten, Schatten in Ecken, Farbstimmung',
-        onclick: () => { dials.fx = !dials.fx; view.imageFx(dials.fx); remember(); drawMenu(); } }, icon('star', 13))),
+        onclick: () => { dials.fx = !dials.fx; view.imageFx(dials.fx); remember(); drawMenu(); } }, icon('star', 13)),
+      el('button', { class: 'ln-mini' + (lifeOn() ? ' on' : ''), id: 'ln-life', title: lifeOn() ? 'Einheiten mit Leben (Federung, Rückstoß, Staub, Schaden) – tippen für den alten Look' : 'Einheiten ohne Leben (alter Look) – tippen für Federung, Rückstoß, Staub, Schaden',
+        onclick: () => { write(LIFE_KEY, lifeOn() ? '0' : '1'); view.life(lifeOn()); drawMenu(); } }, icon('vehicle', 13))),
     el('div', { class: 'ln-row ln-weather' }, WEATHER.map(([id, name, ic]) => el('button', { class: 'ln-mini' + (dials.weather === id ? ' on' : ''), 'data-w': id, title: name,
       onclick: () => { dials.weather = id; setAtmosphere(); remember(); drawMenu(); } }, icon(ic, 14)))),
     el('div', { class: 'ln-row ln-climate' }, CLIMATES.map(([id, name]) => el('button', { class: dials.climate === id ? 'on' : '', 'data-c': id,
@@ -136,6 +142,7 @@ view.quality(read(QUALITY_KEY) || 'medium');
 const setAtmosphere = () => view.atmosphere({ hour: dials.hour, weather: dials.weather, climate: dials.climate });
 setAtmosphere();
 view.imageFx(dials.fx);
+view.life(lifeOn());
 
 let setup = null, sim = null, before = null, beforeTime = 0, overAt = 0, round = 0;
 function newBattle() {
@@ -399,7 +406,7 @@ gameData().then(async (d) => {
     waves: [{ units: { kampfpanzer: 4, spaeher: 2, soldat: 10, lenkwerfer: 2 } }, { units: { kampfpanzer: 2, spaeher: 2, soldat: 6, lenkwerfer: 1 } }],
     extra: [{ each: 2, units: { lenkwerfer: 2, kampfpanzer: 1 } }] } };
   view.excite(1.8);
-  view.setModels(s.models);
+  view.setModels(s.models, s.life);
   newBattle();
   // start in the middle of things: a few waves already landed and on their way
   for (let i = 0; i < 420; i++) { if (i % 30 === 0) orders(); for (let k = 0; k < TICKS_PER_ROUND; k++) sim.step(); sim.events.length = 0; }

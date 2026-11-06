@@ -17,5 +17,6 @@
  "slots": "data/slots.json",
  "world": "data/world.json",
  "ui": "data/ui.json",
- "experience": "data/experience.json"
+ "experience": "data/experience.json",
+ "life": "data/life.json"
 }

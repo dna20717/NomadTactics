@@ -9,6 +9,7 @@ const DIRS = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1
 const SIDE = [0.9, 0.9, 1.0, 0.6, 0.95, 0.82];
 const AO = [0.52, 0.68, 0.84, 1.0];
 const CORNER = [[0, 0], [1, 0], [1, 1], [0, 1]];
+const SOOT = new THREE.Color(0x1c1916);
 const hash = (x, y, z) => Math.abs((x * 73856093) ^ (y * 19349663) ^ (z * 83492791));
 
 function baseColor(kind, x, y, z, team) {
@@ -23,13 +24,15 @@ function baseColor(kind, x, y, z, team) {
   return p[hash(x, y, z) % p.length];
 }
 
-export function voxelGeometry(W, { team = 0x3a78d8, dark = 1, scale = V } = {}) {
+// soot (optional): (x, y, z) → 0…1, darkens voxels towards burnt black (damage stages, game/party/unit_life.js)
+export function voxelGeometry(W, { team = 0x3a78d8, dark = 1, scale = V, soot = null } = {}) {
   const pos = [], nor = [], col = [], edge = [], mat = [], outer = [];
   const has = (x, y, z) => W.has(`${x},${y},${z}`);
   const c = new THREE.Color();
   for (const [k, kind] of W) {
     const [x, y, z] = k.split(',').map(Number);
-    const basis = baseColor(kind, x, y, z, team);
+    let basis = baseColor(kind, x, y, z, team);
+    if (soot) { const f = soot(x, y, z); if (f > 0) basis = c.setHex(basis).lerp(SOOT, f).getHex(); }
     for (let i = 0; i < 6; i++) {
       const d = DIRS[i];
       if (has(x + d[0], y + d[1], z + d[2])) continue;
@@ -95,11 +98,19 @@ export function vehicleMaterial(envMap = null, { tint = null } = {}) {
     sh.uniforms.uNight = m.userData.night;
     sh.vertexShader = sh.vertexShader.replace('#include <common>', `#include <common>
       attribute vec2 edge; attribute float mat; attribute vec4 outer;
-      varying vec2 vEdge; varying float vMat; varying vec4 vOuter; varying vec3 vLoc;`)
+      varying vec2 vEdge; varying float vMat; varying vec4 vOuter; varying vec3 vLoc; varying vec2 vRun;
+      #ifdef USE_INSTANCING
+      attribute vec2 aLife;
+      #endif`)
       .replace('#include <begin_vertex>', `#include <begin_vertex>
-      vEdge = edge; vMat = mat; vOuter = outer; vLoc = position - normal * 0.05;`);
+      vEdge = edge; vMat = mat; vOuter = outer; vLoc = position - normal * 0.05;
+      #ifdef USE_INSTANCING
+      vRun = aLife;
+      #else
+      vRun = vec2(0.0);
+      #endif`);
     sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
-      varying vec2 vEdge; varying float vMat; varying vec4 vOuter; varying vec3 vLoc;
+      varying vec2 vEdge; varying float vMat; varying vec4 vOuter; varying vec3 vLoc; varying vec2 vRun;
       float h31(vec3 p) { p = fract(p * 0.3183099 + 0.1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
       float noise3(vec3 x) { vec3 i = floor(x), f = fract(x); f = f * f * (3.0 - 2.0 * f);
         return mix(mix(mix(h31(i), h31(i + vec3(1,0,0)), f.x), mix(h31(i + vec3(0,1,0)), h31(i + vec3(1,1,0)), f.x), f.y),
@@ -122,7 +133,10 @@ export function vehicleMaterial(envMap = null, { tint = null } = {}) {
           diffuseColor.rgb *= 0.94 + 0.12 * fine; gRough = 0.62 - 0.14 * coarse;
         } else if (kind == 1) { diffuseColor.rgb *= 0.97 + 0.06 * fine; gRough = 0.3 + 0.1 * fine; }
         else if (kind == 2) { gRough = 0.34 + 0.25 * fine; gMetal = 0.75; }
-        else if (kind == 3) { gRough = 0.95; diffuseColor.rgb *= 0.88 + 0.16 * fine; }
+        else if (kind == 3) { gRough = 0.95; diffuseColor.rgb *= 0.88 + 0.16 * fine;
+          // running tracks / wheels (aLife.x = distance driven in m): links slide along, top forward, bottom back
+          if (vRun.y > 0.5 && vLoc.y < 0.9) { float dir = vLoc.y > 0.42 ? 1.0 : -1.0;
+            float link = fract((vLoc.z - dir * vRun.x) / 0.2); diffuseColor.rgb *= mix(0.62, 1.08, smoothstep(0.12, 0.3, link) * (1.0 - smoothstep(0.7, 0.9, link))); } }
         else { gRough = 0.06; gMetal = 0.25; diffuseColor.rgb *= 0.75; }
         if (kind <= 1 || kind == 5) {
           float wear = (1.0 - smoothstep(0.015, 0.09, rOut)) * step(0.5, noise3(vLoc * 6.0 + 1.7));

@@ -27,39 +27,52 @@
   "jet": {"name": "Jet", "detection": "keyword:jet", "ignoresGround": true}
  },
  "terrains": {
-  "strasse": {"name": "Straße", "color": "#5b5d63", "speed": {"infantry": 100, "wheel": 130, "track": 100}, "description": "Rad-Fahrzeuge fahren hier am schnellsten."},
-  "grass": {"name": "Gras/Feld", "color": "#6f9a4a", "speed": {"infantry": 100, "wheel": 100, "track": 100}, "tracks": true, "description": "Grundwert, alle fahren normal."},
-  "sand": {"name": "Sand/Schotter", "color": "#c9b27a", "speed": {"infantry": 85, "wheel": 70, "track": 90}, "tracks": true},
-  "schlamm": {"name": "Schlamm", "color": "#6b5236", "speed": {"infantry": 70, "wheel": 50, "track": 80}, "tracks": true, "description": "Entsteht auch durch Regen."},
+  "strasse": {"name": "Straße", "color": "#5b5d63", "speed": {"infantry": 100, "wheel": 130, "track": 100}, "description": "Rad-Fahrzeuge fahren hier am schnellsten.", "dust": 15},
+  "grass": {"name": "Gras/Feld", "color": "#6f9a4a", "speed": {"infantry": 100, "wheel": 100, "track": 100}, "tracks": true, "description": "Grundwert, alle fahren normal.", "dust": 45},
+  "sand": {"name": "Sand/Schotter", "color": "#c9b27a", "speed": {"infantry": 85, "wheel": 70, "track": 90}, "tracks": true, "dust": 170},
+  "schlamm": {
+   "name": "Schlamm",
+   "color": "#6b5236",
+   "speed": {"infantry": 70, "wheel": 50, "track": 80},
+   "tracks": true,
+   "description": "Entsteht auch durch Regen.",
+   "dust": 60,
+   "dustColor": "#5a4530"
+  },
   "forest": {
    "name": "Wald/Unterholz",
    "color": "#2f5a32",
    "speed": {"infantry": 90, "wheel": 0, "track": 60},
    "cover": {"infantry": 30},
    "sightBlocker": true,
-   "description": "Räder kommen nicht durch, Ketten walzen Schneisen."
+   "description": "Räder kommen nicht durch, Ketten walzen Schneisen.",
+   "dust": 35
   },
   "rubble": {
    "name": "Schutt/Krater",
    "color": "#7d776e",
    "speed": {"infantry": 80, "wheel": 60, "track": 90},
    "cover": {"infantry": 25},
-   "description": "Entsteht durch Einschläge und Einstürze."
+   "description": "Entsteht durch Einschläge und Einstürze.",
+   "dust": 130,
+   "dustColor": "#9a948a"
   },
-  "furt": {"name": "Furt (flach)", "color": "#5f8fa8", "speed": {"infantry": 60, "wheel": 50, "track": 70, "schwimmt": 70}, "water": "flat"},
+  "furt": {"name": "Furt (flach)", "color": "#5f8fa8", "speed": {"infantry": 60, "wheel": 50, "track": 70, "schwimmt": 70}, "water": "flat", "dust": 90, "dustColor": "#e4eef2"},
   "tiefwasser": {
    "name": "Tiefwasser",
    "color": "#2e5b82",
    "speed": {"infantry": 0, "wheel": 0, "track": 0, "schwimmt": 60},
    "water": "deep",
-   "description": "Nur wer schwimmt, kommt hinüber."
+   "description": "Nur wer schwimmt, kommt hinüber.",
+   "dust": 0
   },
   "bebaut": {
    "name": "Bebaut",
    "color": "#77746e",
    "speed": {"infantry": 0, "wheel": 0, "track": 0, "schwimmt": 0},
    "sightBlocker": true,
-   "description": "Grundfläche eines Gebäudes (Hochhaus, Block). Niemand fährt hindurch; nach einem Einsturz bleibt der Schutthaufen im Weg."
+   "description": "Grundfläche eines Gebäudes (Hochhaus, Block). Niemand fährt hindurch; nach einem Einsturz bleibt der Schutthaufen im Weg.",
+   "dust": 0
   }
  },
  "transformations": {

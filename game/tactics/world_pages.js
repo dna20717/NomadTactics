@@ -104,6 +104,8 @@ export const WORLD_PAGES = {
     w.field('Name', bo, 'name', 'text', file), w.field('Farbe', bo, 'color', 'color', file),
     w.labeled('Wasser', w.selection(Object.entries(WATER), bo.water || '', v => w.change(file, () => setOrWay(bo, 'water', v)), 'kein Wasser')),
     w.field('Sichtblocker', bo, 'sightBlocker', 'checkbox', file), w.field('Spuren', bo, 'tracks', 'checkbox', file),
+    el('h4', {}, 'Staub (nur Optik)'), el('p', { class: 'ed-small' }, 'Wie viel Staub Fahrzeuge hier aufwirbeln (Sand viel, Straße kaum). Ohne Staubfarbe nimmt der Staub die Bodenfarbe, aufgehellt. Wird mit der Staubfahne der Lebendigkeit multipliziert.'),
+    w.field('Staub %', bo, 'dust', 'number', file), w.field('Staubfarbe', bo, 'dustColor', 'color', file),
     el('h4', {}, 'Deckung (%)'), el('p', { class: 'ed-small' }, 'So viel seltener wird getroffen, wer hier steht.'),
     ...amGround.map(([a, b]) => w.input(b.name, bo.cover?.[a], 'number', { set: v => w.change(file, () => { bo.cover = bo.cover || {}; setOrWay(bo.cover, a, v); if (!n(bo.cover)) delete bo.cover; }) })),
     w.field('Beschreibung', bo, 'description', 'textarea', file),

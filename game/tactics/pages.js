@@ -6,6 +6,7 @@ import { renameGlobal, metrics, withEquipment, FUNCTIONS, PROJECTILES, EFFECTS, 
 import { freeId, short } from './workshop.js';
 import { navbarWorld } from './world_pages.js';
 import { navbarUi, experienceSection, factionUi } from './ui_pages.js';
+import { lifePage, modelLifeFields } from './life_pages.js';
 
 const CLASS_ICON = { infantry: 'humans', vehicle: 'vehicle', air: 'air' };
 const FUNCTION_COLOR = { hq: '#f2c14e', power: '#5aa9ff', production: '#7cb0ff', resource: '#e0b240', research: '#a98bff', defense: '#ff8080', superweapon: '#ff5a3c', movement: '#5fd38d', misc: '#9a9aa3' };
@@ -18,7 +19,7 @@ export function NAVBAR(w, navbar) {
   const number = x => x == null ? null : el('span', { class: 'da-nav-number' }, String(x));
   const entry = (active, ic, name, right, onclick, extra = '') => el('button', { class: 'da-nav' + (active ? ' on' : '') + extra, onclick }, ic, el('span', { class: 'da-nav-name' }, name), right);
   navbar.append(el('div', { class: 'da-navbar-title' }, 'SPIELREGELN'));
-  for (const [id, name, ic, z] of [['resources', 'Ressourcen', 'resource', n(p.data.resources)], ['combat', 'Kampf', 'armor'], ['keywords', 'Stichwörter', 'tag', n(p.data.keywords)], ['weapons', 'Waffen', 'weapon', n(p.data.weapons)], ['slots', 'Ausrüstungsplätze', 'overlays', n(p.data.slots)], ['experience', 'Erfahrung', 'star', (p.data.experience?.tiers || []).length || null], ['models', 'Modelle', 'cube', n(p.data.models)]]) {
+  for (const [id, name, ic, z] of [['resources', 'Ressourcen', 'resource', n(p.data.resources)], ['combat', 'Kampf', 'armor'], ['keywords', 'Stichwörter', 'tag', n(p.data.keywords)], ['weapons', 'Waffen', 'weapon', n(p.data.weapons)], ['slots', 'Ausrüstungsplätze', 'overlays', n(p.data.slots)], ['experience', 'Erfahrung', 'star', (p.data.experience?.tiers || []).length || null], ['models', 'Modelle', 'cube', n(p.data.models)], ['life', 'Lebendigkeit', 'particles', n(p.data.life?.profiles)]]) {
     if (id === 'combat') {
       const isOpen = s.area === 'combat';
       navbar.append(entry(false, icon(ic, 18), name, el('span', { class: 'da-nav-arrow' }, icon('chevron_right', 14)), () => w.go({ area: 'combat', sub: s.area === 'combat' ? s.sub : 'table' }), isOpen ? ' isOpen' : ''));
@@ -191,7 +192,11 @@ export const PAGES = {
     catalog(w, main, insp, { title: 'Modelle', kind: 'model', ic: 'cube', obj: () => w.p.data.models, file, new: () => ({ name: 'Neues Modell', source: '' }),
       hint: 'Modelle verweisen auf Voxel-Modelle: „prototyp:panzer“ sind die Modelle aus dem Härtetest, ein Pfad auf eine .vox-Datei aus Voxel Max. Die Vorschau kommt später.',
       row: (id, x) => [icon('cube', 16), el('span', { class: 'da-name' }, x.name || id), el('small', {}, x.source || '')],
-      inspector: x => insp.append(w.field('Name', x, 'name', 'text', file), w.field('Quelle', x, 'source', 'text', file), el('p', { class: 'ed-small' }, 'Tipp für Voxel Max: feste Teamfarbe in der Palette, Turm als eigene Ebene, Rohr nach vorne (+z).')) });
+      inspector: x => insp.append(w.field('Name', x, 'name', 'text', file), w.field('Quelle', x, 'source', 'text', file), ...modelLifeFields(w, x, file), el('p', { class: 'ed-small' }, 'Tipp für Voxel Max: feste Teamfarbe in der Palette, Turm als eigene Ebene, Rohr nach vorne (+z).')) });
+  },
+
+  life(w, main, insp) {
+    lifePage(w, main, insp);
   },
 
   // ---------- Faction ----------

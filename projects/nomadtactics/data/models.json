@@ -1,11 +1,12 @@
 {
- "tank": {"name": "Kampfpanzer", "source": "prototype:tank"},
- "werfer": {"name": "Raketenwerfer", "source": "prototype:werfer"},
- "spaeher": {"name": "Spähwagen", "source": "prototype:spaeher"},
- "soldat": {"name": "Soldat", "source": "prototype:soldat"},
- "dozer": {"name": "Dozer", "source": "prototype:dozer"},
- "drone": {"name": "Begleitdrohne", "source": "prototype:drone"},
- "kaserne": {"name": "Kaserne", "source": "prototype:kaserne"},
+ "tank": {"name": "Kampfpanzer", "source": "prototype:tank", "life": "tracked"},
+ "werfer": {"name": "Raketenwerfer", "source": "prototype:werfer", "life": "wheeled"},
+ "spaeher": {"name": "Spähwagen", "source": "prototype:spaeher", "life": "wheeled"},
+ "soldat": {"name": "Soldat", "source": "prototype:soldat", "life": "infantry"},
+ "dozer": {"name": "Dozer", "source": "prototype:dozer", "life": "tracked"},
+ "drone": {"name": "Begleitdrohne", "source": "prototype:drone", "life": "drone"},
+ "kaserne": {"name": "Kaserne", "source": "prototype:kaserne", "life": "building"},
  "highrise": {"name": "Hochhaus", "source": "prototype:highrise"},
- "daniel_tank": {"name": "Daniels Panzer", "source": "../../prototypes/nomadtactics/models/daniel_tank.vox"}
+ "daniel_tank": {"name": "Daniels Panzer", "source": "../../prototypes/nomadtactics/models/daniel_tank.vox", "life": "tracked", "scale": 0.8},
+ "pad": {"name": "Landeplatz", "source": "prototype:pad", "life": "building"}
 }

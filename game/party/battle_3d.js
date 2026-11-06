@@ -12,6 +12,8 @@ import { voxelGeometry, voxelMaterial, vehicleMaterial } from '../tactics/voxel/
 import { readVox } from '../tactics/voxel/vox.js';
 import { createTowers } from './towers.js';
 import { ROUND_MS } from '../../engine/net/protocol.js';
+import { lifeOf, stageAt } from '../../engine/tactics/life.js';
+import { bounds, muzzleOf, damagedModel, sootAt, spring, recoilCurve, DEG } from './unit_life.js';
 
 const M = 1 / 1000;          // world units (mm) → metres
 const LEVEL = 2.0;           // one map level = 2 m (5 voxels)
@@ -306,6 +308,7 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
     if (fx && fx.quality !== q) imageFx(fxOn);   // AO only on „Schön“: rebuild the chain
     const ratio = q === 'fast' ? 1 : q === 'beautiful' ? 2 : 1.5;
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, ratio));
+    lifeQ = q === 'fast' ? 0.35 : q === 'beautiful' ? 1 : 0.75;
     sun.castShadow = q !== 'fast';
     const size = q === 'beautiful' ? 4096 : 2048;
     if (sun.shadow.mapSize.x !== size) { sun.shadow.mapSize.set(size, size); sun.shadow.map?.dispose(); sun.shadow.map = null; }
@@ -321,6 +324,8 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
   let world = null;          // everything built for one map: { group, heights, size }
   let models = {};           // model key → { hull: geo per colour, turret, pivot } (filled lazily)
   let modelSource = null;    // data/models.json
+  let lifeData = null;       // data/life.json (profiles); liveliness on/off (switch old/new) and amount per quality
+  let lifeOn = true, lifeQ = 0.75;
   const voxCache = new Map(); // url → Promise<model map>
   const parts = new Map();   // key → InstancedMesh (grows)
   let effects = [], wrecks = [], debris = [];
@@ -571,58 +576,93 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
   }
 
   // ---------- models ----------
-  function sourceOf(sim, type) {
+  function sourceOf(sim, type, seat = null) {
     const t = sim.types[type];
     const key = t.building ? 'pad' : (t.model || (t.cls === 'infantry' ? 'soldat' : 'tank'));
-    return key;
+    return app.swapModel?.(seat, key) || key;   // launcher: another model for one side (optics only)
   }
   function modelFor(key) {
     if (models[key]) return models[key];
-    const entry = { ready: false, pivot: null, hull: null, turret: null, scale: V };
+    const def = modelSource?.[key] || null;
+    const entry = { ready: false, pivot: null, hull: null, turret: null, scale: V, life: lifeOf(lifeData, def, key === 'pad' ? 'building' : null), variants: new Map() };
     models[key] = entry;
-    if (key === 'pad') { entry.hull = landingPad(31); entry.ready = true; return entry; }
-    const src = modelSource?.[key]?.source || `prototype:${key}`;
+    const src = def?.source || (key === 'pad' ? 'prototype:pad' : `prototype:${key}`);
+    if (src === 'prototype:pad') { entry.hull = landingPad(31); finish(entry, def); return entry; }
     if (src.startsWith('prototype:')) {
       const p = PROTOTYPES[src.slice(10)] || PROTOTYPES.tank;
-      entry.hull = p.hull(); entry.turret = p.turret ? p.turret() : null; entry.pivot = p.pivot || null; entry.scale = p.scale || V; entry.ready = true;
+      entry.hull = p.hull(); entry.turret = p.turret ? p.turret() : null; entry.pivot = p.pivot || null; entry.scale = p.scale || V; finish(entry, def);
     } else {
       // own .vox model (path relative to the project folder)
       const url = new URL(src, modelsBase).href;
-      if (!voxCache.has(url)) voxCache.set(url, fetch(url).then((r) => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); }).then((b) => readVox(b, { forward: modelSource?.[key]?.forward || null }).model));
-      voxCache.get(url).then((W) => { entry.hull = W; entry.ready = true; dropParts(key); })
-        .catch(() => { const p = PROTOTYPES.tank; entry.hull = p.hull(); entry.turret = p.turret(); entry.pivot = p.pivot; entry.ready = true; dropParts(key); });
+      if (!voxCache.has(url)) voxCache.set(url, fetch(url).then((r) => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); }).then((b) => readVox(b, { forward: def?.forward || null }).model));
+      voxCache.get(url).then((W) => { entry.hull = W; finish(entry, def); dropParts(key); })
+        .catch(() => { const p = PROTOTYPES.tank; entry.hull = p.hull(); entry.turret = p.turret(); entry.pivot = p.pivot; finish(entry, def); dropParts(key); });
     }
     return entry;
   }
+  // voxel size per model (models.json › scale, Daniel 05.11.), size for terrain tilt, muzzle for flash and smoke
+  function finish(entry, def) {
+    if (def?.scale) entry.scale = def.scale;
+    const b = bounds(entry.hull), sc = entry.scale;
+    entry.half = [(b.hi[0] - b.lo[0] + 1) * sc / 2, (b.hi[2] - b.lo[2] + 1) * sc / 2];
+    entry.front = (b.hi[2] + 0.5) * sc; entry.back = (b.lo[2] - 0.5) * sc; entry.top = (b.hi[1] + 1) * sc;
+    entry.muzzle = def?.muzzle ? def.muzzle.map((q) => q * sc) : muzzleOf(entry.turret || entry.hull, sc);
+    entry.ready = true;
+  }
+  // model for a damage stage (0 = intact); cached per model
+  function variant(e, which, stage) {
+    const W = which === 'turret' ? e.turret : e.hull;
+    if (!stage || !lifeOn) return { W, soot: null };
+    const id = which + stage;
+    if (!e.variants.has(id)) {
+      const st = e.life.stages[stage - 1] || {};
+      e.variants.set(id, { W: damagedModel(W, st, which === 'turret' ? 11 : 7), soot: sootAt((st.soot || 0) / 100, which === 'turret' ? 5 : 3) });
+    }
+    return e.variants.get(id);
+  }
   function dropParts(key) { for (const [k, im] of parts) if (k.startsWith(key + '|')) { scene.remove(im); parts.delete(k); } }
 
-  // one InstancedMesh per (model, part, colour, wreck?)
+  // one InstancedMesh per (model, part, colour, wreck?, damage stage); each with its own instance attribute
+  // aLife (x = distance driven for running tracks, y = 1 if the model has tracks/wheels)
   const geoCache = new Map();
-  function part(key, which, colour, wreck = false) {
-    const id = `${key}|${which}|${colour}|${wreck ? 1 : 0}`;
+  function part(key, which, colour, wreck = false, stage = 0) {
+    const id = `${key}|${which}|${colour}|${wreck ? 1 : 0}|${stage}`;
     let im = parts.get(id);
     if (im && im.userData.used < im.userData.cap) return im;
     const e = modelFor(key);
     if (!e.ready) return null;
-    const W = which === 'turret' ? e.turret : e.hull;
-    if (!W) return null;
-    const gk = `${key}|${which}|${colour}`;
-    if (!geoCache.has(gk)) geoCache.set(gk, voxelGeometry(W, { team: colour, scale: e.scale || V }));
+    const v = variant(e, which, stage);
+    if (!v.W) return null;
+    const gk = `${key}|${which}|${colour}|${stage}`;
+    if (!geoCache.has(gk)) geoCache.set(gk, voxelGeometry(v.W, { team: colour, scale: e.scale || V, soot: v.soot }));
     const cap = im ? im.userData.cap * 2 : 32;
-    const fresh = new THREE.InstancedMesh(geoCache.get(gk), wreck ? wreckMat : unitMat, cap);
+    const base = geoCache.get(gk), g = new THREE.BufferGeometry();
+    for (const [n, a] of Object.entries(base.attributes)) g.setAttribute(n, a);
+    g.boundingSphere = base.boundingSphere;
+    const lifeAttr = new THREE.InstancedBufferAttribute(new Float32Array(cap * 2), 2); lifeAttr.setUsage(THREE.DynamicDrawUsage);
+    g.setAttribute('aLife', lifeAttr);
+    const fresh = new THREE.InstancedMesh(g, wreck ? wreckMat : unitMat, cap);
     fresh.castShadow = true; fresh.receiveShadow = true; fresh.frustumCulled = false;
-    fresh.userData.used = 0; fresh.userData.cap = cap;
-    if (im) { for (let i = 0; i < im.userData.used; i++) { im.getMatrixAt(i, tmpM); fresh.setMatrixAt(i, tmpM); } fresh.userData.used = im.userData.used; scene.remove(im); }
+    fresh.userData.used = 0; fresh.userData.cap = cap; fresh.userData.life = lifeAttr;
+    if (im) {
+      for (let i = 0; i < im.userData.used; i++) { im.getMatrixAt(i, tmpM); fresh.setMatrixAt(i, tmpM); lifeAttr.setXY(i, im.userData.life.getX(i), im.userData.life.getY(i)); }
+      fresh.userData.used = im.userData.used; scene.remove(im);
+    }
     scene.add(fresh); parts.set(id, fresh);
     return fresh;
   }
   const tmpM = new THREE.Matrix4(), o3 = new THREE.Object3D();
-  function put(im, x, y, z, yaw, extra = null) {
+  function put(im, x, y, z, yaw, extra = null, run = 0, runs = 0) {
     if (!im) return;
     o3.position.set(x, y, z); o3.rotation.set(0, yaw, 0, 'XYZ'); o3.scale.set(1, 1, 1);
     if (extra) extra(o3);
     o3.updateMatrix();
-    im.setMatrixAt(im.userData.used++, o3.matrix);
+    putMatrix(im, o3.matrix, run, runs);
+  }
+  function putMatrix(im, m, run = 0, runs = 0) {
+    if (!im) return;
+    const i = im.userData.used++;
+    im.setMatrixAt(i, m); im.userData.life.setXY(i, run, runs);
   }
 
   // selection rings, markers
@@ -682,8 +722,14 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
       if (e.kind === 'shot') {
         const airOf = (id) => { const q = sim.byId.get(id); return q && sim.types[q.type]?.air ? HOVER : 0; };
         const y0 = groundAt(e.x * M, e.y * M) + 1.6 + airOf(e.src), y1 = groundAt(e.tx * M, e.ty * M) + 0.8 + airOf(e.tgt);
-        effects.push({ kind: 'shot', p: e.projectile, x: e.x * M, y: y0, z: e.y * M, tx: e.tx * M, ty: y1, tz: e.ty * M, t0: now, dur: Math.max(70, e.time * 50) });
-        if (e.projectile >= 2) effects.push({ kind: 'flash', x: e.x * M, y: y0, z: e.y * M, r: e.projectile === 3 ? 0.9 : 1.3, t0: now, dur: 110 });
+        const sm = lifeOn ? smooth.get(e.src) : null;
+        if (sm?.mz) {   // liveliness: the shot leaves the real muzzle; flash, smoke and recoil follow in lively()
+          sm.shot = now; sm.fired = true; sm.firedP = e.projectile;
+          effects.push({ kind: 'shot', p: e.projectile, x: sm.mz[0], y: sm.mz[1], z: sm.mz[2], tx: e.tx * M, ty: y1, tz: e.ty * M, t0: now, dur: Math.max(70, e.time * 50) });
+        } else {
+          effects.push({ kind: 'shot', p: e.projectile, x: e.x * M, y: y0, z: e.y * M, tx: e.tx * M, ty: y1, tz: e.ty * M, t0: now, dur: Math.max(70, e.time * 50) });
+          if (e.projectile >= 2) effects.push({ kind: 'flash', x: e.x * M, y: y0, z: e.y * M, r: e.projectile === 3 ? 0.9 : 1.3, t0: now, dur: 110 });
+        }
       } else if (e.kind === 'impact') {
         const x = e.x * M, z = e.y * M, y = groundAt(x, z);
         const big = e.splash > 0 || e.projectile === 2 || e.projectile === 3;
@@ -709,7 +755,7 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
         light(x, y + 3, z, (t?.building ? 6 : 3) * boom);
         if (t?.cls !== 'infantry') { jolt(x, z, t?.building ? 1.2 : 0.6); towers.hit(x, z, t?.building ? 30 : 5); }
         if (t && t.cls !== 'infantry') {
-          const key = sourceOf(sim, e.type);
+          const key = sourceOf(sim, e.type, e.seat);
           const seat = playerList().find((p) => p.seat === e.seat);
           wrecks.push({ key, x, y, z, yaw: yawOf(e.h), t0: now, colour: colourOf(seat), building: !!t.building });
           for (let i = 0; i < Math.round((t.building ? 50 : 26) * boom); i++) chip(x, y + 1.2, z, t.building ? 0x9a968c : 0x4e5236, boom);
@@ -859,6 +905,132 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
     }
     if (used) { renderer.setScissorTest(false); renderer.setViewport(0, 0, W, H); }
   }
+  // ---------- liveliness (Fidelity step 2, 06.11.): everything from the model's profile in data/life.json ----------
+  const hullM = new THREE.Matrix4(), turM = new THREE.Matrix4(), locM = new THREE.Matrix4(), mzV = new THREE.Vector3();
+  const qY = new THREE.Quaternion(), yAxis = new THREE.Vector3(0, 1, 0), oneV = new THREE.Vector3(1, 1, 1), posV = new THREE.Vector3();
+  const rnd = (a) => (Math.random() - 0.5) * a;
+  function groundInfo(sim, x, z) {
+    const m = sim.map, i = Math.floor(x * 1000 / m.cell), j = Math.floor(z * 1000 / m.cell);
+    if (i < 0 || j < 0 || i >= m.n || j >= m.n) return null;
+    return sim.world.terrains?.[m.grounds[m.ground[j * m.n + i]]] || null;
+  }
+  const dustHex = new Map();
+  function dustColour(t) {
+    const c = t.dustColor || t.color || '#8a7a60';
+    if (!dustHex.has(c)) dustHex.set(c, tmpC.set(c).lerp(cB.setHex(0xd8d0c0), t.dustColor ? 0 : 0.35).getHex());
+    return dustHex.get(c);
+  }
+  function emit(n) {   // n per second → how many this frame (random rounding)
+    const q = n; return Math.floor(q) + (Math.random() < q % 1 ? 1 : 0);
+  }
+  function lively(sim, u, ty, e, key, colour, s, wx, wz, dt, now) {
+    const L = e.life, sc = e.scale || V;
+    const stage = L.stages.length ? stageAt(L, Math.max(0, u.hp) / ty.hp) : 0;
+    const DT = Math.max(dt, 1e-3);
+    // motion: speed along the heading, acceleration, turning rate (from the smoothed positions)
+    const fx = Math.sin(s.yaw), fz = Math.cos(s.yaw);
+    const dx = wx - (s.lx ?? wx), dz = wz - (s.lz ?? wz); s.lx = wx; s.lz = wz;
+    const along = dx * fx + dz * fz, speed = Math.hypot(dx, dz) / DT;
+    s.dist = (s.dist || 0) + along;
+    const fwd = along / DT, vOld = s.v ?? fwd;
+    s.v = vOld + (fwd - vOld) * Math.min(1, dt * 6);
+    s.acc = (s.acc || 0) + ((s.v - vOld) / DT - (s.acc || 0)) * Math.min(1, dt * 4);
+    s.turn = (s.turn || 0) + (angleStep(s.lyaw ?? s.yaw, s.yaw, 1) / DT - (s.turn || 0)) * Math.min(1, dt * 6); s.lyaw = s.yaw;
+    let lift = 0, pt = 0, rl = 0;
+    if (ty.air) {   // drones: lean into the flight (as before)
+      s.tilt = (s.tilt || 0) + (Math.min(0.3, speed * 0.03) - (s.tilt || 0)) * (1 - Math.exp(-dt * 12));
+      pt = s.tilt;
+    } else if (L.drive !== 'none') {
+      let tp = 0, tr = 0;
+      if (L.tilt) {
+        const f = e.half[1] * 0.85, w = e.half[0] * 0.85, hc = groundAt(wx, wz);
+        // a sample on a ramp lies on a straight line through the half-way point; across a cliff edge it jumps → flat
+        const probe = (ax, az, d) => {
+          const hh = groundAt(wx + ax * d * 0.5, wz + az * d * 0.5), h = groundAt(wx + ax * d, wz + az * d);
+          return Math.abs(hh - (hc + h) / 2) > 0.3 * Math.abs(h - hc) + 0.12 ? hc : h;
+        };
+        const hF = probe(fx, fz, f), hB = probe(-fx, -fz, f), hR = probe(fz, -fx, w), hL = probe(-fz, fx, w);
+        const cap = 0.42; tp = Math.max(-cap, Math.min(cap, Math.atan2(hB - hF, 2 * f) * L.tilt / 100)); tr = Math.max(-cap, Math.min(cap, Math.atan2(hR - hL, 2 * w) * L.tilt / 100));
+        lift = Math.max(0, (hF + hB) / 2 - hc) * L.tilt / 100;   // stays on top of a crest
+      }
+      const accP = -Math.max(-1, Math.min(1, s.acc / 4)) * L.pitch * DEG;
+      const turnR = Math.max(-1, Math.min(1, s.turn * Math.abs(s.v) / 5)) * L.roll * DEG;
+      if (s.shot && s.shot !== s.shotSeen) { s.shotSeen = s.shot; s.ptV = (s.ptV || 0) - L.kick * DEG * L.spring; }
+      s.pt ??= tp; s.rl ??= tr;
+      spring(s, 'pt', tp + accP, dt, L.spring, L.damping / 100);
+      spring(s, 'rl', tr + turnR, dt, L.spring, L.damping / 100);
+      pt = s.pt; rl = s.rl;
+      if (L.bob) {
+        if (L.drive === 'walk') lift += speed > 0.3 ? Math.abs(Math.sin(s.dist * Math.PI / 0.55)) * L.bob / 100 : 0;
+        else if (speed > 0.5) lift += Math.sin(now * 0.06 + u.id) * L.bob / 100 * 0.6;
+      }
+    }
+    // barrel / hull recoil
+    const rc = s.shot ? recoilCurve(now - s.shot, L.recover) * L.barrel / 100 : 0;
+    const runs = L.drive === 'track' || L.drive === 'wheel' ? 1 : 0;
+    o3.position.set(wx, s.y + lift, wz); o3.rotation.set(pt, s.yaw, rl, 'YXZ'); o3.scale.set(1, 1, 1); o3.updateMatrix();
+    hullM.copy(o3.matrix);
+    if (!e.turret && rc) hullM.multiply(locM.makeTranslation(0, 0, -rc * 0.5));
+    putMatrix(part(key, 'hull', colour, false, stage), hullM, s.dist, runs);
+    let mzFrom = hullM;
+    if (e.turret) {
+      const tgt = u.tgt ? sim.byId.get(u.tgt) : null;
+      const want = tgt ? Math.atan2(tgt.x * M - wx, tgt.y * M - wz) : s.yaw;
+      s.tyaw += angleStep(s.tyaw, want, 1 - Math.exp(-dt * 5));
+      const [px, py, pz] = e.pivot.map((q) => q * sc);
+      qY.setFromAxisAngle(yAxis, s.tyaw - s.yaw);
+      locM.compose(posV.set(px, py, pz), qY, oneV).multiply(turM.makeTranslation(0, 0, -rc));
+      turM.multiplyMatrices(hullM, locM);
+      putMatrix(part(key, 'turret', colour, false, stage), turM, 0, 0);
+      mzFrom = turM;
+    }
+    // muzzle: flash, smoke, casings for each shot of this unit (queued in drain)
+    mzV.set(...e.muzzle).applyMatrix4(mzFrom);
+    s.mz = [mzV.x, mzV.y, mzV.z];
+    if (s.fired) {
+      const p = s.firedP, big = p === 2 || p === 3;
+      const r = (big ? (p === 3 ? 0.9 : 1.3) : 0.32) * L.flash / 100;
+      if (r > 0.05) effects.push({ kind: 'flash', x: mzV.x, y: mzV.y, z: mzV.z, r, t0: now, dur: big ? 120 : 70 });
+      const dir = [Math.sin(s.tyaw ?? s.yaw), Math.cos(s.tyaw ?? s.yaw)];
+      for (let i = 0; i < emit(L.smoke * (big ? 1 : 0.5) * lifeQ); i++)
+        debris.push({ kind: 'smoke', x: mzV.x + dir[0] * 0.4, y: mzV.y, z: mzV.z + dir[1] * 0.4, vx: dir[0] * (1.5 + Math.random() * 2) + rnd(0.6), vy: 0.4 + Math.random() * 0.5, vz: dir[1] * (1.5 + Math.random() * 2) + rnd(0.6), s: (big ? 0.7 : 0.35) + Math.random() * 0.4, c: 0xb9b3a9, t0: now, dur: 900 + Math.random() * 700 });
+      if (lifeQ > 0.5) for (let i = 0; i < Math.min(4, L.casings); i++) {
+        const side = [dir[1], -dir[0]], v = 1.5 + Math.random() * 1.5;
+        debris.push({ kind: 'chip', x: mzV.x - dir[0] * 0.6, y: mzV.y, z: mzV.z - dir[1] * 0.6, vx: side[0] * v + rnd(0.6), vy: 2 + Math.random() * 2, vz: side[1] * v + rnd(0.6), rx: 9, c: 0xd2a843, t0: now, dur: 900, sc: 0.22 });
+      }
+      s.fired = false;
+    }
+    // dust behind the vehicle (ground decides how much and which colour) and exhaust
+    if (!ty.air && speed > 0.6 && L.dust) {
+      const t = groundInfo(sim, wx, wz);
+      const amount = (t?.dust ?? 0) / 100 * L.dust / 100 * Math.min(1, speed / 6) * 10 * lifeQ;
+      for (let i = 0, n = emit(amount); i < n; i++) {
+        const back = e.back * 0.9, side = rnd(e.half[0] * 1.6);
+        const x = wx + fx * back + fz * side, z = wz + fz * back - fx * side;
+        debris.push({ kind: 'smoke', x, y: groundAt(x, z) + 0.25, z, vx: -fx * speed * 0.15 + rnd(0.8), vy: 0.35 + Math.random() * 0.5, vz: -fz * speed * 0.15 + rnd(0.8), s: L.dustSize * (0.6 + Math.random() * 0.6), c: dustColour(t), t0: now, dur: 1000 + Math.random() * 900 });
+      }
+    }
+    if (L.exhaust && !ty.air) {
+      const rate = L.exhaust / 100 * (speed > 0.3 ? 2.2 + Math.max(0, Math.min(6, s.acc * 1.5)) : 0.6) * lifeQ;
+      for (let i = 0, n = emit(rate * dt); i < n; i++) {
+        mzV.set(e.half[0] * 0.5, e.top * 0.75, e.back + 0.1).applyMatrix4(hullM);
+        debris.push({ kind: 'smoke', x: mzV.x, y: mzV.y, z: mzV.z, vx: -fx * 0.6 + rnd(0.3), vy: 0.9 + Math.random() * 0.5, vz: -fz * 0.6 + rnd(0.3), s: 0.28 + Math.random() * 0.2, c: 0x4f4c48, t0: now, dur: 900 + Math.random() * 500 });
+      }
+    }
+    // damage: smoke and fire from the stage
+    const st = stage ? L.stages[stage - 1] : null;
+    if (st && (st.smoke || st.fire)) {
+      const top = s.y + lift + (ty.air ? 0.3 : e.top * 0.85);
+      for (let i = 0, n = emit((st.smoke || 0) * lifeQ * dt); i < n; i++)
+        debris.push({ kind: 'smoke', x: wx + rnd(e.half[0]), y: top, z: wz + rnd(e.half[1]), vx: rnd(0.5), vy: 1.3 + Math.random(), vz: rnd(0.5), s: (ty.building ? 1.4 : 0.6) + Math.random() * 0.7, c: Math.random() < 0.5 ? 0x2b2826 : 0x3a3633, t0: now, dur: 1800 + Math.random() * 1400 });
+      for (let i = 0, n = emit((st.fire || 0) * lifeQ * dt); i < n; i++) {
+        const x = wx + rnd(e.half[0] * 1.2), z = wz + rnd(e.half[1] * 1.2);
+        effects.push({ kind: 'flash', x, y: top, z, r: (ty.building ? 0.9 : 0.45) + Math.random() * 0.4, t0: now, dur: 240 + Math.random() * 200, big: true });
+        debris.push({ kind: 'smoke', x, y: top + 0.3, z, vx: 0, vy: 2, vz: 0, s: 0.4, c: 0xff8a3a, t0: now, dur: 350 });
+      }
+    }
+  }
+
   // ---------- draw ----------
   let last = performance.now();
   function draw(before, beforeTime) {
@@ -912,7 +1084,7 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
       const ty = sim.types[u.type];
       const [x, y] = pos(u);
       const wx = x * M, wz = y * M;
-      const key = sourceOf(sim, u.type);
+      const key = sourceOf(sim, u.type, u.seat);
       const colour = colours[u.seat] ?? 0x999999;
       let s = smooth.get(u.id);
       const yaw = ty.building ? 0 : yawOf(u.h);
@@ -922,23 +1094,26 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
       s.y += (groundAt(wx, wz) + lift - s.y) * k;
       s.yaw += angleStep(s.yaw, yaw, k);
       const e = modelFor(key);
-      if (ty.air) { // lean into the flight a little
-        const v = Math.hypot(wx - s.px, wz - s.pz) / Math.max(dt, 1e-3);
-        s.tilt += (Math.min(0.3, v * 0.03) - s.tilt) * k; s.px = wx; s.pz = wz;
-        put(part(key, 'hull', colour), wx, s.y, wz, s.yaw, (o) => { o.rotation.set(s.tilt, s.yaw, 0, 'YXZ'); });
-      } else put(part(key, 'hull', colour), wx, s.y, wz, s.yaw);
+      if (lifeOn && e.ready) { lively(sim, u, ty, e, key, colour, s, wx, wz, dt, now); }
+      else {   // switch „old“: exactly the look from before
+        if (ty.air) { // lean into the flight a little
+          const v = Math.hypot(wx - s.px, wz - s.pz) / Math.max(dt, 1e-3);
+          s.tilt += (Math.min(0.3, v * 0.03) - s.tilt) * k; s.px = wx; s.pz = wz;
+          put(part(key, 'hull', colour), wx, s.y, wz, s.yaw, (o) => { o.rotation.set(s.tilt, s.yaw, 0, 'YXZ'); });
+        } else put(part(key, 'hull', colour), wx, s.y, wz, s.yaw);
+        if (e.turret) {
+          const tgt = u.tgt ? sim.byId.get(u.tgt) : null;
+          const want = tgt ? Math.atan2(tgt.x * M - wx, tgt.y * M - wz) : s.yaw;
+          s.tyaw += angleStep(s.tyaw, want, 1 - Math.exp(-dt * 5));
+          const [px, py, pz] = e.pivot.map((q) => q * (e.scale || V));
+          const cs = Math.cos(s.yaw), sn = Math.sin(s.yaw);
+          put(part(key, 'turret', colour), wx + px * cs + pz * sn, s.y + py, wz - px * sn + pz * cs, s.tyaw);
+        }
+      }
       if (lamps > 0.02 && !ty.building && !ty.air && ty.cls !== 'infantry' && beamN < 320) {
         const f = (ty.body + ty.core) * M - 0.4;
         o3.position.set(wx + Math.sin(s.yaw) * f, s.y + 0.12, wz + Math.cos(s.yaw) * f); o3.rotation.set(0, s.yaw, 0, 'XYZ'); o3.scale.set(4.6, 1, 11);
         o3.updateMatrix(); beams.setMatrixAt(beamN++, o3.matrix);
-      }
-      if (e.turret) {
-        const tgt = u.tgt ? sim.byId.get(u.tgt) : null;
-        const want = tgt ? Math.atan2(tgt.x * M - wx, tgt.y * M - wz) : s.yaw;
-        s.tyaw += angleStep(s.tyaw, want, 1 - Math.exp(-dt * 5));
-        const [px, py, pz] = e.pivot.map((q) => q * V);
-        const cs = Math.cos(s.yaw), sn = Math.sin(s.yaw);
-        put(part(key, 'turret', colour), wx + px * cs + pz * sn, s.y + py, wz - px * sn + pz * cs, s.tyaw);
       }
       if (((sel.has(u.id) && !app.hud) || app.marked === u.id) && ringN < 256) {   // marked: the launcher's hero
         o3.position.set(wx, s.y + 0.12, wz); o3.rotation.set(0, 0, 0); const r = (ty.radius + 500) * M; o3.scale.set(r, 1, r); o3.updateMatrix();
@@ -954,11 +1129,12 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
     // wrecks: dark, sinking slowly at the end
     for (const w of wrecks) {
       const age = (now - w.t0) / 1000, sink = age > 25 ? (age - 25) * 0.5 : 0;
-      put(part(w.key, 'hull', w.colour, true), w.x, w.y - sink - (w.building ? 0.2 : 0), w.z, w.yaw, w.building ? null : (o) => { o.rotation.z = 0.06; });
+      const ws = lifeOn ? (models[w.key]?.life?.stages.length || 0) : 0;
+      put(part(w.key, 'hull', w.colour, true, ws), w.x, w.y - sink - (w.building ? 0.2 : 0), w.z, w.yaw, w.building ? null : (o) => { o.rotation.z = 0.06; });
       const e = models[w.key];
-      if (e?.turret) put(part(w.key, 'turret', w.colour, true), w.x + 0.8, w.y - sink + 0.2, w.z - 0.5, w.yaw + 0.9, (o) => { o.rotation.z = 0.5; });
+      if (e?.turret) put(part(w.key, 'turret', w.colour, true, ws), w.x + 0.8, w.y - sink + 0.2, w.z - 0.5, w.yaw + 0.9, (o) => { o.rotation.z = 0.5; });
     }
-    for (const im of parts.values()) { im.count = im.userData.used; im.instanceMatrix.needsUpdate = true; }
+    for (const im of parts.values()) { im.count = im.userData.used; im.instanceMatrix.needsUpdate = true; im.userData.life.needsUpdate = true; }
 
     // order lines of the own selection
     let on = 0;
@@ -1033,7 +1209,7 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
         const gy = groundAt(b.x, b.z) + V / 2;
         b.vy -= 22 * dt; b.x += b.vx * dt; b.y += b.vy * dt; b.z += b.vz * dt;
         if (b.y < gy) { b.y = gy; b.vy *= -0.3; b.vx *= 0.6; b.vz *= 0.6; }
-        o3.position.set(b.x, b.y - (q > 0.8 ? (q - 0.8) * 2 : 0), b.z); o3.rotation.set(b.rx * q, b.rx * 0.7 * q, 0); o3.scale.setScalar(1); o3.updateMatrix();
+        o3.position.set(b.x, b.y - (q > 0.8 ? (q - 0.8) * 2 : 0), b.z); o3.rotation.set(b.rx * q, b.rx * 0.7 * q, 0); o3.scale.setScalar(b.sc || 1); o3.updateMatrix();
         chips.setMatrixAt(cn, o3.matrix); chips.setColorAt(cn++, tmpC.setHex(b.c));
       }
     }
@@ -1067,9 +1243,19 @@ export function battleView3d({ host, overlay, app, meSeat, playerList, toast, mo
     for (const im of parts.values()) scene.remove(im);
     parts.clear(); geoCache.forEach((g) => g.dispose()); geoCache.clear(); models = {};
   }
-  function setModels(src) { modelSource = src || {}; models = {}; for (const im of parts.values()) scene.remove(im); parts.clear(); geoCache.clear(); }
+  function setModels(src, life = lifeData) { modelSource = src || {}; lifeData = life || null; models = {}; for (const im of parts.values()) scene.remove(im); parts.clear(); geoCache.clear(); }
+  // switch old/new for the liveliness (Fidelity step 2); without argument: current state
+  // for tests: what the liveliness is doing right now
+  function lifeStats() {
+    const r = { on: lifeOn, maxTilt: 0, stages: 0, meshes: 0, tilted: 0, recoiling: 0, moving: 0, smoke: 0, chips: 0, casings: 0 };
+    for (const [id, im] of parts) { r.meshes++; if (!id.endsWith('|0') && im.userData.used) r.stages += im.userData.used; }
+    for (const s of smooth.values()) { if (Math.abs(s.pt || 0) + Math.abs(s.rl || 0) > 0.02) r.tilted++; r.maxTilt = Math.max(r.maxTilt, Math.round(Math.max(Math.abs(s.pt || 0), Math.abs(s.rl || 0)) * 57.3)); if (s.shot && performance.now() - s.shot < 400) r.recoiling++; if ((s.dist || 0) > 1) r.moving++; }
+    for (const b of debris) { if (b.kind === 'smoke') r.smoke++; else if (b.sc) r.casings++; else r.chips++; }
+    return r;
+  }
+  function lively_(on) { if (on != null && !!on !== lifeOn) { lifeOn = !!on; for (const im of parts.values()) scene.remove(im); parts.clear(); } return lifeOn; }
   function show(on) { shown = on; if (!on) canvas.style.display = 'none'; }
 
   return { draw, drain, reset, project, unproject, pixelsPerMm, pan, zoom, rotate, centreOn, home, show, setModels, kind: '3d', renderer,
-    scene, camera, projectWorld, target, groundAt, inset, yawOf, atmosphere, quality, cam, excite, imageFx, towers, strike, hooks: api3d };
+    scene, camera, projectWorld, target, groundAt, inset, yawOf, atmosphere, quality, cam, excite, imageFx, towers, strike, hooks: api3d, life: lively_, lifeStats };
 }

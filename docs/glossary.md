@@ -38,6 +38,12 @@ Neuer Code nimmt die Wörter aus dieser Liste, damit überall dieselben Begriffe
 | platz | slot (Tactics) · seat (Netz) |
 | stichwort | keyword |
 | ruestung | armor |
+| lebendigkeit | life |
+| federung | spring / suspension |
+| rueckstoss | recoil / kick |
+| muendung | muzzle |
+| russ | soot |
+| schadensstufe | (damage) stage |
 | schadensart | damageType |
 | erfahrung | experience |
 | oberflaeche | ui |

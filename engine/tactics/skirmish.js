@@ -15,6 +15,7 @@ export async function loadSkirmish(json, choice = SKIRMISH) {
   const setup = { faction, weapons, combat, world, mapDef, mode: modes[choice.mode] || {} };
   // models are only for the view (not part of the data fingerprint)
   try { setup.models = await json('data/models.json'); } catch { setup.models = {}; }
+  try { setup.life = await json('data/life.json'); } catch { setup.life = null; }   // liveliness profiles (optics)
   // the same for the HUD: moods, radio texts, keyword names
   try { setup.ui = await json('data/ui.json'); } catch { setup.ui = {}; }
   try { setup.keywords = await json('data/keywords.json'); } catch { setup.keywords = {}; }

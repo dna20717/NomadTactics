@@ -3,9 +3,11 @@
 import { validateWorld, emptyWorld } from './world.js';
 import { validateUi, emptyUi } from './ui.js';
 import { validateExperience, emptyExperience } from './experience.js';
+import { validateLife, emptyLife, renameLife } from './life.js';
 export * from './world.js';
 export * from './ui.js';
 export * from './experience.js';
+export * from './life.js';
 
 export const CATEGORIES = ['units', 'building', 'research', 'equipment'];
 export const CATEGORY_NAME = { units: 'Einheit', building: 'Gebäude', research: 'Forschung', equipment: 'Ausrüstung' };
@@ -21,8 +23,8 @@ export const STAT_FIELDS = { health: 'Leben', squad: 'Truppstärke', speed: 'Tem
 export async function loadTactics(loader, path = 'project.json') {
   const def = await loader.json(path);
   const p = { def, path, data: {}, paths: {}, factions: new Map(), factionPaths: new Map(), messages: [] };
-  for (const kind of ['resources', 'combat', 'keywords', 'weapons', 'models', 'slots', 'world', 'ui', 'experience']) {
-    if (!def[kind]) { p.data[kind] = kind === 'combat' ? { damageTypes: {}, armors: {}, table: {}, classes: {} } : kind === 'world' ? emptyWorld() : kind === 'ui' ? emptyUi() : kind === 'experience' ? emptyExperience() : {}; continue; }
+  for (const kind of ['resources', 'combat', 'keywords', 'weapons', 'models', 'slots', 'world', 'ui', 'experience', 'life']) {
+    if (!def[kind]) { p.data[kind] = kind === 'life' ? emptyLife() : kind === 'combat' ? { damageTypes: {}, armors: {}, table: {}, classes: {} } : kind === 'world' ? emptyWorld() : kind === 'ui' ? emptyUi() : kind === 'experience' ? emptyExperience() : {}; continue; }
     p.paths[kind] = def[kind];
     try { p.data[kind] = withoutSchema(await loader.json(def[kind])); }
     catch (e) { p.messages.push({ kind: 'error', place: def[kind], text: `nicht lesbar: ${e.message}` }); p.data[kind] = {}; }
@@ -128,6 +130,7 @@ export function renameGlobal(p, kind, old, new_) {
   if (kind === 'damageType') { for (const w of Object.values(p.data.weapons)) if (w.damageType === old) w.damageType = new_; if (k.table?.[old]) { k.table[new_] = k.table[old]; delete k.table[old]; } }
   if (kind === 'armor') for (const z of Object.values(k.table || {})) if (Object.hasOwn(z, old)) { z[new_] = z[old]; delete z[old]; }
   if (kind === 'keyword') for (const w of Object.values(p.data.weapons)) visit(w);
+  if (kind === 'life') renameLife(p, old, new_);
 }
 
 // ---------- Applying research (for the view „Werte nach Forschung“ and later the simulation) ----------
@@ -331,5 +334,6 @@ export function validateTactics(p) {
   validateWorld(p, report, effective);
   validateUi(p, report);
   validateExperience(p, report, effective);
+  validateLife(p, report);
   return m;
 }
